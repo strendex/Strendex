@@ -1,3 +1,4 @@
+"use client";
 export default function Home() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-900 to-gray-800">
