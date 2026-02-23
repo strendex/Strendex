@@ -1,20 +1,5 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
-// This part controls the App Icon and the Browser Tab Title
-export const metadata: Metadata = {
-  title: "STRENDEX",
-  description: "Global Athlete Rankings",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Strendex",
-  },
-  icons: {
-    apple: "/icon.png",
-  },
-};
+import './globals.css';
+import Header from '../components/Header';
 
 export default function RootLayout({
   children,
@@ -24,7 +9,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <Header />
+        <main>{children}</main>
       </body>
     </html>
   );
