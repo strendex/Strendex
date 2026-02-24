@@ -1,17 +1,42 @@
+"use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function RankingsPage() {
-  const players = [
-    { rank: 1, name: "Player One", score: 2500 },
-    { rank: 2, name: "Player Two", score: 2100 },
-    { rank: 3, name: "Player Three", score: 1800 },
-    { rank: 4, name: "Player Four", score: 1650 },
-    { rank: 5, name: "Player Five", score: 1500 },
-  ];
+  const [players, setPlayers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchRankings() {
+      // This goes into your Supabase 'submissions' table
+      const { data, error } = await supabase
+  .from("submissions")
+  .select("*")
+  .not("hq_score", "is", null)
+  .order("hq_score", { ascending: false })
+  .limit(20);
+
+  if (data) {
+    const formattedData = data.map((item: any, index: number) => ({
+      place: index + 1, // leaderboard position (1st, 2nd, 3rd...)
+      name:
+  (typeof item.athlete_name === "string" && item.athlete_name.trim().length > 0
+    ? item.athlete_name.trim()
+    : "Anonymous Athlete"),
+      score: typeof item.hq_score === "number" ? item.hq_score : Number(item.hq_score),
+      rankLabel: item.rank || "—",
+      archetype: item.archetype || "—",
+    }));
+    setPlayers(formattedData);
+  }
+      setLoading(false);
+    }
+    fetchRankings();
+  }, []);
 
   const topThree = players.slice(0, 3);
-  const rest = players.slice(3);
 
   return (
     <main className="min-h-screen bg-[#020203] text-zinc-200 font-sans antialiased">
@@ -83,9 +108,9 @@ export default function RankingsPage() {
 
           {topThree.map((player) => (
             <div
-              key={player.rank}
+            key={player.place}
               className={`rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center relative
-              ${player.rank === 1 ? "shadow-[0_0_50px_rgba(34,197,94,0.25)]" : ""}`}
+              ${player.place === 1 ? "shadow-[0_0_50px_rgba(34,197,94,0.25)]" : ""}`}
             >
 
               <div className="text-xs uppercase tracking-widest text-zinc-500">
@@ -93,18 +118,27 @@ export default function RankingsPage() {
               </div>
 
               <div className="text-4xl font-bold text-white mt-1">
-                #{player.rank}
+                #{player.place}
               </div>
 
               <div className="mt-4 text-xl font-semibold text-white">
-                {player.name}
-              </div>
+              {player.name || "Anonymous Athlete"}
+</div>
+
+<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+  <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
+    {player.rankLabel}
+  </span>
+  <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400">
+    {player.archetype}
+  </span>
+</div>
 
               <div className="mt-2 font-mono text-emerald-400 text-lg">
                 {player.score}
               </div>
 
-              {player.rank === 1 && (
+              {player.place === 1 && (
                 <div className="absolute top-3 right-3 text-[10px] px-2 py-1 bg-emerald-400/20 text-emerald-300 rounded-full border border-emerald-400/20 uppercase tracking-widest">
                   Leader
                 </div>
@@ -131,15 +165,15 @@ export default function RankingsPage() {
 
               {players.map((player) => (
                 <tr
-                  key={player.rank}
+                  key={player.place}
                   className="hover:bg-white/[0.04] transition"
                 >
                   <td className="px-6 py-4 font-semibold text-zinc-400">
-                    #{player.rank}
+                    #{player.place}
                   </td>
 
                   <td className="px-6 py-4 text-white font-medium">
-                    {player.name}
+                  {player.name || "Anonymous Athlete"}
                   </td>
 
                   <td className="px-6 py-4 text-right font-mono text-emerald-400">
