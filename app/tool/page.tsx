@@ -850,14 +850,21 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       {/* TOP BAR */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
-            <img
-              src="/logo.png"
-              alt="Strendex"
-              className="h-full w-full object-contain p-1.5"
-              crossOrigin="anonymous"
-            />
-          </div>
+        <div className="relative h-11 w-11 shrink-0">
+  {/* soft outer badge */}
+  <div className="absolute inset-0 rounded-2xl border border-white/10 bg-white/[0.04]" />
+  {/* inner glow ring */}
+  <div className="absolute inset-0 rounded-2xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]" />
+  {/* logo */}
+  <div className="relative grid h-11 w-11 place-items-center">
+    <img
+      src="/logo.png"
+      alt="Strendex"
+      className="h-7 w-7 object-contain"
+      crossOrigin="anonymous"
+    />
+  </div>
+</div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -925,36 +932,27 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       </div>
 
       {/* KEY STATS STRIP (mobile-safe) */}
-<div className="mt-6 grid grid-cols-3 gap-3">
-  {/* Bodyweight */}
-  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3">
-    <div className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
-      Bodyweight
-    </div>
-    <div className="mt-1 whitespace-nowrap text-xs sm:text-sm font-semibold text-white">
-      {w > 0 ? `${w} lb` : "—"}
-    </div>
-  </div>
+      <div className="mt-6 grid grid-cols-3 gap-3">
+  {[
+    { label: "Bodyweight", value: w > 0 ? `${w} lb` : "—" },
+    { label: "Total Lift", value: totalLift > 0 ? `${totalLift} lb` : "—" },
+    { label: "5K", value: fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—" },
+  ].map((item) => (
+    <div
+      key={item.label}
+      className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3"
+    >
+      {/* fixed-height label row */}
+      <div className="h-[14px] leading-[14px] whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
+        {item.label}
+      </div>
 
-  {/* Total Lift */}
-  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3">
-    <div className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
-      Total Lift
+      {/* fixed-height value row */}
+      <div className="mt-1 h-[18px] leading-[18px] whitespace-nowrap text-xs sm:text-sm font-semibold text-white tabular-nums">
+        {item.value}
+      </div>
     </div>
-    <div className="mt-1 whitespace-nowrap text-xs sm:text-sm font-semibold text-white">
-      {totalLift > 0 ? `${totalLift} lb` : "—"}
-    </div>
-  </div>
-
-  {/* 5K */}
-  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3">
-    <div className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
-      5K
-    </div>
-    <div className="mt-1 whitespace-nowrap text-xs sm:text-sm font-semibold text-white">
-      {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
-    </div>
-  </div>
+  ))}
 </div>
 
       {/* BRAND STAMP */}
