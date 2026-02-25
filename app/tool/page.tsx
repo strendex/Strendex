@@ -92,9 +92,12 @@ export default function ToolPage() {
     "CALIBRATING"
   );
   const [statusText, setStatusText] = useState<string>("");
+  const [siteLabel, setSiteLabel] = useState<string>("strendex");
 
   // Results data
   const [topPercent, setTopPercent] = useState<number | null>(null);
+  const [globalRank, setGlobalRank] = useState<number | null>(null);
+const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   function format5KFromMinutes(min: number) {
@@ -202,6 +205,13 @@ export default function ToolPage() {
   const deadIndex = Math.min(100, w > 0 ? (d / (w * 2.5)) * 100 : 0) || 0;
   const strengthIndex = Number(((benchIndex + squatIndex + deadIndex) / 3).toFixed(1));
   const enduranceIndex = Number((fiveKMin > 0 ? Math.max(0, 100 - fiveKMin * 2) : 0).toFixed(1));
+  const balancePosition = Math.max(
+    0,
+    Math.min(
+      100,
+      50 + (strengthIndex - enduranceIndex)
+    )
+  );
 
   const getRank = (score: number): Rank => {
     if (score >= 6) return "WORLD CLASS";
@@ -227,6 +237,32 @@ export default function ToolPage() {
   const currentRank = getRank(hqScore);
   const currentArchetype = getArchetype(strengthIndex, enduranceIndex);
   const archetypeInfo = ARCHETYPE_COPY[currentArchetype];
+  // Next Tier Projection
+const tierThresholds = {
+  "WORLD CLASS": 6,
+  "ELITE": 4.5,
+  "ADVANCED": 3,
+  "INTERMEDIATE": 1.5,
+};
+
+let nextTier: Rank | null = null;
+let nextTierScore = 0;
+
+if (hqScore < 1.5) {
+  nextTier = "INTERMEDIATE";
+  nextTierScore = tierThresholds["INTERMEDIATE"];
+} else if (hqScore < 3) {
+  nextTier = "ADVANCED";
+  nextTierScore = tierThresholds["ADVANCED"];
+} else if (hqScore < 4.5) {
+  nextTier = "ELITE";
+  nextTierScore = tierThresholds["ELITE"];
+} else if (hqScore < 6) {
+  nextTier = "WORLD CLASS";
+  nextTierScore = tierThresholds["WORLD CLASS"];
+}
+
+const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
 
   const chartData = useMemo(() => {
     return [
@@ -359,6 +395,7 @@ export default function ToolPage() {
   // Load share params + localStorage name
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    setSiteLabel(window.location.host);
 
     const sharedName = params.get("name");
     const sharedBw = params.get("bw");
@@ -393,10 +430,14 @@ export default function ToolPage() {
   useEffect(() => {
     if (!showResults || isScanning) {
       setTopPercent(null);
+      setGlobalRank(null);
+      setTotalAthletes(null);
       return;
     }
     if (!Number.isFinite(hqScore) || hqScore <= 0) {
       setTopPercent(null);
+      setGlobalRank(null);
+      setTotalAthletes(null);
       return;
     }
 
@@ -415,6 +456,8 @@ export default function ToolPage() {
         }
 
         setTopPercent(typeof data.topPercent === "number" ? data.topPercent : null);
+setGlobalRank(typeof data.rank === "number" ? data.rank : null);
+setTotalAthletes(typeof data.total === "number" ? data.total : null);
       } catch {
         setTopPercent(null);
       }
@@ -488,7 +531,7 @@ export default function ToolPage() {
       </header>
 
       {/* PAGE */}
-      <section className="mx-auto max-w-7xl px-6 py-10 md:py-14">
+      <section className="mx-auto max-w-7xl px-6 py-10 pb-28 md:py-14 md:pb-14">
         {/* Hero strip */}
         <div id="inputs" className="mb-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -695,9 +738,11 @@ export default function ToolPage() {
                           </div>
 
                           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-semibold tracking-widest text-zinc-300">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-                            {topPercent === null ? "Loading rank…" : `Top ${topPercent}%`}
-                          </div>
+  <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+  {globalRank === null || totalAthletes === null
+    ? "Loading rank…"
+    : `Rank #${globalRank} of ${totalAthletes}`}
+</div>
                         </div>
                       </div>
 
@@ -740,7 +785,26 @@ export default function ToolPage() {
                     </div>
                   </div>
                 ) : null}
+{/* Next Tier Projection */}
+{nextTier && (
+  <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+    <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+      Next Tier
+    </div>
 
+    <div className="mt-2 text-sm font-semibold text-white">
+      {nextTier}
+    </div>
+
+    <p className="mt-2 text-xs text-zinc-400">
+      You are <span className="text-white font-semibold">{hqGap}</span> HQ away from reaching this tier.
+    </p>
+
+    <div className="mt-3 text-xs text-zinc-500">
+      Improve your strength totals or 5K time to increase your Hybrid Quotient.
+    </div>
+  </div>
+)}
                 {/* Shareable athlete card */}
                 {!isScanning ? (
                   <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
@@ -812,11 +876,14 @@ export default function ToolPage() {
                           </div>
 
                           <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-400">Global Rank</div>
-                            <div className="mt-1 text-sm font-semibold text-white">
-                              {topPercent === null ? "—" : `Top ${topPercent}%`}
-                            </div>
-                          </div>
+  <div className="text-[10px] uppercase tracking-widest text-zinc-400">Standing</div>
+  <div className="mt-1 text-sm font-semibold text-white">
+    {topPercent === null ? "—" : `Better than ${Math.max(0, 100 - topPercent)}%`}
+  </div>
+  <div className="mt-1 text-[10px] uppercase tracking-widest text-zinc-500">
+    of athletes
+  </div>
+</div>
                         </div>
 
                         {/* main row */}
@@ -828,20 +895,34 @@ export default function ToolPage() {
                             </div>
 
                             <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span
-                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
-                              >
-                                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-                                {currentRank}
-                              </span>
 
-                              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
-                                <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-emerald-300">
-                                  <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
-                                </span>
-                                {currentArchetype}
-                              </span>
-                            </div>
+  <span
+    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
+  >
+    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+    {currentRank}
+  </span>
+
+  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
+    <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-emerald-300">
+      <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
+    </span>
+    {currentArchetype}
+  </span>
+
+  {globalRank !== null && totalAthletes !== null && (
+  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
+    #{globalRank} / {totalAthletes}
+  </span>
+)}
+
+{topPercent !== null && (
+  <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold tracking-widest text-emerald-300">
+    BETTER THAN {Math.max(0, 100 - topPercent)}%
+  </span>
+)}
+
+</div>
 
                             <div className="mt-3 text-xs text-zinc-300">
                               <span className="font-semibold text-white">{archetypeInfo.tagline}</span>
@@ -849,12 +930,16 @@ export default function ToolPage() {
                           </div>
 
                           <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-400">HQ Score</div>
-                            <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
-                              {Number.isFinite(hqScore) ? hqScore : 0}
-                            </div>
-                            <div className="mt-2 text-[11px] text-zinc-400">Strength + Endurance</div>
-                          </div>
+  <div className="text-[10px] uppercase tracking-widest text-zinc-400">Hybrid Quotient</div>
+
+  <div className="mt-1 text-[72px] font-semibold tracking-tight text-white drop-shadow-[0_0_24px_rgba(34,197,94,0.45)] leading-none">
+    {Number.isFinite(hqScore) ? hqScore : 0}
+  </div>
+
+  <div className="mt-2 text-[11px] text-zinc-400 uppercase tracking-widest">
+    HQ Score
+  </div>
+</div>
                         </div>
 
                         {/* premium gauges (NO bars) */}
@@ -885,7 +970,29 @@ export default function ToolPage() {
                             </div>
                           </div>
                         </div>
+{/* Hybrid Balance Meter */}
+<div className="relative z-10 mt-6 rounded-2xl border border-white/10 bg-black/35 p-4">
+  <div className="flex items-center justify-between">
+    <div className="text-[10px] uppercase tracking-widest text-zinc-400">
+      Hybrid Balance
+    </div>
+  </div>
 
+  <div className="mt-4 relative h-[6px] w-full rounded-full bg-white/[0.08]">
+  <div
+  className="absolute top-1/2 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(34,197,94,0.8)]"
+  style={{
+    left: `${balancePosition}%`,
+    transform: "translate(-50%, -50%)",
+  }}
+/>
+  </div>
+
+  <div className="mt-3 flex justify-between text-[10px] uppercase tracking-widest text-zinc-500">
+    <span>Strength</span>
+    <span>Endurance</span>
+  </div>
+</div>
                         {/* stats */}
                         <div className="relative z-10 mt-4 grid grid-cols-2 gap-3 text-sm">
                           {[
@@ -903,10 +1010,10 @@ export default function ToolPage() {
                           ))}
                         </div>
 
-                        <div className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-zinc-500">
-                          <span className="uppercase tracking-[0.22em]">strendex • hybrid benchmark</span>
-                          <span className="font-mono">v2.4</span>
-                        </div>
+                        <div className="relative z-10 mt-6 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-500 uppercase tracking-[0.25em]">
+  <span>STRENDEX PERFORMANCE REPORT</span>
+  <span className="text-zinc-600">TEST YOURSELF → {siteLabel}</span>
+</div>
                       </div>
                     </div>
                   </section>
@@ -1014,7 +1121,53 @@ export default function ToolPage() {
           </div>
         </div>
       </section>
+{/* Sticky Results Dock (mobile-first) */}
+{showResults && !isScanning && (
+  <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#020203]/80 backdrop-blur-xl md:hidden">
+    <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-white leading-none">
+            HQ {Number.isFinite(hqScore) ? hqScore : 0}
+          </div>
 
+          <span
+            className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+            {currentRank}
+          </span>
+
+          {topPercent !== null && (
+            <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold tracking-widest text-emerald-300">
+              TOP {topPercent}%
+            </span>
+          )}
+        </div>
+
+        <div className="mt-1 truncate text-[11px] text-zinc-500 uppercase tracking-[0.22em]">
+          {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 gap-2">
+        <button
+          onClick={downloadScorecard}
+          className="inline-flex items-center justify-center rounded-full bg-white px-3 py-2 text-[11px] font-semibold tracking-widest text-black"
+        >
+          PNG
+        </button>
+
+        <button
+          onClick={copyShareLink}
+          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-semibold tracking-widest text-white"
+        >
+          LINK
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {/* FOOTER */}
       <footer className="border-t border-white/5 py-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 md:flex-row md:items-center md:justify-between">
