@@ -1,101 +1,90 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// This runs on the server, so it's safe to use SERVICE_ROLE here
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-type Row = {
-  bodyweight: number;
-  fivek_seconds: number | null;
-  bench: number | null;
-  squat: number | null;
-  deadlift: number | null;
-  hq_score?: number | null;
-};
-
-function percentileHigherIsBetter(values: number[], x: number) {
-  // returns 0..100 where higher is better
-  if (values.length === 0) return 50;
-  const sorted = [...values].sort((a, b) => a - b);
-  let count = 0;
-  for (const v of sorted) if (v <= x) count++;
-  return (count / sorted.length) * 100;
-}
-
-function percentileLowerIsBetter(values: number[], x: number) {
-  // returns 0..100 where lower is better (invert)
-  return 100 - percentileHigherIsBetter(values, x);
+// Simple HQ calculation (0–100 style). You can refine later.
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  try {
+    const body = await req.json();
 
-  const bw = Number(body.bodyweight);
-  const fivek_seconds =
-    body.fivek_seconds == null ? null : Number(body.fivek_seconds);
-  const bench = Number(body.bench);
-  const squat = Number(body.squat);
-  const deadlift = Number(body.deadlift);
+    const bw = Number(body?.bodyweight) || 0;
+    const fivek = body?.fivek_seconds === null ? null : Number(body?.fivek_seconds);
+    const bench = body?.bench === null ? null : Number(body?.bench);
+    const squat = body?.squat === null ? null : Number(body?.squat);
+    const deadlift = body?.deadlift === null ? null : Number(body?.deadlift);
 
-  if (!bw || !bench || !squat || !deadlift) {
-    return NextResponse.json({ error: "Missing required inputs" }, { status: 400 });
-  }
-
-  // Pull dataset (enough for now; later we can optimize)
-  const { data, error } = await supabase
-    .from("submissions")
-    .select("bodyweight,fivek_seconds,bench,squat,deadlift,hq_score")
-    .limit(10000);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const rows = (data ?? []) as Row[];
-
-  const benchRatios: number[] = [];
-  const squatRatios: number[] = [];
-  const deadRatios: number[] = [];
-  const fiveKs: number[] = [];
-  const hqs: number[] = [];
-
-  for (const r of rows) {
-    if (r.bodyweight && r.bench && r.squat && r.deadlift) {
-      benchRatios.push(r.bench / r.bodyweight);
-      squatRatios.push(r.squat / r.bodyweight);
-      deadRatios.push(r.deadlift / r.bodyweight);
+    if (!bw || bw < 80 || bw > 400) {
+      return NextResponse.json({ error: "Invalid bodyweight" }, { status: 400 });
     }
-    if (typeof r.fivek_seconds === "number") fiveKs.push(r.fivek_seconds);
-    if (typeof r.hq_score === "number") hqs.push(r.hq_score);
+
+    // Strength index (0–100)
+    const bIdx = bench ? clamp((bench / (bw * 1.5)) * 100, 0, 100) : 0;
+    const sIdx = squat ? clamp((squat / (bw * 2.0)) * 100, 0, 100) : 0;
+    const dIdx = deadlift ? clamp((deadlift / (bw * 2.5)) * 100, 0, 100) : 0;
+    const strengthIndex = Number(((bIdx + sIdx + dIdx) / 3).toFixed(1));
+
+    // Endurance index (0–100) from 5k seconds
+    const fivekMin = fivek ? fivek / 60 : 0;
+    const enduranceIndex = Number((fivek ? clamp(100 - fivekMin * 2, 0, 100) : 0).toFixed(1));
+
+    // HQ score (0–100 for now)
+    const hq = Number(((strengthIndex + enduranceIndex) / 2).toFixed(1));
+
+    // Pull all HQ scores for ranking
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("hq_score");
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const scores = (data ?? [])
+      .map((r: any) => Number(r.hq_score))
+      .filter((n: number) => Number.isFinite(n));
+
+    const total = scores.length;
+
+    // If no data yet, you're #1 of 1 and better than 0% doesn't make sense, so set 50.0
+    if (total === 0) {
+      return NextResponse.json({
+        hq,
+        strengthPercentile: 50,
+        endurancePercentile: 50,
+        topPercent: 50,
+        rank: 1,
+        total: 1,
+      });
+    }
+
+    // Rank calc: count how many are >= you
+    const betterOrEqual = scores.filter((s) => s >= hq).length;
+    const rank = Math.max(1, betterOrEqual);
+
+    // Better-than percent: % of athletes you beat
+    const worse = scores.filter((s) => s < hq).length;
+    const betterThan = Number(((worse / total) * 100).toFixed(1));
+
+    return NextResponse.json({
+      hq,
+      strengthPercentile: null,
+      endurancePercentile: null,
+      topPercent: betterThan,
+      rank,
+      total,
+    });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message ?? "Unknown server error" },
+      { status: 500 }
+    );
   }
-
-  const userBenchRatio = bench / bw;
-  const userSquatRatio = squat / bw;
-  const userDeadRatio = deadlift / bw;
-
-  const strengthPercentile =
-    (percentileHigherIsBetter(benchRatios, userBenchRatio) +
-      percentileHigherIsBetter(squatRatios, userSquatRatio) +
-      percentileHigherIsBetter(deadRatios, userDeadRatio)) /
-    3;
-
-  const endurancePercentile =
-    fivek_seconds == null ? 50 : percentileLowerIsBetter(fiveKs, fivek_seconds);
-
-  const hq = 0.5 * strengthPercentile + 0.5 * endurancePercentile;
-
-  // Top percent: what % of people have HQ >= you (smaller number = better)
-  let topPercent = 50;
-  if (hqs.length > 0) {
-    const betterOrEqual = hqs.filter((v) => v >= hq).length;
-    topPercent = (betterOrEqual / hqs.length) * 100;
-  }
-
-  return NextResponse.json({
-    strengthPercentile: Number(strengthPercentile.toFixed(1)),
-    endurancePercentile: Number(endurancePercentile.toFixed(1)),
-    hq: Number(hq.toFixed(1)),
-    topPercent: Number(topPercent.toFixed(1)),
-  });
 }

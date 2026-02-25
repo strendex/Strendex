@@ -296,7 +296,8 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     const data = await res.json();
 
     if (!res.ok) {
-      console.error(data);
+      console.error("API /api/rank error:", data);
+      alert(`Rank API error: ${data?.error ?? JSON.stringify(data)}`);
       throw new Error(data?.error ?? "Scoring failed");
     }
 
@@ -418,7 +419,6 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       return;
     }
   
-    // ✅ VALIDATE BEFORE SHOWING RESULTS
     const v = validateInputsOrAlert();
     if (!v.ok) return;
   
@@ -429,15 +429,25 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   
     setIsScanning(true);
+    setStatusText("");
     setScanStage("CALIBRATING");
-    await new Promise((r) => setTimeout(r, 320));
-    setScanStage("SCANNING");
-    await new Promise((r) => setTimeout(r, 420));
-    setScanStage("COMPILING");
-    await new Promise((r) => setTimeout(r, 320));
   
-    await saveSubmission(v.finalName, v.fivek_seconds);
-    setIsScanning(false);
+    try {
+      await new Promise((r) => setTimeout(r, 320));
+      setScanStage("SCANNING");
+      await new Promise((r) => setTimeout(r, 420));
+      setScanStage("COMPILING");
+      await new Promise((r) => setTimeout(r, 320));
+  
+      await computeScore();
+      await saveSubmission(v.finalName, v.fivek_seconds);
+    } catch (err) {
+      console.error(err);
+      setStatusText("Generation failed. Open the red error (N) for details and try again.");
+      alert("Error generating profile. Click the red N to see the error.");
+    } finally {
+      setIsScanning(false);
+    }
   }
 
   async function downloadScorecard() {
@@ -528,20 +538,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     }
   }, []);
 
-    // NEW: when results are shown (and not scanning), compute HQ + rank info from inputs
-    useEffect(() => {
-      if (!showResults || isScanning) return;
-  
-      const t = setTimeout(async () => {
-        try {
-          await computeScore();
-        } catch {
-          // ignore
-        }
-      }, 250);
-  
-      return () => clearTimeout(t);
-    }, [showResults, isScanning, w, b, s, d, fiveKMin]);
+    // Score is computed when you press CALCULATE (inside generateAndLog)
 
   const rankMeta: Record<Rank, { label: string; pill: string; glow: string }> = {
     "WORLD CLASS": {
@@ -581,36 +578,12 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
         <div className="absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,transparent_0%,rgba(2,2,3,0.70)_55%,rgba(2,2,3,0.96)_100%)]" />
       </div>
 
-      {/* TOP BAR */}
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#020203]/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-              <Image src="/logo.png" alt="Strendex" fill className="object-contain p-1" priority />
-            </div>
-            <div className="leading-none">
-              <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
-              <div className="text-[11px] text-zinc-500">HQ Tool</div>
-            </div>
-          </Link>
-
-          <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
-            <Link href="/rankings" className="hover:text-white transition-colors">
-              Rankings
-            </Link>
-            <a href="#results" className="hover:text-white transition-colors">
-              Results
-            </a>
-          </nav>
-
-          <div className="hidden md:block text-xs text-zinc-500">Hybrid scoring + global rankings</div>
-        </div>
-      </header>
+      
 
       {/* PAGE */}
-      <section className="mx-auto max-w-7xl px-6 py-10 pb-28 md:py-14 md:pb-14">
+      <section className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-10 md:py-14 md:pb-14">
         {/* Hero strip */}
-        <div id="inputs" className="mb-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+        <div id="inputs" className="mb-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
@@ -626,7 +599,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
                 <div className="text-[10px] uppercase tracking-widest text-zinc-500">Output</div>
                 <div className="mt-1 text-sm font-semibold text-white">HQ Score</div>
@@ -647,7 +620,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
         </div>
 
         {/* Main layout */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
           {/* LEFT: INPUTS */}
           <div className="lg:col-span-4">
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
@@ -920,7 +893,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
                     <div className="mt-6 grid place-items-center">
                       <div
                         ref={cardRef}
-                        className="relative w-full max-w-[640px] overflow-hidden rounded-[30px] border border-white/10 bg-[#07070A] p-7"
+                        className="relative w-full max-w-[640px] overflow-hidden rounded-[30px] border border-white/10 bg-[#07070A] p-5 sm:p-7"
                       >
                         {/* background layers */}
                         <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -955,7 +928,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
                           <div className="text-right">
   <div className="text-[10px] uppercase tracking-widest text-zinc-400">Standing</div>
   <div className="mt-1 text-sm font-semibold text-white">
-    {topPercent === null ? "—" : `Better than ${Math.max(0, 100 - topPercent)}%`}
+  {topPercent === null ? "—" : `Better than ${Math.max(0, Math.min(100, topPercent)).toFixed(1)}%`}
   </div>
   <div className="mt-1 text-[10px] uppercase tracking-widest text-zinc-500">
     of athletes
@@ -995,7 +968,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
 
 {topPercent !== null && (
   <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold tracking-widest text-emerald-300">
-    BETTER THAN {Math.max(0, 100 - topPercent)}%
+    BETTER THAN {Math.max(0, Math.min(100, topPercent)).toFixed(1)}%
   </span>
 )}
 
@@ -1009,7 +982,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
                           <div className="text-right">
   <div className="text-[10px] uppercase tracking-widest text-zinc-400">Hybrid Quotient</div>
 
-  <div className="mt-1 text-[72px] font-semibold tracking-tight text-white drop-shadow-[0_0_24px_rgba(34,197,94,0.45)] leading-none">
+  <div className="mt-1 text-[56px] sm:text-[72px] font-semibold tracking-tight text-white drop-shadow-[0_0_24px_rgba(34,197,94,0.45)] leading-none">
     {Number.isFinite(hqScore) ? hqScore : 0}
   </div>
 
@@ -1217,7 +1190,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
 
           {topPercent !== null && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold tracking-widest text-emerald-300">
-              TOP {topPercent}%
+              BETTER {Math.max(0, Math.min(100, topPercent)).toFixed(1)}%
             </span>
           )}
         </div>
@@ -1245,23 +1218,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     </div>
   </div>
 )}
-      {/* FOOTER */}
-      <footer className="border-t border-white/5 py-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs uppercase tracking-widest text-zinc-600">© 2026 Strendex Systems</p>
-          <div className="flex gap-8 text-xs uppercase tracking-widest text-zinc-500">
-            <a href="#" className="hover:text-white transition-colors">
-              Documentation
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
-              Privacy
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
-              Support
-            </a>
-          </div>
-        </div>
-      </footer>
+      
     </main>
   );
 }

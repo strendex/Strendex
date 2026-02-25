@@ -48,47 +48,7 @@ export default function RankingsPage() {
         <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:64px_64px]" />
       </div>
 
-      {/* NAV */}
-      <header className="border-b border-white/5 bg-[#020203]/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-
-          <Link href="/" className="flex items-center gap-3">
-            <div className="relative h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
-              <Image
-                src="/logo.png"
-                alt="Strendex"
-                fill
-                className="object-contain p-1"
-              />
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold tracking-wide text-white">
-                STRENDEX
-              </div>
-              <div className="text-[11px] text-zinc-500">
-                Global Leaderboard
-              </div>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/tool"
-              className="px-4 py-2 text-sm border border-white/10 rounded-full hover:bg-white/[0.05] transition"
-            >
-              Open Tool
-            </Link>
-
-            <Link
-              href="/"
-              className="px-4 py-2 text-sm bg-white text-black rounded-full font-semibold hover:bg-zinc-200 transition"
-            >
-              Home
-            </Link>
-          </div>
-        </div>
-      </header>
+    
 
       {/* PAGE */}
       <section className="max-w-6xl mx-auto px-6 py-16">
