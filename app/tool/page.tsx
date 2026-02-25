@@ -890,202 +890,128 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
                     </div>
 
                     {/* NEW PREMIUM CARD */}
-                    <div className="mt-6 grid place-items-center">
-                      <div
-                        ref={cardRef}
-                        className="relative w-full max-w-[640px] overflow-hidden rounded-[30px] border border-white/10 bg-[#07070A] p-5 sm:p-7"
-                      >
-                        {/* background layers */}
-                        <div aria-hidden className="pointer-events-none absolute inset-0">
-                          <div className="absolute -top-28 left-1/2 h-[360px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(34,197,94,0.22),_transparent_62%)] blur-2xl" />
-                          <div className="absolute -bottom-40 left-1/2 h-[420px] w-[860px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.14),_transparent_60%)] blur-2xl" />
-                          <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:56px_56px]" />
-                          <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_0%,transparent_0%,rgba(7,7,10,0.50)_55%,rgba(7,7,10,0.98)_100%)]" />
-                          <div className="absolute -right-16 top-12 opacity-[0.06] rotate-12">
-                            <div className="text-[120px] font-semibold tracking-tight text-white">STRENDEX</div>
-                          </div>
-                        </div>
-
-                        {/* header */}
-                        <div className="relative z-10 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05]">
-                              <img
-                                src="/logo.png"
-                                alt="Strendex"
-                                className="h-full w-full object-cover p-0 scale-[1.08]"
-                                crossOrigin="anonymous"
-                              />
-                            </div>
-                            <div className="leading-none">
-                              <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
-                              <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-zinc-400">
-                                ATHLETE CARD
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-  <div className="text-[10px] uppercase tracking-widest text-zinc-400">Standing</div>
-  <div className="mt-1 text-sm font-semibold text-white">
-  {topPercent === null ? "—" : `Better than ${Math.max(0, Math.min(100, topPercent)).toFixed(1)}%`}
-  </div>
-  <div className="mt-1 text-[10px] uppercase tracking-widest text-zinc-500">
-    of athletes
-  </div>
-</div>
-                        </div>
-
-                        {/* main row */}
-                        <div className="relative z-10 mt-6 grid grid-cols-1 gap-5 md:grid-cols-[1fr_auto] md:items-end">
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-400">Athlete</div>
-                            <div className="mt-1 text-[26px] font-semibold tracking-tight text-white">
-                              {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-
-  <span
-    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
-  >
-    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-    {currentRank}
-  </span>
-
-  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
-    <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-emerald-300">
-      <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
-    </span>
-    {currentArchetype}
-  </span>
-
-  {globalRank !== null && totalAthletes !== null && (
-  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
-    #{globalRank} / {totalAthletes}
-  </span>
-)}
-
-{topPercent !== null && (
-  <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold tracking-widest text-emerald-300">
-    BETTER THAN {Math.max(0, Math.min(100, topPercent)).toFixed(1)}%
-  </span>
-)}
-
-</div>
-
-                            <div className="mt-3 text-xs text-zinc-300">
-                              <span className="font-semibold text-white">{archetypeInfo.tagline}</span>
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-  <div className="text-[10px] uppercase tracking-widest text-zinc-400">Hybrid Quotient</div>
-
-  <div className="mt-1 text-[56px] sm:text-[72px] font-semibold tracking-tight text-white drop-shadow-[0_0_24px_rgba(34,197,94,0.45)] leading-none">
-    {Number.isFinite(hqScore) ? hqScore : 0}
-  </div>
-
-  <div className="mt-2 text-[11px] text-zinc-400 uppercase tracking-widest">
-    HQ Score
-  </div>
-</div>
-                        </div>
-
-                        {/* premium gauges (NO bars) */}
-                        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3">
-                          <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="text-[10px] uppercase tracking-widest text-zinc-400">Strength</div>
-                              <div className="text-[10px] font-semibold text-zinc-200">{strengthIndex}/100</div>
-                            </div>
-                            <div className="mt-3 flex items-center gap-3">
-                              <MiniRing value={strengthIndex} variant="strength" />
-                              <div className="text-xs text-zinc-400 leading-snug">
-                                Lift index based on BW normalization.
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="text-[10px] uppercase tracking-widest text-zinc-400">Endurance</div>
-                              <div className="text-[10px] font-semibold text-zinc-200">{enduranceIndex}/100</div>
-                            </div>
-                            <div className="mt-3 flex items-center gap-3">
-                              <MiniRing value={enduranceIndex} variant="endurance" />
-                              <div className="text-xs text-zinc-400 leading-snug">
-                                Pace index from 5K time.
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-{/* Hybrid Balance Meter */}
-<div className="relative z-10 mt-6 rounded-2xl border border-white/10 bg-black/35 p-4">
-  <div className="flex items-center justify-between">
-    <div className="text-[10px] uppercase tracking-widest text-zinc-400">
-      Hybrid Balance
-    </div>
-  </div>
-
-  <div className="mt-4 relative h-[6px] w-full rounded-full bg-white/[0.08]">
+<div className="mt-6 grid place-items-center">
   <div
-  className="absolute top-1/2 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(34,197,94,0.8)]"
-  style={{
-    left: `${balancePosition}%`,
-    transform: "translate(-50%, -50%)",
-  }}
-/>
-  </div>
+    ref={cardRef}
+    className="relative w-full max-w-[640px] overflow-hidden rounded-[30px] border border-white/10 bg-[#07070A] p-6"
+  >
 
-  <div className="mt-3 flex justify-between text-[10px] uppercase tracking-widest text-zinc-500">
-    <span>Strength</span>
-    <span>Endurance</span>
-  </div>
-</div>
-                        {/* stats */}
-                        {/* Minimal stats */}
-<div className="relative z-10 mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
-  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
-    <span>Key Stats</span>
-    <span className="text-zinc-400">{w > 0 ? `${w} lb BW` : "—"}</span>
-  </div>
+    {/* background */}
+    <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:56px_56px]" />
 
-  <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+    <div className="relative z-10">
 
-    <div className="flex items-center justify-between">
-      <span className="text-zinc-400">Total Lift</span>
-      <span className="font-semibold text-white">
-        {totalLift > 0 ? `${totalLift} lb` : "—"}
-      </span>
+      {/* top */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+
+          <div className="h-10 w-10 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
+            <img src="/logo.png" className="h-7 w-7 object-contain" />
+          </div>
+
+          <div>
+            <div className="text-xs tracking-widest text-zinc-400 uppercase">
+              STRENDEX
+            </div>
+            <div className="text-[10px] text-zinc-500 uppercase tracking-widest">
+              Hybrid Profile
+            </div>
+          </div>
+
+        </div>
+
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+            Standing
+          </div>
+          <div className="text-sm font-semibold text-white">
+            {topPercent === null
+              ? "—"
+              : `Better than ${Math.max(0, Math.min(100, topPercent)).toFixed(1)}%`}
+          </div>
+        </div>
+      </div>
+
+      {/* name */}
+      <div className="mt-6">
+
+        <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+          Athlete
+        </div>
+
+        <div className="text-[24px] font-semibold text-white mt-1">
+          {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-3">
+
+          <span className={`px-3 py-1 rounded-full border text-[10px] tracking-widest ${rankMeta[currentRank].pill}`}>
+            {currentRank}
+          </span>
+
+          <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] tracking-widest text-zinc-300">
+            {currentArchetype}
+          </span>
+
+        </div>
+
+      </div>
+
+      {/* HQ */}
+      <div className="mt-8 text-center">
+
+        <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+          Hybrid Quotient
+        </div>
+
+        <div className="text-[72px] font-semibold text-white leading-none mt-2">
+          {Number.isFinite(hqScore) ? hqScore : 0}
+        </div>
+
+        <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">
+          HQ Score
+        </div>
+
+      </div>
+
+      {/* minimal stats */}
+      <div className="mt-8 grid grid-cols-3 gap-3 text-center">
+
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-zinc-500">BW</div>
+          <div className="text-sm font-semibold text-white mt-1">
+            {w > 0 ? `${w}` : "—"}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-zinc-500">Total</div>
+          <div className="text-sm font-semibold text-white mt-1">
+            {totalLift > 0 ? `${totalLift}` : "—"}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-zinc-500">5K</div>
+          <div className="text-sm font-semibold text-white mt-1">
+            {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
+          </div>
+        </div>
+
+      </div>
+
+      {/* footer */}
+      <div className="mt-8 flex justify-between text-[10px] uppercase tracking-[0.25em] text-zinc-500">
+        <span>STRENDEX</span>
+        <span>{siteLabel}</span>
+      </div>
+      
+      </div>
     </div>
 
-    <div className="flex items-center justify-between">
-      <span className="text-zinc-400">5K</span>
-      <span className="font-semibold text-white">
-        {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
-      </span>
-    </div>
-
-    <div className="flex items-center justify-between">
-      <span className="text-zinc-400">Archetype</span>
-      <span className="font-semibold text-white">
-        {currentArchetype}
-      </span>
-    </div>
-
   </div>
-</div>
-
-                        <div className="relative z-10 mt-6 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-500 uppercase tracking-[0.25em]">
-  <span>STRENDEX PERFORMANCE REPORT</span>
-  <span className="text-zinc-600">TEST YOURSELF → {siteLabel}</span>
-</div>
-                      </div>
-                    </div>
-                  </section>
-                ) : null}
-
+  </section>
+) : null}
                 {/* Advanced (optional) */}
                 {showAdvanced && !isScanning ? (
                   <>
