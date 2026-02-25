@@ -582,42 +582,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
 
       {/* PAGE */}
       <section className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-10 md:py-14 md:pb-14">
-        {/* Hero strip */}
-        <div id="inputs" className="mb-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-              <Image src="/logo.png" alt="Strendex" fill className="object-contain p-0 scale-110" priority />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-[0.25em] text-zinc-500">Hybrid Quotient</div>
-                <h2 className="mt-1 text-xl font-semibold text-white">Create your Strendex profile</h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Enter your stats, hit <span className="text-white font-semibold">Calculate</span>, and get your archetype +
-                  share card instantly.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <div className="text-[10px] uppercase tracking-widest text-zinc-500">Output</div>
-                <div className="mt-1 text-sm font-semibold text-white">HQ Score</div>
-                <div className="mt-1 text-xs text-zinc-500">Strength + endurance</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <div className="text-[10px] uppercase tracking-widest text-zinc-500">Profile</div>
-                <div className="mt-1 text-sm font-semibold text-white">Archetype</div>
-                <div className="mt-1 text-xs text-zinc-500">Training focus</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <div className="text-[10px] uppercase tracking-widest text-zinc-500">Rank</div>
-                <div className="mt-1 text-sm font-semibold text-white">Percentile</div>
-                <div className="mt-1 text-xs text-zinc-500">Global database</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        
 
         {/* Main layout */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
@@ -835,26 +800,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
                     </div>
                   </div>
                 ) : null}
-{/* Next Tier Projection */}
-{nextTier && (
-  <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-    <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-      Next Tier
-    </div>
 
-    <div className="mt-2 text-sm font-semibold text-white">
-      {nextTier}
-    </div>
-
-    <p className="mt-2 text-xs text-zinc-400">
-      You are <span className="text-white font-semibold">{hqGap}</span> HQ away from reaching this tier.
-    </p>
-
-    <div className="mt-3 text-xs text-zinc-500">
-      Improve your strength totals or 5K time to increase your Hybrid Quotient.
-    </div>
-  </div>
-)}
                 {/* Shareable athlete card */}
                 {!isScanning ? (
                   <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
@@ -866,27 +812,20 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row">
-                        <button
-                          onClick={downloadScorecard}
-                          className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition"
-                        >
-                          Download PNG
-                        </button>
+  <button
+    onClick={downloadScorecard}
+    className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition"
+  >
+    Download Card
+  </button>
 
-                        <button
-                          onClick={copyShareText}
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          Copy Text
-                        </button>
-
-                        <button
-                          onClick={copyShareLink}
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          Copy Link
-                        </button>
-                      </div>
+  <button
+    onClick={copyShareLink}
+    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
+  >
+    Copy Link
+  </button>
+</div>
                     </div>
 
                     {/* NEW PREMIUM CARD */}
@@ -909,7 +848,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     {/* CONTENT */}
     <div className="relative z-10">
       {/* TOP BAR */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
             <img
@@ -923,9 +862,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
-              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold tracking-widest text-emerald-300">
-                VERIFIED
-              </span>
+              
             </div>
             <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-400">
               HYBRID PERFORMANCE CARD
@@ -933,7 +870,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
           </div>
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="sm:text-right shrink-0">
           <div className="text-[10px] uppercase tracking-widest text-zinc-500">Standing</div>
           <div className="mt-1 text-sm font-semibold text-white">
             {topPercent === null
