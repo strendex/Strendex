@@ -1044,21 +1044,38 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
   </div>
 </div>
                         {/* stats */}
-                        <div className="relative z-10 mt-4 grid grid-cols-2 gap-3 text-sm">
-                          {[
-                            { label: "Bodyweight", value: w > 0 ? `${w} lbs` : "—" },
-                            { label: "5K", value: format5KFromMinutes(fiveKMin) },
-                            { label: "Bench", value: b > 0 ? `${b} lbs` : "—" },
-                            { label: "Squat", value: s > 0 ? `${s} lbs` : "—" },
-                            { label: "Deadlift", value: d > 0 ? `${d} lbs` : "—" },
-                            { label: "Total", value: totalLift > 0 ? `${totalLift} lbs` : "—" },
-                          ].map((item) => (
-                            <div key={item.label} className="rounded-2xl border border-white/10 bg-black/30 p-3">
-                              <div className="text-[10px] uppercase tracking-widest text-zinc-400">{item.label}</div>
-                              <div className="mt-1 font-semibold text-white">{item.value}</div>
-                            </div>
-                          ))}
-                        </div>
+                        {/* Minimal stats */}
+<div className="relative z-10 mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
+  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
+    <span>Key Stats</span>
+    <span className="text-zinc-400">{w > 0 ? `${w} lb BW` : "—"}</span>
+  </div>
+
+  <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+
+    <div className="flex items-center justify-between">
+      <span className="text-zinc-400">Total Lift</span>
+      <span className="font-semibold text-white">
+        {totalLift > 0 ? `${totalLift} lb` : "—"}
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between">
+      <span className="text-zinc-400">5K</span>
+      <span className="font-semibold text-white">
+        {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
+      </span>
+    </div>
+
+    <div className="flex items-center justify-between">
+      <span className="text-zinc-400">Archetype</span>
+      <span className="font-semibold text-white">
+        {currentArchetype}
+      </span>
+    </div>
+
+  </div>
+</div>
 
                         <div className="relative z-10 mt-6 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-500 uppercase tracking-[0.25em]">
   <span>STRENDEX PERFORMANCE REPORT</span>
@@ -1173,46 +1190,29 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       </section>
 {/* Sticky Results Dock (mobile-first) */}
 {showResults && !isScanning && (
-  <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#020203]/80 backdrop-blur-xl md:hidden">
-    <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
+  <div className="fixed bottom-3 left-3 right-3 z-50 md:hidden">
+    <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#020203]/85 px-3 py-2 backdrop-blur-xl">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-white leading-none">
+          <div className="text-xs font-semibold text-white">
             HQ {Number.isFinite(hqScore) ? hqScore : 0}
           </div>
 
           <span
-            className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
+            className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
             {currentRank}
           </span>
-
-          {topPercent !== null && (
-            <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold tracking-widest text-emerald-300">
-              BETTER {Math.max(0, Math.min(100, topPercent)).toFixed(1)}%
-            </span>
-          )}
-        </div>
-
-        <div className="mt-1 truncate text-[11px] text-zinc-500 uppercase tracking-[0.22em]">
-          {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
         </div>
       </div>
 
       <div className="flex shrink-0 gap-2">
         <button
           onClick={downloadScorecard}
-          className="inline-flex items-center justify-center rounded-full bg-white px-3 py-2 text-[11px] font-semibold tracking-widest text-black"
+          className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-[10px] font-semibold tracking-widest text-black"
         >
           PNG
-        </button>
-
-        <button
-          onClick={copyShareLink}
-          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-semibold tracking-widest text-white"
-        >
-          LINK
         </button>
       </div>
     </div>
