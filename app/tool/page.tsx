@@ -587,7 +587,7 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                <Image src="/logo.png" alt="Strendex" fill className="object-contain p-2" priority />
+              <Image src="/logo.png" alt="Strendex" fill className="object-contain p-0 scale-110" priority />
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.25em] text-zinc-500">Hybrid Quotient</div>
