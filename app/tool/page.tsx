@@ -924,28 +924,38 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
         </div>
       </div>
 
-      {/* KEY STATS STRIP (premium but not crowded) */}
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-zinc-500">Bodyweight</div>
-          <div className="mt-1 text-sm font-semibold text-white">{w > 0 ? `${w} lb` : "—"}</div>
-          <div className="mt-2 text-[10px] uppercase tracking-widest text-zinc-600">BW</div>
-        </div>
+      {/* KEY STATS STRIP (mobile-safe) */}
+<div className="mt-6 grid grid-cols-3 gap-3">
+  {/* Bodyweight */}
+  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3">
+    <div className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
+      Bodyweight
+    </div>
+    <div className="mt-1 whitespace-nowrap text-xs sm:text-sm font-semibold text-white">
+      {w > 0 ? `${w} lb` : "—"}
+    </div>
+  </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-zinc-500">Total Lift</div>
-          <div className="mt-1 text-sm font-semibold text-white">{totalLift > 0 ? `${totalLift} lb` : "—"}</div>
-          <div className="mt-2 text-[10px] uppercase tracking-widest text-zinc-600">B+S+D</div>
-        </div>
+  {/* Total Lift */}
+  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3">
+    <div className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
+      Total Lift
+    </div>
+    <div className="mt-1 whitespace-nowrap text-xs sm:text-sm font-semibold text-white">
+      {totalLift > 0 ? `${totalLift} lb` : "—"}
+    </div>
+  </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
-          <div className="text-[10px] uppercase tracking-widest text-zinc-500">5K</div>
-          <div className="mt-1 text-sm font-semibold text-white">
-            {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
-          </div>
-          <div className="mt-2 text-[10px] uppercase tracking-widest text-zinc-600">TIME</div>
-        </div>
-      </div>
+  {/* 5K */}
+  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3">
+    <div className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
+      5K
+    </div>
+    <div className="mt-1 whitespace-nowrap text-xs sm:text-sm font-semibold text-white">
+      {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
+    </div>
+  </div>
+</div>
 
       {/* BRAND STAMP */}
       <div className="mt-7 flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-zinc-500">
