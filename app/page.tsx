@@ -92,40 +92,12 @@ export default function Home() {
       {/* HERO */}
       <section className="relative px-5 pt-10 pb-8 sm:px-6 sm:pt-14 md:pt-16 md:pb-12">
         <div className="mx-auto max-w-7xl">
-          {/* top micro-nav (NO header) */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Link href="/" className="inline-flex items-center gap-3">
-              <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                <Image src="/logo.png" alt="Strendex" fill className="object-contain p-1" priority />
-              </div>
-              <div className="leading-none">
-                <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
-                <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">
-                  Hybrid Benchmark
-                </div>
-              </div>
-            </Link>
-
-            <div className="flex flex-wrap gap-2">
-              {miniLinks.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/[0.06] transition"
-                >
-                  {l.label}
-                </Link>
-              ))}
-            </div>
-          </div>
+          
 
           <div className="mt-10 grid grid-cols-1 gap-10 md:grid-cols-12 md:items-center">
             {/* Left */}
             <div className="md:col-span-7">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-zinc-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(34,197,94,0.75)]" />
-                Built for lifters who also run.
-              </div>
+              
 
               <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
                 The{" "}

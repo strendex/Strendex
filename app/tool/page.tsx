@@ -850,17 +850,17 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       {/* TOP BAR */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
-        <div className="relative h-11 w-11 shrink-0">
-  {/* soft outer badge */}
-  <div className="absolute inset-0 rounded-2xl border border-white/10 bg-white/[0.04]" />
-  {/* inner glow ring */}
-  <div className="absolute inset-0 rounded-2xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]" />
-  {/* logo */}
+        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 bg-white/[0.04]">
+  <div
+    aria-hidden
+    className="absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(34,197,94,0.22),transparent_58%)]"
+  />
+  <div aria-hidden className="absolute inset-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]" />
   <div className="relative grid h-11 w-11 place-items-center">
     <img
       src="/logo.png"
       alt="Strendex"
-      className="h-7 w-7 object-contain"
+      className="h-8 w-8 object-contain"
       crossOrigin="anonymous"
     />
   </div>
@@ -879,11 +879,11 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
 
         <div className="sm:text-right shrink-0">
           <div className="text-[10px] uppercase tracking-widest text-zinc-500">Standing</div>
-          <div className="mt-1 text-sm font-semibold text-white">
-            {topPercent === null
-              ? "—"
-              : `Better than ${Math.max(0, Math.min(100, topPercent)).toFixed(1)}%`}
-          </div>
+          <div className="mt-1 text-[12px] sm:text-sm font-semibold text-white whitespace-nowrap">
+  {topPercent === null
+    ? "—"
+    : `Better than ${Math.max(0, Math.min(100, topPercent)).toFixed(1)}%`}
+</div>
         </div>
       </div>
 
@@ -942,14 +942,20 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       key={item.label}
       className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3"
     >
-      {/* fixed-height label row */}
-      <div className="h-[14px] leading-[14px] whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500">
-        {item.label}
-      </div>
+      <div className="flex flex-col">
+        {/* Label row (fixed height + locked baseline) */}
+        <div className="h-4 flex items-end">
+          <span className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 leading-none">
+            {item.label}
+          </span>
+        </div>
 
-      {/* fixed-height value row */}
-      <div className="mt-1 h-[18px] leading-[18px] whitespace-nowrap text-xs sm:text-sm font-semibold text-white tabular-nums">
-        {item.value}
+        {/* Value row (fixed height + locked baseline) */}
+        <div className="mt-1 h-5 flex items-end">
+          <span className="whitespace-nowrap text-xs sm:text-sm font-semibold text-white leading-none [font-variant-numeric:tabular-nums]">
+            {item.value}
+          </span>
+        </div>
       </div>
     </div>
   ))}
