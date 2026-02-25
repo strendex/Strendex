@@ -94,10 +94,15 @@ export default function ToolPage() {
   const [statusText, setStatusText] = useState<string>("");
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
 
-  // Results data
-  const [topPercent, setTopPercent] = useState<number | null>(null);
-  const [globalRank, setGlobalRank] = useState<number | null>(null);
-const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
+    // Results data
+    const [topPercent, setTopPercent] = useState<number | null>(null);
+    const [globalRank, setGlobalRank] = useState<number | null>(null);
+    const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
+  
+    // NEW: percentiles + new HQ (0–100) coming from /api/rank
+    const [hqScore, setHqScore] = useState<number>(0);
+    const [strengthPercentile, setStrengthPercentile] = useState<number | null>(null);
+    const [endurancePercentile, setEndurancePercentile] = useState<number | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   function format5KFromMinutes(min: number) {
@@ -196,8 +201,6 @@ const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
   // Calculations
   const totalLift = b + s + d;
   const strengthRatio = w > 0 ? totalLift / w : 0;
-  const enduranceFactor = fiveKMin > 0 ? (100 / fiveKMin) / 5 : 0;
-  const hqScore = Number((strengthRatio + enduranceFactor).toFixed(1));
 
   // Indexes (0–100)
   const benchIndex = Math.min(100, w > 0 ? (b / (w * 1.5)) * 100 : 0) || 0;
@@ -214,10 +217,10 @@ const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
   );
 
   const getRank = (score: number): Rank => {
-    if (score >= 6) return "WORLD CLASS";
-    if (score >= 4.5) return "ELITE";
-    if (score >= 3) return "ADVANCED";
-    if (score >= 1.5) return "INTERMEDIATE";
+    if (score >= 90) return "WORLD CLASS";
+    if (score >= 75) return "ELITE";
+    if (score >= 60) return "ADVANCED";
+    if (score >= 40) return "INTERMEDIATE";
     return "NOVICE";
   };
 
@@ -238,12 +241,12 @@ const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
   const currentArchetype = getArchetype(strengthIndex, enduranceIndex);
   const archetypeInfo = ARCHETYPE_COPY[currentArchetype];
   // Next Tier Projection
-const tierThresholds = {
-  "WORLD CLASS": 6,
-  "ELITE": 4.5,
-  "ADVANCED": 3,
-  "INTERMEDIATE": 1.5,
-};
+  const tierThresholds = {
+    "WORLD CLASS": 90,
+    "ELITE": 75,
+    "ADVANCED": 60,
+    "INTERMEDIATE": 40,
+  };
 
 let nextTier: Rank | null = null;
 let nextTierScore = 0;
@@ -257,7 +260,7 @@ if (hqScore < 1.5) {
 } else if (hqScore < 4.5) {
   nextTier = "ELITE";
   nextTierScore = tierThresholds["ELITE"];
-} else if (hqScore < 6) {
+} else if (hqScore < 90) {
   nextTier = "WORLD CLASS";
   nextTierScore = tierThresholds["WORLD CLASS"];
 }
@@ -274,14 +277,107 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
   }, [w, b, s, d, fiveKMin]);
 
   const canGenerate =
-    w > 0 && (b > 0 || s > 0 || d > 0 || fiveKMin > 0) && hqScore > 0 && !isSaving && !isScanning;
+  w > 0 && (b > 0 || s > 0 || d > 0 || fiveKMin > 0) && !isSaving && !isScanning;
+  async function computeScore() {
+    const fivek_seconds = fiveKMin > 0 ? Math.round(fiveKMin * 60) : null;
 
-  async function saveSubmission() {
+    const res = await fetch("/api/rank", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bodyweight: w,
+        fivek_seconds,
+        bench: b || null,
+        squat: s || null,
+        deadlift: d || null,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(data);
+      throw new Error(data?.error ?? "Scoring failed");
+    }
+
+    // These come from the NEW API route
+    setHqScore(typeof data.hq === "number" ? data.hq : 0);
+    setStrengthPercentile(typeof data.strengthPercentile === "number" ? data.strengthPercentile : null);
+    setEndurancePercentile(typeof data.endurancePercentile === "number" ? data.endurancePercentile : null);
+
+    setTopPercent(typeof data.topPercent === "number" ? data.topPercent : null);
+    setGlobalRank(typeof data.rank === "number" ? data.rank : null);
+    setTotalAthletes(typeof data.total === "number" ? data.total : null);
+
+    return {
+      hq: data.hq,
+      strengthPercentile: data.strengthPercentile,
+      endurancePercentile: data.endurancePercentile,
+      topPercent: data.topPercent,
+      rank: data.rank,
+      total: data.total,
+      fivek_seconds,
+    };
+  }
+  function validateInputsOrAlert() {
+    const fivek_seconds = fiveKMin > 0 ? Math.round(fiveKMin * 60) : null;
+  
+    // CLEAN NAME
+    const cleanName = displayName
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/[^a-zA-Z0-9 ._-]/g, "");
+  
+    const finalName = cleanName.length >= 2 ? cleanName : "Anonymous Athlete";
+  
+    // REQUIRED
+    if (w < 80 || w > 400) {
+      alert("Bodyweight must be between 80 and 400 lbs");
+      return { ok: false as const };
+    }
+  
+    // If they typed something, it must be in range
+    if (b > 0 && (b < 45 || b > 700)) {
+      alert("Bench must be between 45 and 700 lbs");
+      return { ok: false as const };
+    }
+  
+    if (s > 0 && (s < 45 || s > 900)) {
+      alert("Squat must be between 45 and 900 lbs");
+      return { ok: false as const };
+    }
+  
+    if (d > 0 && (d < 45 || d > 1000)) {
+      alert("Deadlift must be between 45 and 1000 lbs");
+      return { ok: false as const };
+    }
+  
+    if (fivek_seconds !== null && (fivek_seconds < 840 || fivek_seconds > 3600)) {
+      alert("5K must be between 14 and 60 minutes");
+      return { ok: false as const };
+    }
+  
+    // RATIO CHECKS (only if lift provided)
+    if (b > 0 && b / w > 3.2) {
+      alert("Bench/bodyweight ratio unrealistic");
+      return { ok: false as const };
+    }
+    if (s > 0 && s / w > 4.0) {
+      alert("Squat/bodyweight ratio unrealistic");
+      return { ok: false as const };
+    }
+    if (d > 0 && d / w > 4.5) {
+      alert("Deadlift/bodyweight ratio unrealistic");
+      return { ok: false as const };
+    }
+  
+    return { ok: true as const, finalName, fivek_seconds };
+  }
+  async function saveSubmission(finalName: string, fivek_seconds: number | null) {
     setIsSaving(true);
     setStatusText("Logging to HQ…");
+  
     try {
-      const fivek_seconds = fiveKMin > 0 ? Math.round(fiveKMin * 60) : null;
-
       const { error } = await supabase.from("submissions").insert([
         {
           bodyweight: w,
@@ -289,8 +385,8 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
           squat: s || null,
           bench: b || null,
           deadlift: d || null,
-          athlete_name: displayName,
-
+          athlete_name: finalName,
+  
           hq_score: hqScore,
           rank: currentRank,
           archetype: currentArchetype,
@@ -300,13 +396,15 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
           strength_ratio: strengthRatio,
         },
       ]);
-
+  
       if (error) {
+        console.error(error);
         setStatusText("Couldn’t log right now — your profile is still generated.");
       } else {
         setStatusText("Logged to HQ.");
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setStatusText("Couldn’t log right now — your profile is still generated.");
     } finally {
       setIsSaving(false);
@@ -319,13 +417,17 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
       alert("Enter bodyweight and at least one metric.");
       return;
     }
-
+  
+    // ✅ VALIDATE BEFORE SHOWING RESULTS
+    const v = validateInputsOrAlert();
+    if (!v.ok) return;
+  
     setShowResults(true);
     setShowAdvanced(false);
-
+  
     const el = document.getElementById("results");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-
+  
     setIsScanning(true);
     setScanStage("CALIBRATING");
     await new Promise((r) => setTimeout(r, 320));
@@ -333,8 +435,8 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     await new Promise((r) => setTimeout(r, 420));
     setScanStage("COMPILING");
     await new Promise((r) => setTimeout(r, 320));
-
-    await saveSubmission();
+  
+    await saveSubmission(v.finalName, v.fivek_seconds);
     setIsScanning(false);
   }
 
@@ -426,45 +528,20 @@ const hqGap = nextTier ? Number((nextTierScore - hqScore).toFixed(2)) : 0;
     }
   }, []);
 
-  // Percentile fetch (only when results showing & not scanning)
-  useEffect(() => {
-    if (!showResults || isScanning) {
-      setTopPercent(null);
-      setGlobalRank(null);
-      setTotalAthletes(null);
-      return;
-    }
-    if (!Number.isFinite(hqScore) || hqScore <= 0) {
-      setTopPercent(null);
-      setGlobalRank(null);
-      setTotalAthletes(null);
-      return;
-    }
-
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch("/api/rank", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ hq_score: hqScore }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          setTopPercent(null);
-          return;
+    // NEW: when results are shown (and not scanning), compute HQ + rank info from inputs
+    useEffect(() => {
+      if (!showResults || isScanning) return;
+  
+      const t = setTimeout(async () => {
+        try {
+          await computeScore();
+        } catch {
+          // ignore
         }
-
-        setTopPercent(typeof data.topPercent === "number" ? data.topPercent : null);
-setGlobalRank(typeof data.rank === "number" ? data.rank : null);
-setTotalAthletes(typeof data.total === "number" ? data.total : null);
-      } catch {
-        setTopPercent(null);
-      }
-    }, 250);
-
-    return () => clearTimeout(t);
-  }, [hqScore, showResults, isScanning]);
+      }, 250);
+  
+      return () => clearTimeout(t);
+    }, [showResults, isScanning, w, b, s, d, fiveKMin]);
 
   const rankMeta: Record<Rank, { label: string; pill: string; glow: string }> = {
     "WORLD CLASS": {
