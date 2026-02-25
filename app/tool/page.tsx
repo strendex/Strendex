@@ -105,6 +105,84 @@ export default function ToolPage() {
     return `${mm}:${String(ss).padStart(2, "0")}`;
   }
 
+  function ArchetypeIcon({
+    archetype,
+    className = "h-4 w-4",
+  }: {
+    archetype: Archetype;
+    className?: string;
+  }) {
+    switch (archetype) {
+      case "STRENGTH BEAST":
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.5 10v4M7 9v6M17 9v6M19.5 10v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <path d="M7 12h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        );
+      case "ENGINE MACHINE":
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M13 2L3 14h7l-1 8 12-14h-7l-1-6Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+        );
+      case "BALANCED HYBRID":
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <path d="M6 7h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <path d="M7.5 7l-3 6h6l-3-6Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+            <path d="M16.5 7l-3 6h6l-3-6Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+            <path d="M9 20h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        );
+      case "POWER HYBRID":
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M5 10l3-4 4 5 4-5 3 4v7H5v-7Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M7 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        );
+      case "ENDURANCE-LEANING HYBRID":
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M3 14c2 0 2-4 4-4s2 4 4 4 2-4 4-4 2 4 4 4 2-4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        );
+      case "STRENGTH-LEANING HYBRID":
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 10v4M9 9v6M15 9v6M17 10v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <path d="M9 12h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        );
+      case "BASE BUILDER":
+      default:
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z" stroke="currentColor" strokeWidth="1.8"/>
+            <path d="M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" stroke="currentColor" strokeWidth="1.8"/>
+            <path d="M12 12h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          </svg>
+        );
+    }
+  }
+
   // Parsed numbers
   const w = Number(weight) || 0;
   const fiveKMin = Number(fiveK) || 0;
@@ -196,7 +274,6 @@ export default function ToolPage() {
       setStatusText("Couldn’t log right now — your profile is still generated.");
     } finally {
       setIsSaving(false);
-      // fade status after a moment
       setTimeout(() => setStatusText(""), 1800);
     }
   }
@@ -215,23 +292,24 @@ export default function ToolPage() {
 
     setIsScanning(true);
     setScanStage("CALIBRATING");
-
     await new Promise((r) => setTimeout(r, 320));
     setScanStage("SCANNING");
     await new Promise((r) => setTimeout(r, 420));
     setScanStage("COMPILING");
     await new Promise((r) => setTimeout(r, 320));
 
-    // log (same click)
     await saveSubmission();
-
     setIsScanning(false);
   }
 
   async function downloadScorecard() {
     if (!cardRef.current) return;
     try {
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 3,
+        backgroundColor: "#07070A",
+      });
       const link = document.createElement("a");
       link.download = "strendex-scorecard.png";
       link.href = dataUrl;
@@ -306,7 +384,7 @@ export default function ToolPage() {
     if (sharedK) setFiveK(sharedK);
 
     if (hasSharedStats) {
-      setShowResults(true); // shared link should render results
+      setShowResults(true);
       setShowAdvanced(false);
     }
   }, []);
@@ -486,9 +564,7 @@ export default function ToolPage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs">
                   <span className="text-zinc-500">5K</span>
-                  <span className="text-white font-semibold">
-                    {fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}
-                  </span>
+                  <span className="text-white font-semibold">{fiveKMin > 0 ? format5KFromMinutes(fiveKMin) : "—"}</span>
                 </div>
               </div>
 
@@ -606,7 +682,7 @@ export default function ToolPage() {
                     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                       <div>
                         <div className="text-[11px] uppercase tracking-widest text-zinc-500">HQ Score</div>
-                        <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
+                        <div className="mt-1 text-6xl font-semibold tracking-tight text-white drop-shadow-[0_0_18px_rgba(34,197,94,0.35)]">
                           {Number.isFinite(hqScore) ? hqScore : 0}
                         </div>
 
@@ -635,12 +711,19 @@ export default function ToolPage() {
                       </div>
                     </div>
 
-                    {/* Archetype (light by default) */}
+                    {/* Archetype */}
                     <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="text-[11px] uppercase tracking-widest text-zinc-500">Archetype</div>
+                      <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-zinc-500">
+                        <span className="grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-black/30 text-emerald-300">
+                          <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
+                        </span>
+                        Archetype
+                      </div>
+
                       <div className="mt-2">
                         <ArchetypeBadge archetype={currentArchetype} />
                       </div>
+
                       <div className="mt-2 text-xs text-zinc-400">
                         <span className="text-zinc-200 font-semibold">{archetypeInfo.tagline}</span>
                       </div>
@@ -658,16 +741,14 @@ export default function ToolPage() {
                   </div>
                 ) : null}
 
-                {/* Shareable athlete card (core output) */}
+                {/* Shareable athlete card */}
                 {!isScanning ? (
                   <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                       <div>
                         <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Share</div>
                         <h2 className="mt-1 text-lg font-semibold text-white">Athlete Card</h2>
-                        <p className="mt-1 text-sm text-zinc-400">
-                          Download or copy your Strendex profile for socials.
-                        </p>
+                        <p className="mt-1 text-sm text-zinc-400">Download or copy your Strendex profile for socials.</p>
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row">
@@ -694,85 +775,137 @@ export default function ToolPage() {
                       </div>
                     </div>
 
+                    {/* NEW PREMIUM CARD */}
                     <div className="mt-6 grid place-items-center">
                       <div
                         ref={cardRef}
-                        className="w-full max-w-[520px] overflow-hidden rounded-3xl border border-white/10 bg-[#020203] p-6"
+                        className="relative w-full max-w-[640px] overflow-hidden rounded-[30px] border border-white/10 bg-[#07070A] p-7"
                       >
-                        <div className="flex items-center justify-between">
+                        {/* background layers */}
+                        <div aria-hidden className="pointer-events-none absolute inset-0">
+                          <div className="absolute -top-28 left-1/2 h-[360px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(34,197,94,0.22),_transparent_62%)] blur-2xl" />
+                          <div className="absolute -bottom-40 left-1/2 h-[420px] w-[860px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.14),_transparent_60%)] blur-2xl" />
+                          <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:56px_56px]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_0%,transparent_0%,rgba(7,7,10,0.50)_55%,rgba(7,7,10,0.98)_100%)]" />
+                          <div className="absolute -right-16 top-12 opacity-[0.06] rotate-12">
+                            <div className="text-[120px] font-semibold tracking-tight text-white">STRENDEX</div>
+                          </div>
+                        </div>
+
+                        {/* header */}
+                        <div className="relative z-10 flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                              <Image src="/logo.png" alt="Strendex" fill className="object-contain p-1" priority />
+                            <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05]">
+                              <img
+                                src="/logo.png"
+                                alt="Strendex"
+                                className="h-full w-full object-cover p-0 scale-[1.08]"
+                                crossOrigin="anonymous"
+                              />
                             </div>
                             <div className="leading-none">
                               <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
-                              <div className="text-[11px] text-zinc-500">ATHLETE CARD</div>
+                              <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-zinc-400">
+                                ATHLETE CARD
+                              </div>
                             </div>
                           </div>
 
                           <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">Global Rank</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-400">Global Rank</div>
                             <div className="mt-1 text-sm font-semibold text-white">
                               {topPercent === null ? "—" : `Top ${topPercent}%`}
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-6 flex items-end justify-between gap-4">
+                        {/* main row */}
+                        <div className="relative z-10 mt-6 grid grid-cols-1 gap-5 md:grid-cols-[1fr_auto] md:items-end">
                           <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">Athlete</div>
-                            <div className="mt-1 text-2xl font-semibold tracking-tight text-white">
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-400">Athlete</div>
+                            <div className="mt-1 text-[26px] font-semibold tracking-tight text-white">
                               {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
                             </div>
 
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
                                 {currentRank}
                               </span>
-                              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-400">
+
+                              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
+                                <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-emerald-300">
+                                  <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
+                                </span>
                                 {currentArchetype}
                               </span>
+                            </div>
+
+                            <div className="mt-3 text-xs text-zinc-300">
+                              <span className="font-semibold text-white">{archetypeInfo.tagline}</span>
                             </div>
                           </div>
 
                           <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">HQ Score</div>
-                            <div className="mt-1 text-5xl font-semibold tracking-tight text-white">
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-400">HQ Score</div>
+                            <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
                               {Number.isFinite(hqScore) ? hqScore : 0}
+                            </div>
+                            <div className="mt-2 text-[11px] text-zinc-400">Strength + Endurance</div>
+                          </div>
+                        </div>
+
+                        {/* premium gauges (NO bars) */}
+                        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="text-[10px] uppercase tracking-widest text-zinc-400">Strength</div>
+                              <div className="text-[10px] font-semibold text-zinc-200">{strengthIndex}/100</div>
+                            </div>
+                            <div className="mt-3 flex items-center gap-3">
+                              <MiniRing value={strengthIndex} variant="strength" />
+                              <div className="text-xs text-zinc-400 leading-snug">
+                                Lift index based on BW normalization.
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="text-[10px] uppercase tracking-widest text-zinc-400">Endurance</div>
+                              <div className="text-[10px] font-semibold text-zinc-200">{enduranceIndex}/100</div>
+                            </div>
+                            <div className="mt-3 flex items-center gap-3">
+                              <MiniRing value={enduranceIndex} variant="endurance" />
+                              <div className="text-xs text-zinc-400 leading-snug">
+                                Pace index from 5K time.
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">BW</div>
-                            <div className="mt-1 font-semibold text-white">{w > 0 ? `${w} lbs` : "—"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">5K</div>
-                            <div className="mt-1 font-semibold text-white">{format5KFromMinutes(fiveKMin)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">Bench</div>
-                            <div className="mt-1 font-semibold text-white">{b > 0 ? `${b} lbs` : "—"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">Squat</div>
-                            <div className="mt-1 font-semibold text-white">{s > 0 ? `${s} lbs` : "—"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">Deadlift</div>
-                            <div className="mt-1 font-semibold text-white">{d > 0 ? `${d} lbs` : "—"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">Total</div>
-                            <div className="mt-1 font-semibold text-white">{totalLift > 0 ? `${totalLift} lbs` : "—"}</div>
-                          </div>
+                        {/* stats */}
+                        <div className="relative z-10 mt-4 grid grid-cols-2 gap-3 text-sm">
+                          {[
+                            { label: "Bodyweight", value: w > 0 ? `${w} lbs` : "—" },
+                            { label: "5K", value: format5KFromMinutes(fiveKMin) },
+                            { label: "Bench", value: b > 0 ? `${b} lbs` : "—" },
+                            { label: "Squat", value: s > 0 ? `${s} lbs` : "—" },
+                            { label: "Deadlift", value: d > 0 ? `${d} lbs` : "—" },
+                            { label: "Total", value: totalLift > 0 ? `${totalLift} lbs` : "—" },
+                          ].map((item) => (
+                            <div key={item.label} className="rounded-2xl border border-white/10 bg-black/30 p-3">
+                              <div className="text-[10px] uppercase tracking-widest text-zinc-400">{item.label}</div>
+                              <div className="mt-1 font-semibold text-white">{item.value}</div>
+                            </div>
+                          ))}
                         </div>
 
-                        <div className="mt-5 flex items-center justify-between text-[11px] text-zinc-500">
-                          <span>strendex • hybrid benchmark</span>
-                          <span className="font-mono">v1</span>
+                        <div className="relative z-10 mt-4 flex items-center justify-between text-[11px] text-zinc-500">
+                          <span className="uppercase tracking-[0.22em]">strendex • hybrid benchmark</span>
+                          <span className="font-mono">v2.4</span>
                         </div>
                       </div>
                     </div>
@@ -858,9 +991,7 @@ export default function ToolPage() {
                 {!isScanning ? (
                   <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <p className="text-sm text-zinc-400">
-                        Tip: use true 1RMs and your most recent 5K time.
-                      </p>
+                      <p className="text-sm text-zinc-400">Tip: use true 1RMs and your most recent 5K time.</p>
                       <div className="flex gap-3">
                         <Link
                           href="/rankings"
@@ -902,6 +1033,64 @@ export default function ToolPage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+/** Premium ring gauge (used in share card) */
+function MiniRing({ value, variant }: { value: number; variant: "strength" | "endurance" }) {
+  const clamped = Math.min(100, Math.max(0, value));
+  const size = 44;
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = (clamped / 100) * c;
+
+  const id = variant === "strength" ? "gradStrength" : "gradEndurance";
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <defs>
+        <linearGradient id="gradStrength" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="rgba(34,197,94,0.95)" />
+          <stop offset="1" stopColor="rgba(34,197,94,0.22)" />
+        </linearGradient>
+        <linearGradient id="gradEndurance" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="rgba(59,130,246,0.95)" />
+          <stop offset="1" stopColor="rgba(59,130,246,0.22)" />
+        </linearGradient>
+      </defs>
+
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth={stroke}
+        fill="none"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        stroke={`url(#${id})`}
+        strokeWidth={stroke}
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${c - dash}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text
+        x="50%"
+        y="52%"
+        textAnchor="middle"
+        fontSize="10"
+        fill="rgba(255,255,255,0.85)"
+        fontWeight="600"
+        fontFamily="ui-sans-serif, system-ui, -apple-system"
+      >
+        {Math.round(clamped)}
+      </text>
+    </svg>
   );
 }
 
