@@ -1131,40 +1131,42 @@ export default function ToolPage() {
 
                           {/* KEY STATS STRIP */}
 <div className="mt-6 grid grid-cols-3 gap-3">
-  {[
-    {
-      label: "Bodyweight",
-      value: wLb > 0 ? `${Math.round(wLb)} lb` : "—",
-    },
-    {
-      label: "Total Lift",
-      value: totalLift > 0 ? `${Math.round(totalLift)} lb` : "—",
-    },
-    {
-      label: "Endurance",
-      value: runTimeText.trim()
-        ? `${runDistanceShortLabel(runDistance)} • ${runTimeText.trim()}`
-        : "—",
-    },
-  ].map((item) => (
-    <div
-      key={item.label}
-      className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3"
-    >
-      <div className="flex flex-col gap-1 min-w-0">
-        <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 leading-tight">
-          {item.label}
-        </div>
+  {/* Bodyweight */}
+  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3 h-[78px] flex flex-col justify-between">
+    <div className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 truncate whitespace-nowrap">
+      Bodyweight
+    </div>
+    <div className="min-w-0 text-[15px] sm:text-sm font-semibold text-white leading-none tabular-nums truncate whitespace-nowrap">
+      {wLb > 0 ? `${Math.round(wLb)} lb` : "—"}
+    </div>
+  </div>
 
-        <div
-          className="min-w-0 text-[12px] sm:text-sm font-semibold text-white leading-tight tabular-nums truncate"
-          title={item.value}
-        >
-          {item.value}
-        </div>
+  {/* Total Lift */}
+  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3 h-[78px] flex flex-col justify-between">
+    <div className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 truncate whitespace-nowrap">
+      Total Lift
+    </div>
+    <div className="min-w-0 text-[15px] sm:text-sm font-semibold text-white leading-none tabular-nums truncate whitespace-nowrap">
+      {totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}
+    </div>
+  </div>
+
+  {/* Endurance */}
+  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3 h-[78px] flex flex-col justify-between">
+    <div className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 truncate whitespace-nowrap">
+      Endurance
+    </div>
+
+    {/* Two-line “Strava style”: distance small, time bold */}
+    <div className="min-w-0 leading-none">
+      <div className="text-[10px] font-semibold tracking-widest text-zinc-300 truncate whitespace-nowrap">
+        {runTimeText.trim() ? runDistanceShortLabel(runDistance) : "—"}
+      </div>
+      <div className="mt-1 text-[15px] sm:text-sm font-semibold text-white tabular-nums truncate whitespace-nowrap">
+        {runTimeText.trim() ? runTimeText.trim() : ""}
       </div>
     </div>
-  ))}
+  </div>
 </div>
 
                           {/* BRAND STAMP */}
