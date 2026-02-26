@@ -166,7 +166,20 @@ function lbToKg(lb: number): number {
 function kgToLb(kg: number): number {
   return kg * 2.2046226218;
 }
-
+function runDistanceShortLabel(d: RunDistance): string {
+  switch (d) {
+    case "3mi":
+      return "3MI";
+    case "5k":
+      return "5K";
+    case "10k":
+      return "10K";
+    case "half":
+      return "HALF";
+    case "marathon":
+      return "MAR";
+  }
+}
 // ---------------- Page ----------------
 
 export default function ToolPage() {
@@ -1117,36 +1130,42 @@ export default function ToolPage() {
                           </div>
 
                           {/* KEY STATS STRIP */}
-                          <div className="mt-6 grid grid-cols-3 gap-3">
-                            {[
-                              { label: "Bodyweight", value: wLb > 0 ? `${Math.round(wLb)} lb` : "—" },
-                              { label: "Total Lift", value: totalLift > 0 ? `${Math.round(totalLift)} lb` : "—" },
-                              {
-                                label: "Endurance",
-                                value: runTimeText.trim()
-                                  ? `${runDistance.toUpperCase()} • ${runTimeText.trim()}`
-                                  : "—",
-                              },
-                            ].map((item) => (
-                              <div
-                                key={item.label}
-                                className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3"
-                              >
-                                <div className="flex flex-col">
-                                  <div className="h-4 flex items-end">
-                                    <span className="whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 leading-none">
-                                      {item.label}
-                                    </span>
-                                  </div>
-                                  <div className="mt-1 h-5 flex items-end">
-                                    <span className="whitespace-nowrap text-xs sm:text-sm font-semibold text-white leading-none [font-variant-numeric:tabular-nums]">
-                                      {item.value}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+<div className="mt-6 grid grid-cols-3 gap-3">
+  {[
+    {
+      label: "Bodyweight",
+      value: wLb > 0 ? `${Math.round(wLb)} lb` : "—",
+    },
+    {
+      label: "Total Lift",
+      value: totalLift > 0 ? `${Math.round(totalLift)} lb` : "—",
+    },
+    {
+      label: "Endurance",
+      value: runTimeText.trim()
+        ? `${runDistanceShortLabel(runDistance)} • ${runTimeText.trim()}`
+        : "—",
+    },
+  ].map((item) => (
+    <div
+      key={item.label}
+      className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3"
+    >
+      <div className="flex flex-col gap-1 min-w-0">
+        <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-500 leading-tight">
+          {item.label}
+        </div>
+
+        <div
+          className="min-w-0 text-[12px] sm:text-sm font-semibold text-white leading-tight tabular-nums truncate"
+          title={item.value}
+        >
+          {item.value}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
 
                           {/* BRAND STAMP */}
                           <div className="mt-7 flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-zinc-500">
