@@ -106,35 +106,35 @@ function parseTimeToSeconds(input: string): number | null {
   return null;
 }
 function formatDigitsToTime(digitsRaw: string): string {
-  const digits = digitsRaw.replace(/\D/g, "").slice(0, 5); // max 5 digits
+  const digits = digitsRaw.replace(/\D/g, "").slice(0, 6); // allow up to HHMMSS
   if (!digits) return "";
 
-  const secStr = digits.slice(-2);
-  let sec = Number(secStr);
-  if (!Number.isFinite(sec)) sec = 0;
-  sec = Math.min(59, Math.max(0, sec));
-
-  // <= 4 digits => M:SS (minutes derived from remaining digits)
-  if (digits.length <= 4) {
-    const minStr = digits.length <= 2 ? "" : digits.slice(0, -2);
-    let min = minStr ? Number(minStr) : 0;
-    if (!Number.isFinite(min)) min = 0;
-    min = Math.min(59, Math.max(0, min));
-    return `${min}:${String(sec).padStart(2, "0")}`;
+  // 1–2 digits => minutes
+  if (digits.length <= 2) {
+    const min = Number(digits);
+    if (!Number.isFinite(min)) return "";
+    return `${min}:00`;
   }
 
-  // 5 digits => H:MM:SS
-  const hrStr = digits.slice(0, 1);
-  const minStr = digits.slice(1, 3);
+  // 3–4 digits => MM:SS
+  if (digits.length <= 4) {
+    const sec = Number(digits.slice(-2));
+    const min = Number(digits.slice(0, -2));
+    if (!Number.isFinite(min) || !Number.isFinite(sec)) return "";
+    const secClamped = Math.max(0, Math.min(59, sec));
+    return `${min}:${String(secClamped).padStart(2, "0")}`;
+  }
 
-  let hr = Number(hrStr);
-  let min = Number(minStr);
-  if (!Number.isFinite(hr)) hr = 0;
-  if (!Number.isFinite(min)) min = 0;
+  // 5–6 digits => H:MM:SS (last 2 = SS, previous 2 = MM, rest = H)
+  const sec = Number(digits.slice(-2));
+  const min = Number(digits.slice(-4, -2));
+  const hr = Number(digits.slice(0, -4));
+  if (!Number.isFinite(hr) || !Number.isFinite(min) || !Number.isFinite(sec)) return "";
 
-  min = Math.min(59, Math.max(0, min));
+  const secClamped = Math.max(0, Math.min(59, sec));
+  const minClamped = Math.max(0, Math.min(59, min));
 
-  return `${hr}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${hr}:${String(minClamped).padStart(2, "0")}:${String(secClamped).padStart(2, "0")}`;
 }
 
 function distanceMeters(d: RunDistance): number {
@@ -190,7 +190,8 @@ export default function ToolPage() {
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("lb");
 
   const [runDistance, setRunDistance] = useState<RunDistance>("5k");
-  const [runTimeText, setRunTimeText] = useState<string>("");
+  const [runTimeDigits, setRunTimeDigits] = useState<string>("");
+const runTimeText = formatDigitsToTime(runTimeDigits);
 
   const [bench, setBench] = useState<string>("");
   const [squat, setSquat] = useState<string>("");
@@ -251,9 +252,17 @@ export default function ToolPage() {
 
   // Endurance index (0–100-ish) using HALF-marathon equivalent minutes
   // (lower time => higher score). Tune later.
-  const enduranceIndex = Number(
-    (enduranceEqMin > 0 ? clamp(100 - enduranceEqMin * 0.8, 0, 100) : 0).toFixed(1)
-  );
+  // Endurance index (0–100) based on HALF-marathon equivalent seconds
+// Tune these bounds whenever you want, but these are sane defaults.
+const END_MIN_SEC = 4200;  // 1:10:00 half-equivalent ~ very strong
+const END_MAX_SEC = 10800; // 3:00:00 half-equivalent ~ very weak
+
+const enduranceIndex = Number(
+  (enduranceEqSeconds > 0
+    ? clamp(((END_MAX_SEC - enduranceEqSeconds) / (END_MAX_SEC - END_MIN_SEC)) * 100, 0, 100)
+    : 0
+  ).toFixed(1)
+);
 
   const getRank = (score: number): Rank => {
     if (score >= 90) return "WORLD CLASS";
@@ -329,9 +338,33 @@ export default function ToolPage() {
     setStrengthPercentile(typeof data.strengthPercentile === "number" ? data.strengthPercentile : null);
     setEndurancePercentile(typeof data.endurancePercentile === "number" ? data.endurancePercentile : null);
 
-    setTopPercent(typeof data.topPercent === "number" ? data.topPercent : null);
-    setGlobalRank(typeof data.rank === "number" ? data.rank : null);
-    setTotalAthletes(typeof data.total === "number" ? data.total : null);
+    const rankRaw = typeof data.rank === "number" ? data.rank : null;
+const totalRaw = typeof data.total === "number" ? data.total : null;
+
+// Normalize rank to 1-based if API is 0-based
+let rankPos: number | null = rankRaw;
+
+if (rankRaw !== null) {
+  let cleanRank = rankRaw;
+
+  // convert 0-based rank to 1
+  if (cleanRank === 0) cleanRank = 1;
+
+  cleanRank = Math.max(1, Math.floor(cleanRank));
+
+  rankPos = cleanRank;
+}
+
+setGlobalRank(rankPos);
+setTotalAthletes(totalRaw);
+
+// Better-than% from rank and total (rank 1 = best)
+if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
+  const betterThan = ((totalRaw - rankPos) / totalRaw) * 100;
+  setTopPercent(clamp(betterThan, 0, 100));
+} else {
+  setTopPercent(null);
+}
 
     return {
       hq: data.hq,
@@ -561,7 +594,7 @@ export default function ToolPage() {
     if (sharedDist && ["3mi", "5k", "10k", "half", "marathon"].includes(sharedDist)) {
       setRunDistance(sharedDist);
     }
-    if (sharedT) setRunTimeText(sharedT);
+    if (sharedT) setRunTimeDigits(sharedT.replace(/\D/g, "").slice(0, 6));
 
     if (sharedBw) setWeight(sharedBw);
     if (sharedB) setBench(sharedB);
@@ -723,17 +756,65 @@ export default function ToolPage() {
     </label>
 
     <input
-      type="text"
-      inputMode="numeric"
-      autoComplete="off"
-      value={runTimeText}
-      onChange={(e) => {
-        const digits = e.target.value.replace(/\D/g, "");
-        setRunTimeText(formatDigitsToTime(digits));
-      }}
-      placeholder="Type digits (2230 → 22:30)"
-      className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-[16px] text-white placeholder:text-zinc-600 outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-    />
+  type="text"
+  inputMode="numeric"
+  autoComplete="off"
+  value={runTimeText}
+  placeholder="Type digits (2230 → 22:30)"
+  onChange={(e) => {
+    // Keep React happy + allow IME/mobile to update
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+    setRunTimeDigits(digits);
+  }}
+  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-[16px] text-white placeholder:text-zinc-600 outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+  onKeyDown={(e) => {
+    const key = e.key;
+
+    // allow navigation + tab
+    if (
+      key === "Tab" ||
+      key === "ArrowLeft" ||
+      key === "ArrowRight" ||
+      key === "ArrowUp" ||
+      key === "ArrowDown" ||
+      key === "Home" ||
+      key === "End"
+    ) {
+      return;
+    }
+
+    const el = e.currentTarget;
+    const allSelected = el.selectionStart === 0 && el.selectionEnd === el.value.length;
+
+    // Backspace removes digits cleanly (no snapping)
+    if (key === "Backspace") {
+      e.preventDefault();
+      if (allSelected) return setRunTimeDigits("");
+      return setRunTimeDigits((prev) => prev.slice(0, -1));
+    }
+
+    // Delete clears everything
+    if (key === "Delete") {
+      e.preventDefault();
+      return setRunTimeDigits("");
+    }
+
+    // digits append (cap at 6 -> HHMMSS)
+    if (/^\d$/.test(key)) {
+      e.preventDefault();
+      return setRunTimeDigits((prev) => (prev + key).slice(0, 6));
+    }
+
+    // block all other keys
+    e.preventDefault();
+  }}
+  onPaste={(e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text") || "";
+    const digits = pasted.replace(/\D/g, "").slice(0, 6);
+    setRunTimeDigits(digits);
+  }}
+/>
 
     <div className="mt-1 flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-zinc-600">
       <span>Auto format</span>
@@ -1129,45 +1210,7 @@ export default function ToolPage() {
                             </div>
                           </div>
 
-                          {/* KEY STATS STRIP */}
-<div className="mt-6 grid grid-cols-3 gap-3">
-  {/* Bodyweight */}
-  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3 h-[78px] flex flex-col justify-between">
-    <div className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 truncate whitespace-nowrap">
-      Bodyweight
-    </div>
-    <div className="min-w-0 text-[15px] sm:text-sm font-semibold text-white leading-none tabular-nums truncate whitespace-nowrap">
-      {wLb > 0 ? `${Math.round(wLb)} lb` : "—"}
-    </div>
-  </div>
-
-  {/* Total Lift */}
-  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3 h-[78px] flex flex-col justify-between">
-    <div className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 truncate whitespace-nowrap">
-      Total Lift
-    </div>
-    <div className="min-w-0 text-[15px] sm:text-sm font-semibold text-white leading-none tabular-nums truncate whitespace-nowrap">
-      {totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}
-    </div>
-  </div>
-
-  {/* Endurance */}
-  <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-3 py-3 h-[78px] flex flex-col justify-between">
-    <div className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 truncate whitespace-nowrap">
-      Endurance
-    </div>
-
-    {/* Two-line “Strava style”: distance small, time bold */}
-    <div className="min-w-0 leading-none">
-      <div className="text-[10px] font-semibold tracking-widest text-zinc-300 truncate whitespace-nowrap">
-        {runTimeText.trim() ? runDistanceShortLabel(runDistance) : "—"}
-      </div>
-      <div className="mt-1 text-[15px] sm:text-sm font-semibold text-white tabular-nums truncate whitespace-nowrap">
-        {runTimeText.trim() ? runTimeText.trim() : ""}
-      </div>
-    </div>
-  </div>
-</div>
+                          
 
                           {/* BRAND STAMP */}
                           <div className="mt-7 flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-zinc-500">

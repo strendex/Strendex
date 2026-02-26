@@ -28,16 +28,35 @@ if (!bw || bw < 36 || bw > 181) {
 }
 
     // Strength index (0–100)
-    const bIdx = bench ? clamp((bench / (bw * 1.5)) * 100, 0, 100) : 0;
-    const sIdx = squat ? clamp((squat / (bw * 2.0)) * 100, 0, 100) : 0;
-    const dIdx = deadlift ? clamp((deadlift / (bw * 2.5)) * 100, 0, 100) : 0;
+    // More realistic strength scaling targets (ratios in xBW):
+// 0.75x / 1.25x / 1.50x = "mid", 1.25x / 1.75x / 2.25x = "strong", higher = elite-ish
+function strengthScoreFromRatio(ratio: number, mid: number, strong: number, elite: number) {
+  if (ratio <= 0) return 0;
+  if (ratio <= mid) return clamp((ratio / mid) * 40, 0, 40); // 0–40
+  if (ratio <= strong) return 40 + clamp(((ratio - mid) / (strong - mid)) * 30, 0, 30); // 40–70
+  if (ratio <= elite) return 70 + clamp(((ratio - strong) / (elite - strong)) * 25, 0, 25); // 70–95
+  return 95 + clamp((ratio - elite) * 10, 0, 5); // 95–100
+}
+
+const bRatio = bench ? bench / bw : 0;
+const sRatio = squat ? squat / bw : 0;
+const dRatio = deadlift ? deadlift / bw : 0;
+
+const bIdx = bench ? strengthScoreFromRatio(bRatio, 0.75, 1.25, 1.75) : 0;
+const sIdx = squat ? strengthScoreFromRatio(sRatio, 1.00, 1.75, 2.50) : 0;
+const dIdx = deadlift ? strengthScoreFromRatio(dRatio, 1.25, 2.25, 3.00) : 0;
     const strengthIndex = Number(((bIdx + sIdx + dIdx) / 3).toFixed(1));
 
     // Endurance index (0–100) from HALF-MARATHON equivalent seconds
-// Map HM time roughly: 60 min -> 100, 240 min -> 0 (linear)
-const hmMin = enduranceSeconds ? enduranceSeconds / 60 : 0;
+// Lower seconds = better. These are sane defaults; tune later.
+const END_MIN_SEC = 4200;  // 1:10:00 half-eq = very strong
+const END_MAX_SEC = 10800; // 3:00:00 half-eq = very weak
+
 const enduranceIndex = Number(
-  (enduranceSeconds ? clamp(100 - (hmMin - 60) * (100 / 180), 0, 100) : 0).toFixed(1)
+  (enduranceSeconds
+    ? clamp(((END_MAX_SEC - enduranceSeconds) / (END_MAX_SEC - END_MIN_SEC)) * 100, 0, 100)
+    : 0
+  ).toFixed(1)
 );
 
     // HQ score (0–100 for now)
@@ -66,36 +85,42 @@ const enduranceScores = rows
   .map((r: any) => Number(r.endurance_index))
   .filter((n: number) => Number.isFinite(n));
 
-const total = hqScores.length;
+  const totalExisting = hqScores.length;
 
-    // If no data yet, you're #1 of 1 and better than 0% doesn't make sense, so set 50.0
-    if (total === 0) {
-      return NextResponse.json({
-        hq,
-        strengthPercentile: 50,
-        endurancePercentile: 50,
-        topPercent: 50,
-        rank: 1,
-        total: 1,
-      });
-    }
+  // Include the current athlete in the displayed total
+  const totalAll = totalExisting + 1;
+  
+  // Rank: # of people strictly better than you + 1 (tie-friendly)
+  const numBetter = hqScores.filter((s) => s > hq).length;
+  const rank = numBetter + 1;
+  
+  // Better-than% based on rank within totalAll
+  // Example: rank 1 of 100 => 99% better than
+  const betterThan = Number(
+    clamp(((totalAll - rank) / totalAll) * 100, 0, 100).toFixed(1)
+  );
 
-    // Rank calc: count how many are >= you
-    const betterOrEqual = hqScores.filter((s) => s >= hq).length;
-const rank = Math.max(1, betterOrEqual);
-
-const worse = hqScores.filter((s) => s < hq).length;
-const betterThan = Number(((worse / total) * 100).toFixed(1));
-
-const strengthPercentile =
-strengthScores.length > 0
-  ? Number(((strengthScores.filter((x) => x < strengthIndex).length / strengthScores.length) * 100).toFixed(1))
-  : 50;
+  const strengthPercentile =
+  strengthScores.length > 0
+    ? Number(
+        clamp(
+          ((strengthScores.filter((x) => x < strengthIndex).length) / (strengthScores.length + 1)) * 100,
+          0,
+          100
+        ).toFixed(1)
+      )
+    : 50;
 
 const endurancePercentile =
-enduranceScores.length > 0
-  ? Number(((enduranceScores.filter((x) => x < enduranceIndex).length / enduranceScores.length) * 100).toFixed(1))
-  : 50;
+  enduranceScores.length > 0
+    ? Number(
+        clamp(
+          ((enduranceScores.filter((x) => x < enduranceIndex).length) / (enduranceScores.length + 1)) * 100,
+          0,
+          100
+        ).toFixed(1)
+      )
+    : 50;
 
 return NextResponse.json({
 hq,
@@ -103,7 +128,7 @@ strengthPercentile,
 endurancePercentile,
 topPercent: betterThan,
 rank,
-total,
+total: totalAll,
 });
   } catch (e: any) {
     return NextResponse.json(
