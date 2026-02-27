@@ -6,27 +6,32 @@ export default function Home() {
     { label: "No sign-up" },
     { label: "Mobile-first" },
     { label: "Shareable card" },
-    { label: "Rankings" },
-  ];
-
-  const miniLinks = [
-    { label: "How it works", href: "#how" },
-    { label: "Rank bands", href: "#bands" },
-    { label: "Card", href: "#card" },
-    { label: "FAQ", href: "#faq" },
-  ];
-
-  const steps = [
-    { n: "01", t: "Enter stats", d: "Bodyweight, bench, squat, deadlift, 5K." },
-    { n: "02", t: "Get HQ", d: "Tier, athlete type, strength/endurance indexes." },
-    { n: "03", t: "Share", d: "Download a premium PNG built for socials." },
+    { label: "Global rankings" },
   ];
 
   const outputs = [
-    { k: "HQ Score", v: "Your hybrid benchmark" },
+    { k: "Hybrid Score", v: "Your hybrid benchmark (0–100)" },
     { k: "Tier", v: "Novice → World Class" },
-    { k: "Athlete Type", v: "Strength / Engine profile" },
-    { k: "Top %", v: "Percentile vs dataset" },
+    { k: "Archetype", v: "Strength vs Engine profile" },
+    { k: "Percentiles", v: "Strength + Engine ranks" },
+  ];
+
+  const steps = [
+    {
+      n: "01",
+      t: "Enter your stats",
+      d: "Bodyweight + lifts + one endurance test time.",
+    },
+    {
+      n: "02",
+      t: "Get your Hybrid Score",
+      d: "Tier, archetype, and strength/engine percentiles.",
+    },
+    {
+      n: "03",
+      t: "Share & compare",
+      d: "Download a clean card for stories. Climb the rankings.",
+    },
   ];
 
   const tiers = [
@@ -36,35 +41,39 @@ export default function Home() {
       sub: "Hybrid outliers",
       color: "text-emerald-300",
       bg: "bg-emerald-400/10 border-emerald-400/20",
-      glow: "shadow-[0_0_0_1px_rgba(34,197,94,0.10),0_0_30px_rgba(34,197,94,0.14)]",
+      glow:
+        "shadow-[0_0_0_1px_rgba(34,197,94,0.10),0_0_30px_rgba(34,197,94,0.14)]",
     },
     {
       label: "ELITE",
-      range: "75-89",
+      range: "75–89",
       sub: "Highly competitive",
       color: "text-sky-300",
       bg: "bg-sky-400/10 border-sky-400/20",
-      glow: "shadow-[0_0_0_1px_rgba(59,130,246,0.10),0_0_30px_rgba(59,130,246,0.12)]",
+      glow:
+        "shadow-[0_0_0_1px_rgba(59,130,246,0.10),0_0_30px_rgba(59,130,246,0.12)]",
     },
     {
       label: "ADVANCED",
-      range: "60-74",
+      range: "60–74",
       sub: "Strong base",
       color: "text-violet-300",
       bg: "bg-violet-400/10 border-violet-400/20",
-      glow: "shadow-[0_0_0_1px_rgba(139,92,246,0.10),0_0_30px_rgba(139,92,246,0.12)]",
+      glow:
+        "shadow-[0_0_0_1px_rgba(139,92,246,0.10),0_0_30px_rgba(139,92,246,0.12)]",
     },
     {
       label: "INTERMEDIATE",
-      range: "40-59",
+      range: "40–59",
       sub: "Developing",
       color: "text-amber-300",
       bg: "bg-amber-400/10 border-amber-400/20",
-      glow: "shadow-[0_0_0_1px_rgba(245,158,11,0.10),0_0_30px_rgba(245,158,11,0.10)]",
+      glow:
+        "shadow-[0_0_0_1px_rgba(245,158,11,0.10),0_0_30px_rgba(245,158,11,0.10)]",
     },
     {
       label: "NOVICE",
-      range: "0-39",
+      range: "0–39",
       sub: "Starting point",
       color: "text-zinc-200",
       bg: "bg-white/[0.03] border-white/10",
@@ -73,10 +82,19 @@ export default function Home() {
   ];
 
   const faqs = [
-    { q: "Do I need to sign up?", a: "No. Run the scan and get the card instantly." },
-    { q: "What should I input?", a: "Use true 1RMs (or honest recent bests) + a real 5K time." },
-    { q: "Is this for beginners?", a: "Yes. The tier gives a baseline; the athlete type shows your imbalance." },
-    { q: "Can I compare with friends?", a: "That’s the point — share the card and climb the rankings." },
+    { q: "Do I need to sign up?", a: "No — run the scan and get your result instantly." },
+    {
+      q: "What endurance test do I use?",
+      a: "Pick a distance (5K, 10K, half, etc.) and enter a real time. We normalize it for scoring.",
+    },
+    {
+      q: "What should I input for lifts?",
+      a: "Use honest recent bests (ideally true 1RMs). The goal is comparison, not perfect science.",
+    },
+    {
+      q: "Can I compare with friends?",
+      a: "Yes — share your card and check the rankings.",
+    },
   ];
 
   return (
@@ -85,31 +103,32 @@ export default function Home() {
       <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-56 left-1/2 h-[760px] w-[1280px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(34,197,94,0.16),_transparent_62%)] blur-3xl" />
         <div className="absolute top-40 left-1/2 h-[780px] w-[1320px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.11),_transparent_62%)] blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.03] [background-image:radial-gradient(rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:52px_52px]" />
+        <div className="absolute inset-0 opacity-[0.035] [background-image:radial-gradient(rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:52px_52px]" />
         <div className="absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,transparent_0%,rgba(2,2,3,0.70)_55%,rgba(2,2,3,0.98)_100%)]" />
       </div>
 
       {/* HERO */}
-      <section className="relative px-5 pt-10 pb-8 sm:px-6 sm:pt-14 md:pt-16 md:pb-12">
+      <section className="relative px-5 pt-10 pb-10 sm:px-6 sm:pt-14 md:pt-16 md:pb-14">
         <div className="mx-auto max-w-7xl">
-          
-
-          <div className="mt-10 grid grid-cols-1 gap-10 md:grid-cols-12 md:items-center">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-12 md:items-center">
             {/* Left */}
             <div className="md:col-span-7">
-              
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-zinc-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                Hybrid athlete benchmark
+              </div>
 
               <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
                 The{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-zinc-500">
-                  hybrid
+                  Hybrid Score
                 </span>{" "}
                 standard.
               </h1>
 
               <p className="mt-4 max-w-prose text-base leading-relaxed text-zinc-300 sm:text-lg">
-                A premium scan of your strength + engine — output as a tier, athlete type, percentile, and a card
-                that looks made for Instagram.
+                A clean scan of your strength + engine. Get a score, a tier, your archetype, and a shareable card in
+                under a minute.
               </p>
 
               <div className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -117,7 +136,7 @@ export default function Home() {
                   href="/tool"
                   className="group inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:w-auto"
                 >
-                  Get my HQ Score
+                  Calculate Hybrid Score
                   <span className="ml-2 inline-block transition-transform group-hover:translate-x-0.5">→</span>
                 </Link>
 
@@ -144,18 +163,23 @@ export default function Home() {
               {/* Output tiles */}
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {outputs.map((o) => (
-                  <div
-                    key={o.k}
-                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                  >
+                  <div key={o.k} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                     <div className="text-[11px] uppercase tracking-widest text-zinc-500">{o.k}</div>
                     <div className="mt-1 text-sm font-semibold text-white">{o.v}</div>
                   </div>
                 ))}
               </div>
+
+              {/* Micro reassurance */}
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm font-semibold text-white">No account. No onboarding. Just results.</div>
+                  <div className="text-xs text-zinc-400">Built for sharing & comparing.</div>
+                </div>
+              </div>
             </div>
 
-            {/* Right: Premium card preview (cleaner, less words) */}
+            {/* Right: premium preview */}
             <div className="md:col-span-5">
               <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6">
                 <div aria-hidden className="absolute inset-0">
@@ -177,44 +201,47 @@ export default function Home() {
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Top</div>
-                      <div className="mt-1 text-sm font-semibold text-white">Top %</div>
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Standing</div>
+                      <div className="mt-1 text-sm font-semibold text-white">Better than 72%</div>
                     </div>
                   </div>
 
                   <div className="mt-6 flex items-end justify-between gap-4">
                     <div className="min-w-0">
                       <div className="text-[10px] uppercase tracking-widest text-zinc-500">Athlete</div>
-                      <div className="mt-1 truncate text-2xl font-semibold tracking-tight text-white">Athlete</div>
+                      <div className="mt-1 truncate text-2xl font-semibold tracking-tight text-white">
+                        Anonymous Athlete
+                      </div>
 
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold tracking-widest text-emerald-300">
+                        <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[10px] font-semibold tracking-widest text-violet-300">
                           ADVANCED
                         </span>
                         <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-300">
-                          STRENGTH-LEANING
+                          STRENGTH-LEANING HYBRID
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">HQ</div>
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Hybrid Score</div>
                       <div className="mt-1 text-5xl font-semibold tracking-tight text-white">68</div>
+
                       <div className="mt-2 flex flex-col gap-2">
-                        {/* micro bars */}
                         <div className="w-40 max-w-[52vw]">
                           <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
                             <span>Strength</span>
-                            <span className="text-zinc-400">72</span>
+                            <span className="text-zinc-400">72%</span>
                           </div>
                           <div className="mt-1 h-2 rounded-full bg-white/10">
                             <div className="h-2 w-[72%] rounded-full bg-emerald-400/70 shadow-[0_0_18px_rgba(34,197,94,0.35)]" />
                           </div>
                         </div>
+
                         <div className="w-40 max-w-[52vw]">
                           <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
                             <span>Engine</span>
-                            <span className="text-zinc-400">58</span>
+                            <span className="text-zinc-400">58%</span>
                           </div>
                           <div className="mt-1 h-2 rounded-full bg-white/10">
                             <div className="h-2 w-[58%] rounded-full bg-sky-400/60 shadow-[0_0_18px_rgba(59,130,246,0.28)]" />
@@ -226,9 +253,9 @@ export default function Home() {
 
                   <div className="mt-6 grid grid-cols-3 gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm">
                     {[
-                      { k: "BW", v: "195" },
-                      { k: "5K", v: "22:30" },
-                      { k: "Total", v: "1065" },
+                      { k: "BW", v: "195 lb" },
+                      { k: "Run", v: "5K • 22:30" },
+                      { k: "Total", v: "1065 lb" },
                     ].map((x) => (
                       <div key={x.k} className="min-w-0">
                         <div className="text-[10px] uppercase tracking-widest text-zinc-500">{x.k}</div>
@@ -244,9 +271,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-3 text-xs text-zinc-500">
-                Built to look clean on stories — export as PNG.
-              </div>
+              <div className="mt-3 text-xs text-zinc-500">Made to look clean on stories — export as PNG.</div>
             </div>
           </div>
 
@@ -266,7 +291,7 @@ export default function Home() {
         <div className="mb-8 max-w-2xl">
           <h2 className="text-2xl font-semibold text-white md:text-3xl">How it works</h2>
           <p className="mt-2 text-sm text-zinc-400 md:text-base">
-            A fast scan designed for comparing and sharing.
+            Simple inputs. Clean output. Designed for comparison.
           </p>
         </div>
 
@@ -285,7 +310,9 @@ export default function Home() {
             <div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Promise</div>
               <div className="mt-2 text-sm font-semibold text-white">Done in under a minute.</div>
-              <div className="mt-1 text-sm text-zinc-400">No fluff — just your benchmark.</div>
+              <div className="mt-1 text-sm text-zinc-400">
+                You’ll understand your result even if you’ve never heard of “hybrid training”.
+              </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
@@ -305,18 +332,14 @@ export default function Home() {
         </div>
       </section>
 
-      
-
       {/* STANDARDS */}
       <section id="bands" className="mx-auto max-w-7xl px-5 pb-16 sm:px-6 sm:pb-20">
         <div className="rounded-3xl border border-white/10 bg-white/[0.03]">
           <div className="flex flex-col gap-5 px-6 py-6 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Standards</div>
-              <h2 className="mt-2 text-xl font-semibold text-white">HQ Rank Bands</h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Simple tiers so the score actually means something.
-              </p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Hybrid Score tiers</h2>
+              <p className="mt-1 text-sm text-zinc-400">So the number actually means something.</p>
             </div>
 
             <div className="flex gap-3">
@@ -347,7 +370,7 @@ export default function Home() {
             </div>
 
             <div className="mt-4 text-xs text-zinc-500">
-            HQ is computed from strength + 5K performance and ranked against the global dataset.
+              Hybrid Score is computed from your strength + endurance performance and ranked against the dataset.
             </div>
           </div>
         </div>
@@ -379,7 +402,7 @@ export default function Home() {
             <div className="max-w-2xl">
               <h2 className="text-3xl font-semibold text-white md:text-4xl">Run your scan.</h2>
               <p className="mt-3 text-zinc-400">
-                HQ score, tier, athlete type, percentile, share card — under a minute.
+                Hybrid Score, tier, archetype, percentiles, share card — under a minute.
               </p>
             </div>
 
@@ -388,7 +411,7 @@ export default function Home() {
                 href="/tool"
                 className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-8 py-4 text-sm font-semibold text-black hover:bg-emerald-300 transition"
               >
-                Get my HQ Score
+                Calculate Hybrid Score
               </Link>
 
               <Link
@@ -402,26 +425,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FOOTER (keep single footer only) */}
-      <footer className="border-t border-white/5 py-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs uppercase tracking-widest text-zinc-600">© 2026 Strendex Systems</p>
-          <div className="flex gap-8 text-xs uppercase tracking-widest text-zinc-500">
-            <Link href="/tool" className="hover:text-white transition-colors">
-              Calculate
-            </Link>
-            <Link href="/rankings" className="hover:text-white transition-colors">
-              Rankings
-            </Link>
-            <Link href="#how" className="hover:text-white transition-colors">
-              How
-            </Link>
-            <Link href="#faq" className="hover:text-white transition-colors">
-              FAQ
-            </Link>
-          </div>
-        </div>
-      </footer>
+      {/* NOTE: Your RootLayout already renders <Footer />.
+          To avoid a double footer, we intentionally DO NOT render a footer here. */}
     </main>
   );
 }

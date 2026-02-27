@@ -6,7 +6,7 @@ import { supabase } from "../../lib/supabaseClient";
 import StrendexChart from "./StrendexChart";
 import { toPng } from "html-to-image";
 
-type Rank = "WORLD CLASS" | "ELITE" | "ADVANCED" | "INTERMEDIATE" | "NOVICE";
+type Tier = "WORLD CLASS" | "ELITE" | "ADVANCED" | "INTERMEDIATE" | "NOVICE";
 type Archetype =
   | "BALANCED HYBRID"
   | "STRENGTH BEAST"
@@ -26,55 +26,55 @@ const ARCHETYPE_COPY: Record<
   "STRENGTH BEAST": {
     tagline: "Strength-dominant — endurance is the limiter.",
     description:
-      "Your strength output is significantly higher than your endurance capacity. You’ll score well off the big lifts, but your engine is the main thing holding your HQ back.",
+      "Your strength output is significantly higher than your endurance capacity. You’ll score well off the big lifts, but your engine is the main thing holding your hybrid profile back.",
     focus:
       "Add 2–3 aerobic sessions/week (easy Zone 2) + 1 short interval day. Keep lifting heavy, but avoid maxing too often.",
   },
   "ENGINE MACHINE": {
     tagline: "Endurance-dominant — strength is the limiter.",
     description:
-      "Your endurance is strong relative to your strength totals. Your engine boosts your HQ, but adding strength will raise your overall hybrid score quickly.",
+      "Your endurance is strong relative to your strength totals. Your engine boosts your profile, but adding strength will raise your overall score quickly.",
     focus:
       "Maintain running 2–3 days/week, then push progressive overload on bench/squat/deadlift (2–4 hard sets each, 2–3x/week).",
   },
   "BALANCED HYBRID": {
     tagline: "Well-rounded — strength and endurance are aligned.",
     description:
-      "You’re relatively balanced: both strength and endurance contribute similarly to your HQ score. This is the classic hybrid profile.",
+      "You’re relatively balanced: both strength and endurance contribute similarly. This is the classic hybrid profile.",
     focus:
       "Progress both slowly: 1–2 strength PR attempts/month and 1 structured run workout/week. Avoid huge spikes in total volume.",
   },
   "POWER HYBRID": {
     tagline: "High-high — strong and fast together.",
     description:
-      "You’re strong and you’ve got a solid engine. This is the kind of profile that pushes into elite hybrid territory when trained consistently.",
+      "You’re strong and you’ve got a solid engine. This profile pushes into elite territory when trained consistently.",
     focus:
       "Keep strength volume efficient (quality over quantity) and add running quality (tempo + intervals). Prioritize recovery and sleep.",
   },
   "ENDURANCE-LEANING HYBRID": {
     tagline: "Endurance-leaning — still decently strong.",
     description:
-      "Your endurance is ahead, but you’ve got more strength than the average runner. A focused strength block can raise your HQ a lot.",
+      "Your endurance is ahead, but you’ve got more strength than the average runner. A focused strength block can raise your score a lot.",
     focus:
       "Keep 2 quality runs/week and add 2–3 strength sessions focused on squat/hinge/press progressions.",
   },
   "STRENGTH-LEANING HYBRID": {
     tagline: "Strength-leaning — still decent endurance.",
     description:
-      "Your strength is ahead, but your endurance is not far behind. Building your aerobic base will make you much more ‘complete’ as a hybrid athlete.",
+      "Your strength is ahead, but your endurance is not far behind. Building your aerobic base will make you much more complete.",
     focus:
       "Maintain lifting intensity, add 2–3 Zone 2 sessions/week, and retest your endurance time after 4–6 weeks.",
   },
   "BASE BUILDER": {
     tagline: "Early stage — build the foundation.",
     description:
-      "You haven’t filled enough stats yet (or they’re very low), so we treat you as a base builder. The goal is consistent training and clean technique.",
+      "You haven’t filled enough stats yet (or they’re very low). The goal is consistent training and clean technique.",
     focus:
       "Start simple: 3 days lifting + 2 days easy running each week. Retest your numbers after 6–8 weeks.",
   },
 };
 
-// ---------------- Helpers ----------------
+// ---------- Helpers ----------
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -84,7 +84,6 @@ function parseTimeToSeconds(input: string): number | null {
   const s = input.trim();
   if (!s) return null;
 
-  // Accept "mm:ss" or "hh:mm:ss"
   const parts = s.split(":").map((p) => p.trim());
   if (parts.some((p) => p === "" || Number.isNaN(Number(p)))) return null;
 
@@ -105,18 +104,17 @@ function parseTimeToSeconds(input: string): number | null {
 
   return null;
 }
+
 function formatDigitsToTime(digitsRaw: string): string {
-  const digits = digitsRaw.replace(/\D/g, "").slice(0, 6); // allow up to HHMMSS
+  const digits = digitsRaw.replace(/\D/g, "").slice(0, 6);
   if (!digits) return "";
 
-  // 1–2 digits => minutes
   if (digits.length <= 2) {
     const min = Number(digits);
     if (!Number.isFinite(min)) return "";
     return `${min}:00`;
   }
 
-  // 3–4 digits => MM:SS
   if (digits.length <= 4) {
     const sec = Number(digits.slice(-2));
     const min = Number(digits.slice(0, -2));
@@ -125,7 +123,6 @@ function formatDigitsToTime(digitsRaw: string): string {
     return `${min}:${String(secClamped).padStart(2, "0")}`;
   }
 
-  // 5–6 digits => H:MM:SS (last 2 = SS, previous 2 = MM, rest = H)
   const sec = Number(digits.slice(-2));
   const min = Number(digits.slice(-4, -2));
   const hr = Number(digits.slice(0, -4));
@@ -155,7 +152,7 @@ function distanceMeters(d: RunDistance): number {
 function toHalfMarathonEquivalentSeconds(inputSeconds: number, dist: RunDistance): number {
   const D1 = distanceMeters(dist);
   const D2 = distanceMeters("half");
-  const exponent = 1.06; // Riegel-style
+  const exponent = 1.06;
   const ratio = D2 / D1;
   return Math.round(inputSeconds * Math.pow(ratio, exponent));
 }
@@ -166,128 +163,133 @@ function lbToKg(lb: number): number {
 function kgToLb(kg: number): number {
   return kg * 2.2046226218;
 }
-function runDistanceShortLabel(d: RunDistance): string {
-  switch (d) {
-    case "3mi":
-      return "3MI";
-    case "5k":
-      return "5K";
-    case "10k":
-      return "10K";
-    case "half":
-      return "HALF";
-    case "marathon":
-      return "MAR";
-  }
+
+function getTier(score: number): Tier {
+  if (score >= 90) return "WORLD CLASS";
+  if (score >= 75) return "ELITE";
+  if (score >= 60) return "ADVANCED";
+  if (score >= 40) return "INTERMEDIATE";
+  return "NOVICE";
 }
-// ---------------- Page ----------------
+
+function getArchetype(str: number, end: number): Archetype {
+  if (str < 10 && end < 10) return "BASE BUILDER";
+
+  const diff = str - end;
+
+  if (str >= 75 && end >= 75) return "POWER HYBRID";
+  if (diff >= 20) return "STRENGTH BEAST";
+  if (diff <= -20) return "ENGINE MACHINE";
+  if (Math.abs(diff) <= 8) return "BALANCED HYBRID";
+  if (diff > 0) return "STRENGTH-LEANING HYBRID";
+  return "ENDURANCE-LEANING HYBRID";
+}
+
+const tierMeta: Record<Tier, { pill: string; glow: string }> = {
+  "WORLD CLASS": {
+    pill: "border-[#DFFF00]/25 bg-[#DFFF00]/10 text-[#DFFF00]",
+    glow: "shadow-[0_0_50px_rgba(223,255,0,0.12)]",
+  },
+  ELITE: {
+    pill: "border-sky-400/20 bg-sky-400/10 text-sky-200",
+    glow: "shadow-[0_0_40px_rgba(56,189,248,0.12)]",
+  },
+  ADVANCED: {
+    pill: "border-violet-400/20 bg-violet-400/10 text-violet-200",
+    glow: "shadow-[0_0_40px_rgba(167,139,250,0.12)]",
+  },
+  INTERMEDIATE: {
+    pill: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+    glow: "shadow-[0_0_40px_rgba(251,191,36,0.10)]",
+  },
+  NOVICE: {
+    pill: "border-white/10 bg-white/[0.03] text-zinc-300",
+    glow: "",
+  },
+};
+
+// ---------- Page ----------
+
+type Step = 1 | 2 | 3 | 4;
 
 export default function ToolPage() {
-  // Inputs (strings so empty fields stay empty)
+  // identity + units
   const [displayName, setDisplayName] = useState<string>("");
-  const [weight, setWeight] = useState<string>("");
-
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("lb");
 
-  const [runDistance, setRunDistance] = useState<RunDistance>("5k");
-  const [runTimeDigits, setRunTimeDigits] = useState<string>("");
-const runTimeText = formatDigitsToTime(runTimeDigits);
+  // inputs (strings to keep empties)
+  const [weight, setWeight] = useState<string>("");
 
   const [bench, setBench] = useState<string>("");
   const [squat, setSquat] = useState<string>("");
   const [deadlift, setDeadlift] = useState<string>("");
 
-  // Flow
-  const [showResults, setShowResults] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [runDistance, setRunDistance] = useState<RunDistance>("5k");
+  const [runTimeDigits, setRunTimeDigits] = useState<string>("");
+  const runTimeText = formatDigitsToTime(runTimeDigits);
 
-  // Saving / scan moment
-  const [isSaving, setIsSaving] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanStage, setScanStage] = useState<"CALIBRATING" | "SCANNING" | "COMPILING">(
-    "CALIBRATING"
-  );
+  // UX flow
+  const [step, setStep] = useState<Step>(1);
+  const [showDetails, setShowDetails] = useState<boolean>(false);
+
+  // saving / scan moment
+  const [isWorking, setIsWorking] = useState(false);
+  const [scanStage, setScanStage] = useState<"CALIBRATING" | "SCORING" | "COMPILING">("CALIBRATING");
   const [statusText, setStatusText] = useState<string>("");
-  const [siteLabel, setSiteLabel] = useState<string>("strendex");
 
-  // Results data
-  const [topPercent, setTopPercent] = useState<number | null>(null);
-  const [globalRank, setGlobalRank] = useState<number | null>(null);
-  const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
-
-  // From /api/rank
-  const [hqScore, setHqScore] = useState<number>(0);
+  // results
+  const [hasResults, setHasResults] = useState(false);
+  const [hybridScore, setHybridScore] = useState<number>(0);
   const [strengthPercentile, setStrengthPercentile] = useState<number | null>(null);
   const [endurancePercentile, setEndurancePercentile] = useState<number | null>(null);
+  const [globalRank, setGlobalRank] = useState<number | null>(null);
+  const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
+  const [topPercent, setTopPercent] = useState<number | null>(null);
+  const [apiStrengthIndex, setApiStrengthIndex] = useState<number | null>(null);
+const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
 
+  const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // Parsed numbers (raw input in selected units)
+  // parsed
   const wInput = Number(weight) || 0;
   const bInput = Number(bench) || 0;
   const sInput = Number(squat) || 0;
   const dInput = Number(deadlift) || 0;
 
-  // Convert to LB for local display + strength formulas (your current formulas assume lb)
+  // normalize to LB for local ratios / display
   const wLb = unitSystem === "kg" ? kgToLb(wInput) : wInput;
   const bLb = unitSystem === "kg" ? kgToLb(bInput) : bInput;
   const sLb = unitSystem === "kg" ? kgToLb(sInput) : sInput;
   const dLb = unitSystem === "kg" ? kgToLb(dInput) : dInput;
 
-  // Endurance
+  // endurance -> half-equivalent seconds
   const runSeconds = parseTimeToSeconds(runTimeText) ?? 0;
   const enduranceEqSeconds =
     runSeconds > 0 ? toHalfMarathonEquivalentSeconds(runSeconds, runDistance) : 0;
-  const enduranceEqMin = enduranceEqSeconds > 0 ? enduranceEqSeconds / 60 : 0;
 
-  // Calculations
+  // local indices (for archetype + chart only; canonical score comes from API)
   const totalLift = bLb + sLb + dLb;
   const strengthRatio = wLb > 0 ? totalLift / wLb : 0;
 
-  // Strength index (0–100-ish)
   const benchIndex = wLb > 0 ? clamp((bLb / (wLb * 1.5)) * 100, 0, 100) : 0;
   const squatIndex = wLb > 0 ? clamp((sLb / (wLb * 2.0)) * 100, 0, 100) : 0;
   const deadIndex = wLb > 0 ? clamp((dLb / (wLb * 2.5)) * 100, 0, 100) : 0;
   const strengthIndex = Number(((benchIndex + squatIndex + deadIndex) / 3).toFixed(1));
 
-  // Endurance index (0–100-ish) using HALF-marathon equivalent minutes
-  // (lower time => higher score). Tune later.
-  // Endurance index (0–100) based on HALF-marathon equivalent seconds
-// Tune these bounds whenever you want, but these are sane defaults.
-const END_MIN_SEC = 4200;  // 1:10:00 half-equivalent ~ very strong
-const END_MAX_SEC = 10800; // 3:00:00 half-equivalent ~ very weak
+  const END_MIN_SEC = 4200;
+  const END_MAX_SEC = 10800;
+  const enduranceIndex = Number(
+    (enduranceEqSeconds > 0
+      ? clamp(((END_MAX_SEC - enduranceEqSeconds) / (END_MAX_SEC - END_MIN_SEC)) * 100, 0, 100)
+      : 0
+    ).toFixed(1)
+  );
 
-const enduranceIndex = Number(
-  (enduranceEqSeconds > 0
-    ? clamp(((END_MAX_SEC - enduranceEqSeconds) / (END_MAX_SEC - END_MIN_SEC)) * 100, 0, 100)
-    : 0
-  ).toFixed(1)
-);
+  const archetype = getArchetype(strengthIndex, enduranceIndex);
+  const archetypeInfo = ARCHETYPE_COPY[archetype];
 
-  const getRank = (score: number): Rank => {
-    if (score >= 90) return "WORLD CLASS";
-    if (score >= 75) return "ELITE";
-    if (score >= 60) return "ADVANCED";
-    if (score >= 40) return "INTERMEDIATE";
-    return "NOVICE";
-  };
-
-  const getArchetype = (str: number, end: number): Archetype => {
-    if (str < 10 && end < 10) return "BASE BUILDER";
-
-    const diff = str - end;
-
-    if (str >= 75 && end >= 75) return "POWER HYBRID";
-    if (diff >= 20) return "STRENGTH BEAST";
-    if (diff <= -20) return "ENGINE MACHINE";
-    if (Math.abs(diff) <= 8) return "BALANCED HYBRID";
-    if (diff > 0) return "STRENGTH-LEANING HYBRID";
-    return "ENDURANCE-LEANING HYBRID";
-  };
-
-  const currentRank = getRank(hqScore);
-  const currentArchetype = getArchetype(strengthIndex, enduranceIndex);
-  const archetypeInfo = ARCHETYPE_COPY[currentArchetype];
+  const tier = useMemo(() => getTier(hybridScore), [hybridScore]);
 
   const chartData = useMemo(() => {
     return [
@@ -298,20 +300,56 @@ const enduranceIndex = Number(
     ];
   }, [benchIndex, squatIndex, deadIndex, enduranceIndex]);
 
+  const canContinueStep1 = wLb > 0;
+  const canContinueStep2 = wLb > 0 && (bLb > 0 || sLb > 0 || dLb > 0);
+  const canContinueStep3 = wLb > 0 && (runSeconds > 0);
   const canGenerate =
-    wLb > 0 &&
-    (bLb > 0 || sLb > 0 || dLb > 0 || runSeconds > 0) &&
-    !isSaving &&
-    !isScanning;
+    wLb > 0 && (bLb > 0 || sLb > 0 || dLb > 0 || runSeconds > 0) && !isWorking;
 
-  async function computeScore() {
-    // Convert strength inputs into KG before sending to API (canonical)
+  function cleanedName() {
+    const clean = displayName
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/[^a-zA-Z0-9 ._-]/g, "");
+    return clean.length >= 2 ? clean : "Anonymous Athlete";
+  }
+
+  function validateInputsOrThrow() {
+    if (!wLb || wLb < 80 || wLb > 400) {
+      throw new Error("Bodyweight must be between 80 and 400 lb (or equivalent).");
+    }
+
+    if (bLb > 0 && (bLb < 45 || bLb > 700)) {
+      throw new Error("Bench must be between 45 and 700 lb (or equivalent).");
+    }
+    if (sLb > 0 && (sLb < 45 || sLb > 900)) {
+      throw new Error("Squat must be between 45 and 900 lb (or equivalent).");
+    }
+    if (dLb > 0 && (dLb < 45 || dLb > 1000)) {
+      throw new Error("Deadlift must be between 45 and 1000 lb (or equivalent).");
+    }
+
+    if (bLb > 0 && bLb / wLb > 3.2) throw new Error("Bench/bodyweight ratio looks unrealistic.");
+    if (sLb > 0 && sLb / wLb > 4.0) throw new Error("Squat/bodyweight ratio looks unrealistic.");
+    if (dLb > 0 && dLb / wLb > 4.5) throw new Error("Deadlift/bodyweight ratio looks unrealistic.");
+
+    if (runTimeText.trim()) {
+      const parsed = parseTimeToSeconds(runTimeText);
+      if (parsed === null) throw new Error("Time must be mm:ss or hh:mm:ss (e.g., 22:30 or 1:32:10).");
+      if (parsed < 4 * 60 || parsed > 8 * 3600) {
+        throw new Error("Time looks out of range. Please double-check your entry.");
+      }
+    }
+  }
+
+  async function computeScoreFromAPI() {
+    
+    // Canonical inputs to API: KG + endurance seconds (half-equivalent)
     const bodyweight_kg = unitSystem === "lb" ? lbToKg(wLb) : wInput;
     const bench_kg = bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null;
     const squat_kg = sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null;
     const deadlift_kg = dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null;
 
-    // Endurance: store half-marathon equivalent seconds
     const endurance_seconds = runSeconds > 0 ? enduranceEqSeconds : null;
 
     const res = await fetch("/api/rank", {
@@ -330,194 +368,148 @@ const enduranceIndex = Number(
 
     if (!res.ok) {
       console.error("API /api/rank error:", data);
-      alert(`Rank API error: ${data?.error ?? JSON.stringify(data)}`);
       throw new Error(data?.error ?? "Scoring failed");
     }
 
-    setHqScore(typeof data.hq === "number" ? data.hq : 0);
-    setStrengthPercentile(typeof data.strengthPercentile === "number" ? data.strengthPercentile : null);
-    setEndurancePercentile(typeof data.endurancePercentile === "number" ? data.endurancePercentile : null);
+    const hq = typeof data.hq === "number" ? data.hq : 0;
+    const strP = typeof data.strengthPercentile === "number" ? data.strengthPercentile : null;
+    const endP = typeof data.endurancePercentile === "number" ? data.endurancePercentile : null;
+    const apiStrengthIndex = typeof data.strengthIndex === "number" ? data.strengthIndex : null;
+const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduranceIndex : null;
 
     const rankRaw = typeof data.rank === "number" ? data.rank : null;
-const totalRaw = typeof data.total === "number" ? data.total : null;
+    const totalRaw = typeof data.total === "number" ? data.total : null;
 
-// Normalize rank to 1-based if API is 0-based
-let rankPos: number | null = rankRaw;
+    // normalize rank to 1-based (defensive)
+    let rankPos: number | null = rankRaw;
+    if (rankRaw !== null) {
+      let cleanRank = rankRaw;
+      if (cleanRank === 0) cleanRank = 1;
+      cleanRank = Math.max(1, Math.floor(cleanRank));
+      rankPos = cleanRank;
+    }
 
-if (rankRaw !== null) {
-  let cleanRank = rankRaw;
-
-  // convert 0-based rank to 1
-  if (cleanRank === 0) cleanRank = 1;
-
-  cleanRank = Math.max(1, Math.floor(cleanRank));
-
-  rankPos = cleanRank;
-}
-
-setGlobalRank(rankPos);
-setTotalAthletes(totalRaw);
-
-// Better-than% from rank and total (rank 1 = best)
-if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
-  const betterThan = ((totalRaw - rankPos) / totalRaw) * 100;
-  setTopPercent(clamp(betterThan, 0, 100));
-} else {
-  setTopPercent(null);
-}
+    // better-than%
+    let betterThan: number | null = null;
+    if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
+      betterThan = clamp(((totalRaw - rankPos) / totalRaw) * 100, 0, 100);
+    }
 
     return {
-      hq: data.hq,
-      strengthPercentile: data.strengthPercentile,
-      endurancePercentile: data.endurancePercentile,
-      topPercent: data.topPercent,
-      rank: data.rank,
-      total: data.total,
-      runSeconds,
-      enduranceEqSeconds,
+      hq,
+      strP,
+      endP,
+      rankPos,
+      totalRaw,
+      betterThan,
+      endurance_seconds,
+      apiStrengthIndex,
+      apiEnduranceIndex,
     };
   }
 
-  function validateInputsOrAlert() {
-    // Clean name
-    const cleanName = displayName
-      .trim()
-      .replace(/\s+/g, " ")
-      .replace(/[^a-zA-Z0-9 ._-]/g, "");
-    const finalName = cleanName.length >= 2 ? cleanName : "Anonymous Athlete";
+  async function saveSubmissionToSupabase(args: {
+    finalName: string;
+    hq: number;
+    strP: number | null;
+    endP: number | null;
+    endurance_seconds_for_db: number | null;
+    apiStrengthIndex: number | null;
+    apiEnduranceIndex: number | null;
+  }) {
+    const { finalName, hq, strP, endP, endurance_seconds_for_db } = args;
 
-    // Bodyweight (validate in LB for consistent rules)
-    if (!wLb || wLb < 80 || wLb > 400) {
-      alert("Bodyweight must be between 80 and 400 lb (or equivalent).");
-      return { ok: false as const };
-    }
+    // NOTE: your table uses LB columns for lifts/bodyweight; keep consistent.
+    const { error } = await supabase.from("submissions").insert([
+      {
+        athlete_name: finalName,
+        bodyweight: wLb,
 
-    // Lifts (validate in LB for consistent rules)
-    if (bLb > 0 && (bLb < 45 || bLb > 700)) {
-      alert("Bench must be between 45 and 700 lb (or equivalent).");
-      return { ok: false as const };
-    }
-    if (sLb > 0 && (sLb < 45 || sLb > 900)) {
-      alert("Squat must be between 45 and 900 lb (or equivalent).");
-      return { ok: false as const };
-    }
-    if (dLb > 0 && (dLb < 45 || dLb > 1000)) {
-      alert("Deadlift must be between 45 and 1000 lb (or equivalent).");
-      return { ok: false as const };
-    }
+// store endurance as half-marathon-equivalent seconds in the *new* column
+endurance_seconds: endurance_seconds_for_db,
 
-    // Ratios (only if lift provided)
-    if (bLb > 0 && bLb / wLb > 3.2) {
-      alert("Bench/bodyweight ratio unrealistic.");
-      return { ok: false as const };
-    }
-    if (sLb > 0 && sLb / wLb > 4.0) {
-      alert("Squat/bodyweight ratio unrealistic.");
-      return { ok: false as const };
-    }
-    if (dLb > 0 && dLb / wLb > 4.5) {
-      alert("Deadlift/bodyweight ratio unrealistic.");
-      return { ok: false as const };
-    }
+bench: bLb || null,
+squat: sLb || null,
+deadlift: dLb || null,
 
-    // Endurance time format
-    if (runTimeText.trim()) {
-      const parsed = parseTimeToSeconds(runTimeText);
-      if (parsed === null) {
-        alert("Time must be mm:ss or hh:mm:ss (e.g., 22:30 or 1:32:10).");
-        return { ok: false as const };
-      }
-      // Loose sanity check (optional)
-      if (parsed < 4 * 60 || parsed > 8 * 3600) {
-        alert("Time looks out of range. Please double-check your entry.");
-        return { ok: false as const };
-      }
-    }
+        hq_score: hq,
+        rank: getTier(hq),
+        archetype,
+        strength_index: apiStrengthIndex,
+endurance_index: apiEnduranceIndex,
+        total_lift: totalLift,
+        strength_ratio: strengthRatio,
 
-    // We'll store enduranceEqSeconds in the existing `fivek_seconds` column for now
-    const endurance_seconds_for_db = runSeconds > 0 ? enduranceEqSeconds : null;
+        strength_percentile: strP,
+        endurance_percentile: endP,
+      },
+    ]);
 
-    return { ok: true as const, finalName, endurance_seconds_for_db };
+    return { error };
   }
 
-  async function saveSubmission(finalName: string, endurance_seconds_for_db: number | null) {
-    setIsSaving(true);
-    setStatusText("Logging to HQ…");
-
+  async function generateProfile() {
     try {
-      const { error } = await supabase.from("submissions").insert([
-        {
-          athlete_name: finalName,
+      if (!canGenerate) return;
 
-          // Store in LB for consistency with your existing table
-          bodyweight: wLb,
+      validateInputsOrThrow();
 
-          // Keep existing column name; store HALF-eq seconds
-          fivek_seconds: endurance_seconds_for_db,
+      setIsWorking(true);
+      setStatusText("");
+      setScanStage("CALIBRATING");
+      setHasResults(true);
 
-          bench: bLb || null,
-          squat: sLb || null,
-          deadlift: dLb || null,
+      const resultsEl = document.getElementById("results");
+      if (resultsEl) resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
 
-          hq_score: hqScore,
-          rank: currentRank,
-          archetype: currentArchetype,
-          strength_index: strengthIndex,
-          endurance_index: enduranceIndex,
-          total_lift: totalLift,
-          strength_ratio: strengthRatio,
-        },
-      ]);
+      await new Promise((r) => setTimeout(r, 250));
+      setScanStage("SCORING");
+      await new Promise((r) => setTimeout(r, 350));
+      setScanStage("COMPILING");
+      await new Promise((r) => setTimeout(r, 250));
+
+      const finalName = cleanedName();
+      const computed = await computeScoreFromAPI();
+
+      // Apply UI states immediately (do NOT rely on async setState for DB values)
+      setHybridScore(computed.hq);
+      setStrengthPercentile(computed.strP);
+      setEndurancePercentile(computed.endP);
+      setGlobalRank(computed.rankPos);
+      setTotalAthletes(computed.totalRaw);
+      setTopPercent(computed.betterThan);
+      setApiStrengthIndex(computed.apiStrengthIndex);
+      setApiEnduranceIndex(computed.apiEnduranceIndex);
+
+      // Save to Supabase with canonical computed values
+      setStatusText("Saving to rankings…");
+      const { error } = await saveSubmissionToSupabase({
+        finalName,
+        hq: computed.hq,
+        strP: computed.strP,
+        endP: computed.endP,
+        endurance_seconds_for_db: computed.endurance_seconds,
+        apiStrengthIndex: computed.apiStrengthIndex,
+        apiEnduranceIndex: computed.apiEnduranceIndex,
+      });
 
       if (error) {
         console.error(error);
-        setStatusText("Couldn’t log right now — your profile is still generated.");
+        setStatusText("Saved locally. Couldn’t log right now — try again later.");
       } else {
-        setStatusText("Logged to HQ.");
+        setStatusText("Saved to rankings.");
       }
-    } catch (err) {
-      console.error(err);
-      setStatusText("Couldn’t log right now — your profile is still generated.");
-    } finally {
-      setIsSaving(false);
+
+      // Move user to results view
+      setStep(4);
+      setShowDetails(false);
       setTimeout(() => setStatusText(""), 1800);
-    }
-  }
-
-  async function generateAndLog() {
-    if (!canGenerate) {
-      alert("Enter bodyweight and at least one metric.");
-      return;
-    }
-
-    const v = validateInputsOrAlert();
-    if (!v.ok) return;
-
-    setShowResults(true);
-    setShowAdvanced(false);
-
-    const el = document.getElementById("results");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-
-    setIsScanning(true);
-    setStatusText("");
-    setScanStage("CALIBRATING");
-
-    try {
-      await new Promise((r) => setTimeout(r, 320));
-      setScanStage("SCANNING");
-      await new Promise((r) => setTimeout(r, 420));
-      setScanStage("COMPILING");
-      await new Promise((r) => setTimeout(r, 320));
-
-      await computeScore();
-      await saveSubmission(v.finalName, v.endurance_seconds_for_db);
-    } catch (err) {
-      console.error(err);
-      setStatusText("Generation failed. Open the red error (N) for details and try again.");
-      alert("Error generating profile. Click the red N to see the error.");
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message ?? "Something went wrong.");
+      setStatusText(e?.message ?? "Something went wrong.");
     } finally {
-      setIsScanning(false);
+      setIsWorking(false);
     }
   }
 
@@ -541,7 +533,6 @@ if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
 
   const copyShareLink = async () => {
     const params = new URLSearchParams();
-
     const name = displayName.trim();
     if (name) params.set("name", name);
 
@@ -550,7 +541,6 @@ if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
     if (squat.trim()) params.set("s", squat.trim());
     if (deadlift.trim()) params.set("d", deadlift.trim());
 
-    // new fields
     params.set("u", unitSystem);
     params.set("dist", runDistance);
     if (runTimeText.trim()) params.set("t", runTimeText.trim());
@@ -565,7 +555,7 @@ if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
     }
   };
 
-  // Load share params + localStorage name
+  // load share params + localStorage name
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setSiteLabel(window.location.host);
@@ -602,777 +592,661 @@ if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
     if (sharedD) setDeadlift(sharedD);
 
     if (hasSharedStats) {
-      setShowResults(true);
-      setShowAdvanced(false);
+      setHasResults(true);
+      setStep(4);
     }
   }, []);
 
-  const rankMeta: Record<Rank, { label: string; pill: string; glow: string }> = {
-    "WORLD CLASS": {
-      label: "WORLD CLASS",
-      pill: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-      glow: "shadow-[0_0_40px_rgba(34,197,94,0.20)]",
+  // UI helpers
+  const stepTitle: Record<Step, { kicker: string; title: string; sub: string }> = {
+    1: {
+      kicker: "Step 1 of 4",
+      title: "Basics",
+      sub: "Just enough to personalize your profile.",
     },
-    ELITE: {
-      label: "ELITE",
-      pill: "border-sky-400/20 bg-sky-400/10 text-sky-300",
-      glow: "shadow-[0_0_40px_rgba(56,189,248,0.15)]",
+    2: {
+      kicker: "Step 2 of 4",
+      title: "Strength",
+      sub: "Use true 1RMs (or best recent top set).",
     },
-    ADVANCED: {
-      label: "ADVANCED",
-      pill: "border-violet-400/20 bg-violet-400/10 text-violet-300",
-      glow: "shadow-[0_0_40px_rgba(167,139,250,0.14)]",
+    3: {
+      kicker: "Step 3 of 4",
+      title: "Endurance",
+      sub: "Pick a test and enter your time.",
     },
-    INTERMEDIATE: {
-      label: "INTERMEDIATE",
-      pill: "border-amber-400/20 bg-amber-400/10 text-amber-300",
-      glow: "shadow-[0_0_40px_rgba(251,191,36,0.12)]",
-    },
-    NOVICE: {
-      label: "NOVICE",
-      pill: "border-white/10 bg-white/[0.03] text-zinc-300",
-      glow: "",
+    4: {
+      kicker: "Results",
+      title: "Hybrid Score",
+      sub: "Share your card or explore rankings.",
     },
   };
 
+  const Progress = () => (
+    <div className="flex items-center gap-2">
+      {[1, 2, 3, 4].map((n) => {
+        const active = step === (n as Step);
+        const done = step > (n as Step);
+        return (
+          <div
+            key={n}
+            className={`h-1.5 w-10 rounded-full transition ${
+              done ? "bg-[#DFFF00]/70" : active ? "bg-white/70" : "bg-white/10"
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+
   return (
-    <main className="min-h-screen bg-[#020203] text-zinc-200 selection:bg-emerald-400/25 font-sans antialiased">
-      {/* BACKDROP */}
-      <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-[540px] w-[980px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(34,197,94,0.16),_transparent_60%)] blur-2xl" />
-        <div className="absolute top-36 left-1/2 h-[620px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.09),_transparent_60%)] blur-2xl" />
-        <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:64px_64px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,transparent_0%,rgba(2,2,3,0.70)_55%,rgba(2,2,3,0.96)_100%)]" />
-      </div>
+    <section className="mx-auto max-w-7xl">
+      {/* Top header */}
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">Hybrid Athlete Benchmark</div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            Calculate your <span className="text-[#DFFF00]">Hybrid Score</span>
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-white/60">
+            A single score from 0–100 based on strength + endurance percentiles. Built to be simple, fast, and shareable.
+          </p>
+        </div>
 
-      {/* PAGE */}
-      <section className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:py-10 md:py-14 md:pb-14">
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
-          {/* LEFT: INPUTS */}
-          <div className="lg:col-span-4">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-white tracking-wide">Athlete Inputs</h3>
-                  <div className="mt-1 text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                    Enter
-                  </div>
-                </div>
-
-                {/* Units toggle */}
-                <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-black/30">
-                  <button
-                    type="button"
-                    onClick={() => setUnitSystem("lb")}
-                    className={`px-4 py-2 text-[11px] font-semibold tracking-widest transition ${
-                      unitSystem === "lb"
-                        ? "bg-white text-black"
-                        : "text-zinc-300 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    LB
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUnitSystem("kg")}
-                    className={`px-4 py-2 text-[11px] font-semibold tracking-widest transition ${
-                      unitSystem === "kg"
-                        ? "bg-white text-black"
-                        : "text-zinc-300 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    KG
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-4">
-                <TextField
-                  label="Display Name"
-                  placeholder="e.g., Ryan"
-                  value={displayName}
-                  onChange={(value) => {
-                    setDisplayName(value);
-                    localStorage.setItem("strendex_name", value);
-                  }}
-                />
-
-                <Field
-                  label={`Bodyweight (${unitSystem.toUpperCase()})`}
-                  placeholder="e.g., 195"
-                  value={weight}
-                  onChange={setWeight}
-                />
-
-<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-  {/* Distance */}
-  <div>
-    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-      Endurance Test
-    </label>
-
-    <div className="relative">
-      <select
-        value={runDistance}
-        onChange={(e) => setRunDistance(e.target.value as RunDistance)}
-        className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 pr-11 text-[16px] text-white outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-      >
-        <option value="3mi">3 miles</option>
-        <option value="5k">5K (5 km)</option>
-        <option value="10k">10K</option>
-        <option value="half">Half Marathon</option>
-        <option value="marathon">Marathon</option>
-      </select>
-
-      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-        <div className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-white/[0.03]">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4 text-zinc-300"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M7 10l5 5 5-5"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <Progress />
+          <div className="hidden sm:block text-[11px] text-white/60">No sign-up. Takes 60 seconds.</div>
         </div>
       </div>
-    </div>
 
-    <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-600">
-      Select distance
-    </div>
-  </div>
-
-  {/* Time */}
-  <div>
-    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-      Time
-    </label>
-
-    <input
-  type="text"
-  inputMode="numeric"
-  autoComplete="off"
-  value={runTimeText}
-  placeholder="Type digits (2230 → 22:30)"
-  onChange={(e) => {
-    // Keep React happy + allow IME/mobile to update
-    const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
-    setRunTimeDigits(digits);
-  }}
-  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-[16px] text-white placeholder:text-zinc-600 outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-  onKeyDown={(e) => {
-    const key = e.key;
-
-    // allow navigation + tab
-    if (
-      key === "Tab" ||
-      key === "ArrowLeft" ||
-      key === "ArrowRight" ||
-      key === "ArrowUp" ||
-      key === "ArrowDown" ||
-      key === "Home" ||
-      key === "End"
-    ) {
-      return;
-    }
-
-    const el = e.currentTarget;
-    const allSelected = el.selectionStart === 0 && el.selectionEnd === el.value.length;
-
-    // Backspace removes digits cleanly (no snapping)
-    if (key === "Backspace") {
-      e.preventDefault();
-      if (allSelected) return setRunTimeDigits("");
-      return setRunTimeDigits((prev) => prev.slice(0, -1));
-    }
-
-    // Delete clears everything
-    if (key === "Delete") {
-      e.preventDefault();
-      return setRunTimeDigits("");
-    }
-
-    // digits append (cap at 6 -> HHMMSS)
-    if (/^\d$/.test(key)) {
-      e.preventDefault();
-      return setRunTimeDigits((prev) => (prev + key).slice(0, 6));
-    }
-
-    // block all other keys
-    e.preventDefault();
-  }}
-  onPaste={(e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text") || "";
-    const digits = pasted.replace(/\D/g, "").slice(0, 6);
-    setRunTimeDigits(digits);
-  }}
-/>
-
-    <div className="mt-1 flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-zinc-600">
-      <span>Auto format</span>
-      <span className="font-mono text-zinc-500 tabular-nums">
-        {runTimeText ? runTimeText : "—"}
-      </span>
-    </div>
-  </div>
-</div>
-
-                <div className="pt-2 border-t border-white/10" />
-
-                <Field
-                  label={`Bench (${unitSystem.toUpperCase()})`}
-                  placeholder="e.g., 275"
-                  value={bench}
-                  onChange={setBench}
-                />
-                <Field
-                  label={`Squat (${unitSystem.toUpperCase()})`}
-                  placeholder="e.g., 365"
-                  value={squat}
-                  onChange={setSquat}
-                />
-                <Field
-                  label={`Deadlift (${unitSystem.toUpperCase()})`}
-                  placeholder="e.g., 425"
-                  value={deadlift}
-                  onChange={setDeadlift}
-                />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* LEFT — Guided input card */}
+        <div className="lg:col-span-5">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  {stepTitle[step].kicker}
+                </div>
+                <div className="mt-2 text-xl font-semibold text-white">{stepTitle[step].title}</div>
+                <div className="mt-1 text-sm text-white/60">{stepTitle[step].sub}</div>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-500">Total Lift</span>
-                  <span className="text-white font-semibold">
-                    {totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs">
-                  <span className="text-zinc-500">Endurance</span>
-                  <span className="text-white font-semibold">
-                    {runTimeText.trim()
-                      ? `${runDistance.toUpperCase()} • ${runTimeText.trim()}`
-                      : "—"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4">
+              {/* Units toggle */}
+              <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-black/30">
                 <button
-                  onClick={generateAndLog}
-                  disabled={!canGenerate}
-                  className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-xs font-semibold tracking-widest text-black hover:bg-zinc-200 transition disabled:opacity-40 disabled:hover:bg-white"
+                  type="button"
+                  onClick={() => setUnitSystem("lb")}
+                  className={`px-4 py-2 text-[11px] font-semibold tracking-widest transition ${
+                    unitSystem === "lb" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
+                  }`}
                 >
-                  {isScanning ? "GENERATING…" : isSaving ? "LOGGING…" : "CALCULATE"}
+                  LB
                 </button>
-
-                {statusText ? (
-                  <div className="mt-2 text-[11px] text-zinc-400">{statusText}</div>
-                ) : (
-                  <div className="mt-2 text-[11px] text-zinc-500">
-                    One click: generate profile + log to HQ.
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setUnitSystem("kg")}
+                  className={`px-4 py-2 text-[11px] font-semibold tracking-widest transition ${
+                    unitSystem === "kg" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  KG
+                </button>
               </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {/* STEP 1 */}
+              {step === 1 && (
+                <>
+                  <TextField
+                    label="Display name"
+                    placeholder="e.g., Ryan"
+                    value={displayName}
+                    onChange={(value) => {
+                      setDisplayName(value);
+                      localStorage.setItem("strendex_name", value);
+                    }}
+                  />
+
+                  <Field
+                    label={`Bodyweight (${unitSystem.toUpperCase()})`}
+                    placeholder="e.g., 195"
+                    value={weight}
+                    onChange={setWeight}
+                    hint="Used to normalize strength ratios."
+                  />
+
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      disabled={!canContinueStep1}
+                      className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-40"
+                    >
+                      Continue
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60">
+                    Tip: If you don’t want your name on the card, leave it blank — you’ll be “Anonymous Athlete.”
+                  </div>
+                </>
+              )}
+
+              {/* STEP 2 */}
+              {step === 2 && (
+                <>
+                  <Field label={`Bench (${unitSystem.toUpperCase()})`} placeholder="e.g., 275" value={bench} onChange={setBench} />
+                  <Field label={`Squat (${unitSystem.toUpperCase()})`} placeholder="e.g., 365" value={squat} onChange={setSquat} />
+                  <Field label={`Deadlift (${unitSystem.toUpperCase()})`} placeholder="e.g., 425" value={deadlift} onChange={setDeadlift} />
+
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">Total lift</span>
+                      <span className="text-white font-semibold">{totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="text-white/60">Strength ratio</span>
+                      <span className="text-white font-semibold">{strengthRatio > 0 ? strengthRatio.toFixed(2) : "—"}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStep(3)}
+                      disabled={!canContinueStep2}
+                      className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-40"
+                    >
+                      Continue
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-white/50">
+                    You can skip endurance if you want — you’ll still get a score, but it will be less representative.
+                  </div>
+                </>
+              )}
+
+              {/* STEP 3 */}
+              {step === 3 && (
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">
+                        Endurance test
+                      </label>
+                      <select
+                        value={runDistance}
+                        onChange={(e) => setRunDistance(e.target.value as RunDistance)}
+                        className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 pr-10 text-sm text-white outline-none transition hover:bg-white/[0.04] focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+                      >
+                        <option value="3mi">3 miles</option>
+                        <option value="5k">5K</option>
+                        <option value="10k">10K</option>
+                        <option value="half">Half Marathon</option>
+                        <option value="marathon">Marathon</option>
+                      </select>
+                      <div className="mt-1 text-[11px] text-white/45">We normalize all tests to a half-marathon equivalent.</div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">
+                        Time
+                      </label>
+
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={runTimeText}
+                        placeholder="Type digits (2230 → 22:30)"
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          setRunTimeDigits(digits);
+                        }}
+                        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition hover:bg-white/[0.04] focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+                        onKeyDown={(e) => {
+                          const key = e.key;
+                          if (
+                            key === "Tab" ||
+                            key === "ArrowLeft" ||
+                            key === "ArrowRight" ||
+                            key === "ArrowUp" ||
+                            key === "ArrowDown" ||
+                            key === "Home" ||
+                            key === "End"
+                          ) {
+                            return;
+                          }
+                          const el = e.currentTarget;
+                          const allSelected = el.selectionStart === 0 && el.selectionEnd === el.value.length;
+
+                          if (key === "Backspace") {
+                            e.preventDefault();
+                            if (allSelected) return setRunTimeDigits("");
+                            return setRunTimeDigits((prev) => prev.slice(0, -1));
+                          }
+                          if (key === "Delete") {
+                            e.preventDefault();
+                            return setRunTimeDigits("");
+                          }
+                          if (/^\d$/.test(key)) {
+                            e.preventDefault();
+                            return setRunTimeDigits((prev) => (prev + key).slice(0, 6));
+                          }
+                          e.preventDefault();
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasted = e.clipboardData.getData("text") || "";
+                          const digits = pasted.replace(/\D/g, "").slice(0, 6);
+                          setRunTimeDigits(digits);
+                        }}
+                      />
+
+                      <div className="mt-1 flex items-center justify-between text-[11px] text-white/45">
+                        <span>Auto-format</span>
+                        <span className="font-mono tabular-nums text-white/55">{runTimeText ? runTimeText : "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStep(4)}
+                      disabled={!canContinueStep3}
+                      className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-40"
+                    >
+                      Continue
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-white/50">
+                    Don’t have an endurance time? You can still generate with strength only — but hybrid athletes get the best accuracy with both.
+                  </div>
+                </>
+              )}
+
+              {/* STEP 4 — final CTA */}
+              {step === 4 && (
+                <>
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Review</div>
+                    <div className="mt-2 grid grid-cols-1 gap-3 text-sm">
+                      <Row label="Name" value={displayName.trim() ? displayName.trim() : "Anonymous Athlete"} />
+                      <Row label="Bodyweight" value={wLb > 0 ? `${Math.round(wLb)} lb` : "—"} />
+                      <Row label="Strength" value={totalLift > 0 ? `${Math.round(totalLift)} lb total` : "—"} />
+                      <Row
+                        label="Endurance"
+                        value={runTimeText.trim() ? `${runDistance.toUpperCase()} • ${runTimeText.trim()}` : "—"}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={generateProfile}
+                    disabled={!canGenerate}
+                    className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-40"
+                  >
+                    {isWorking ? "Calculating…" : "Calculate Hybrid Score"}
+                  </button>
+
+                  {statusText ? (
+                    <div className="text-xs text-white/60">{statusText}</div>
+                  ) : (
+                    <div className="text-xs text-white/50">
+                      This generates your score + logs it to rankings automatically.
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(3)}
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWeight("");
+                        setBench("");
+                        setSquat("");
+                        setDeadlift("");
+                        setRunTimeDigits("");
+                        setHasResults(false);
+                        setHybridScore(0);
+                        setStrengthPercentile(null);
+                        setEndurancePercentile(null);
+                        setGlobalRank(null);
+                        setTotalAthletes(null);
+                        setTopPercent(null);
+                        setShowDetails(false);
+                        setStatusText("");
+                        setStep(1);
+                      }}
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* RIGHT: RESULTS */}
-          <div className="lg:col-span-8 space-y-6">
-            <div id="results" />
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60">
+            <div className="font-semibold text-white">Scoring transparency</div>
+            <div className="mt-1">
+              Hybrid Score = 50% Strength Percentile + 50% Endurance Percentile. Your percentiles are computed relative to the dataset.
+            </div>
+          </div>
+        </div>
 
-            {!showResults ? (
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                      Results
-                    </div>
-                    <h3 className="mt-2 text-xl font-semibold text-white">
-                      Your profile will appear here
-                    </h3>
-                    <p className="mt-2 text-sm text-zinc-400">
-                      Enter your stats on the left, then press{" "}
-                      <span className="text-white font-semibold">Calculate</span>.
-                    </p>
-                  </div>
+        {/* RIGHT — Results / Reveal */}
+        <div className="lg:col-span-7">
+          <div id="results" />
+          <div className={`rounded-3xl border border-white/10 bg-white/[0.03] p-6 ${tierMeta[tier].glow}`}>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  {isWorking ? "Computing" : hasResults ? "Your result" : "Ready when you are"}
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  Hybrid Score <span className="text-white/60">(0–100)</span>
+                </h2>
+                <p className="mt-2 text-sm text-white/60">
+                  {hasResults
+                    ? "This is your benchmark across strength + endurance."
+                    : "Enter your stats on the left. The result will show here instantly."}
+                </p>
+              </div>
 
-                  <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-zinc-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    READY
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-white/70">
+                <span className={`h-1.5 w-1.5 rounded-full ${isWorking ? "bg-[#DFFF00] animate-pulse" : "bg-white/30"}`} />
+                {isWorking ? scanStage : "READY"}
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-white/40">Hybrid Score</div>
+                  <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
+                    {hasResults ? hybridScore : "—"}
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                        HQ Score
-                      </div>
-                      <div className="mt-1 text-4xl font-semibold tracking-tight text-white/60">
-                        —
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                        Tier
-                      </div>
-                      <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold tracking-widest text-zinc-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-400/60" />—
-                      </div>
-                    </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-widest text-white/40">Tier</div>
+                  <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+                    {tier}
                   </div>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Scan moment */}
-                {isScanning ? (
-                  <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-7">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                          Generating Profile
-                        </div>
-                        <h3 className="mt-2 text-xl font-semibold text-white">
-                          {scanStage === "CALIBRATING"
-                            ? "Calibrating inputs"
-                            : scanStage === "SCANNING"
-                            ? "Scanning performance signature"
-                            : "Compiling report"}
-                        </h3>
-                        <p className="mt-2 text-sm text-zinc-400">
-                          Building your Strendex output…
-                        </p>
-                      </div>
 
-                      <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-zinc-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        PROFILE_SCAN
-                      </div>
-                    </div>
+              {/* Dopamine-first stats */}
+<div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="text-[10px] uppercase tracking-widest text-white/40">You beat</div>
+    <div className="mt-1 text-2xl font-semibold text-white">
+      {topPercent === null ? "—" : `${topPercent.toFixed(1)}%`}
+    </div>
+    <div className="mt-1 text-[11px] text-white/55">of athletes</div>
+  </div>
 
-                    <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                        <div
-                          className={`h-full bg-emerald-400/70 transition-all duration-300 ${
-                            scanStage === "CALIBRATING"
-                              ? "w-[28%]"
-                              : scanStage === "SCANNING"
-                              ? "w-[62%]"
-                              : "w-[92%]"
-                          }`}
-                        />
-                      </div>
+  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="text-[10px] uppercase tracking-widest text-white/40">Leaderboard</div>
+    <div className="mt-1 text-2xl font-semibold text-white">
+      {globalRank === null || totalAthletes === null ? "—" : `#${globalRank}`}
+    </div>
+    <div className="mt-1 text-[11px] text-white/55">
+      {totalAthletes === null ? "—" : `out of ${totalAthletes}`}
+    </div>
+  </div>
 
-                      <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
-                        <span>
-                          {scanStage === "CALIBRATING"
-                            ? "Normalizing metrics"
-                            : scanStage === "SCANNING"
-                            ? "Computing archetype"
-                            : "Finalizing output"}
-                        </span>
-                        <span className="font-mono">
-                          {scanStage === "CALIBRATING"
-                            ? "01"
-                            : scanStage === "SCANNING"
-                            ? "02"
-                            : "03"}
-                          /03
-                        </span>
-                      </div>
-                    </div>
+  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="text-[10px] uppercase tracking-widest text-white/40">Athlete type</div>
+    <div className="mt-1 text-sm font-semibold text-white">{archetype}</div>
+    <div className="mt-1 text-[11px] text-white/55 line-clamp-2">{archetypeInfo.tagline}</div>
+  </div>
+</div>
+
+
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={() => setShowDetails((v) => !v)}
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+              >
+                {showDetails ? "Hide details" : "Show details"}
+              </button>
+
+              <Link
+                href="/rankings"
+                className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
+              >
+                View Rankings
+              </Link>
+            </div>
+
+            {/* Details */}
+            {showDetails && (
+              <div className="mt-6 space-y-6">
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Archetype</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <ArchetypeBadge archetype={archetype} />
+                    <span className="text-sm text-white/70">{archetypeInfo.tagline}</span>
                   </div>
-                ) : null}
 
-                {/* Report summary */}
-                {!isScanning ? (
-                  <div
-                    className={`rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-7 ${rankMeta[currentRank].glow}`}
-                  >
-                    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <div className="text-[11px] uppercase tracking-widest text-zinc-500">
-                          HQ Score
-                        </div>
-                        <div className="mt-1 text-6xl font-semibold tracking-tight text-white drop-shadow-[0_0_18px_rgba(34,197,94,0.35)]">
-                          {Number.isFinite(hqScore) ? hqScore : 0}
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <div
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-                            {rankMeta[currentRank].label}
-                          </div>
-
-                          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-semibold tracking-widest text-zinc-300">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-                            {globalRank === null || totalAthletes === null
-                              ? "Loading rank…"
-                              : `Rank #${globalRank} of ${totalAthletes}`}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => setShowAdvanced((v) => !v)}
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          {showAdvanced ? "Hide details" : "Show details"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Archetype */}
-                    <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-zinc-500">
-                        <span className="grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-black/30 text-emerald-300">
-                          <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
-                        </span>
-                        Archetype
-                      </div>
-
-                      <div className="mt-2">
-                        <ArchetypeBadge archetype={currentArchetype} />
-                      </div>
-
-                      <div className="mt-2 text-xs text-zinc-400">
-                        <span className="text-zinc-200 font-semibold">{archetypeInfo.tagline}</span>
-                      </div>
-
-                      {showAdvanced ? (
-                        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                          <p className="text-xs text-zinc-400 leading-relaxed">{archetypeInfo.description}</p>
-                          <div className="mt-3 text-xs">
-                            <span className="font-semibold text-zinc-200">Focus: </span>
-                            <span className="text-zinc-400">{archetypeInfo.focus}</span>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
+                  <div className="mt-3 text-sm text-white/60 leading-relaxed">{archetypeInfo.description}</div>
+                  <div className="mt-3 text-sm">
+                    <span className="font-semibold text-white">Focus:</span>{" "}
+                    <span className="text-white/60">{archetypeInfo.focus}</span>
                   </div>
-                ) : null}
+                </div>
 
-                {/* Shareable athlete card */}
-                {!isScanning ? (
-                  <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                          Share
-                        </div>
-                        <h2 className="mt-1 text-lg font-semibold text-white">Athlete Card</h2>
-                        <p className="mt-1 text-sm text-zinc-400">
-                          Download or copy your Strendex profile for socials.
-                        </p>
-                      </div>
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Performance signature</div>
+                  <div className="mt-4 grid place-items-center rounded-2xl border border-white/10 bg-[#020203] p-4">
+                    <StrendexChart data={chartData} />
+                  </div>
+                </div>
 
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <button
-                          onClick={downloadScorecard}
-                          className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition"
-                        >
-                          Download Card
-                        </button>
-
-                        <button
-                          onClick={copyShareLink}
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          Copy Link
-                        </button>
-                      </div>
+                {/* Share Card */}
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Share</div>
+                      <div className="mt-1 text-lg font-semibold text-white">Athlete Card</div>
+                      <div className="mt-1 text-sm text-white/60">Download it or copy a share link.</div>
                     </div>
 
-                    {/* CARD */}
-                    <div className="mt-6 grid place-items-center">
-                      <div
-                        ref={cardRef}
-                        className="relative w-full max-w-[640px] overflow-hidden rounded-[32px] border border-white/10 bg-[#07070A] p-6 sm:p-7"
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        onClick={downloadScorecard}
+                        className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
                       >
-                        {/* BACKDROP */}
-                        <div aria-hidden className="pointer-events-none absolute inset-0">
-                          <div className="absolute -top-40 left-1/2 h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(34,197,94,0.26),_transparent_62%)] blur-3xl" />
-                          <div className="absolute -bottom-56 left-1/2 h-[560px] w-[980px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.18),_transparent_62%)] blur-3xl" />
-                          <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:56px_56px]" />
-                          <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_0%,transparent_0%,rgba(7,7,10,0.55)_55%,rgba(7,7,10,0.98)_100%)]" />
-                          <div className="absolute -right-24 -top-12 h-56 w-56 rotate-12 rounded-3xl border border-white/10 bg-white/[0.03]" />
-                        </div>
-
-                        {/* CONTENT */}
-                        <div className="relative z-10">
-                          {/* TOP BAR */}
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 bg-white/[0.04]">
-                                <div
-                                  aria-hidden
-                                  className="absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(34,197,94,0.22),transparent_58%)]"
-                                />
-                                <div
-                                  aria-hidden
-                                  className="absolute inset-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                                />
-                                <div className="relative grid h-11 w-11 place-items-center">
-                                  <img
-                                    src="/logo.png"
-                                    alt="Strendex"
-                                    className="h-8 w-8 object-contain"
-                                    crossOrigin="anonymous"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-semibold tracking-wide text-white">
-                                    STRENDEX
-                                  </div>
-                                </div>
-                                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-400">
-                                  HYBRID PERFORMANCE CARD
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="sm:text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                Standing
-                              </div>
-                              <div className="mt-1 text-[12px] sm:text-sm font-semibold text-white whitespace-nowrap">
-                                {topPercent === null
-                                  ? "—"
-                                  : `Better than ${Math.max(0, Math.min(100, topPercent)).toFixed(
-                                      1
-                                    )}%`}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* HERO */}
-                          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto] sm:items-end">
-                            <div className="min-w-0">
-                              <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                Athlete
-                              </div>
-                              <div className="mt-1 truncate text-[24px] sm:text-[28px] font-semibold tracking-tight text-white">
-                                {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
-                              </div>
-
-                              <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <span
-                                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-                                  {currentRank}
-                                </span>
-
-                                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
-                                  <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-emerald-300">
-                                    <ArchetypeIcon archetype={currentArchetype} className="h-3.5 w-3.5" />
-                                  </span>
-                                  {currentArchetype}
-                                </span>
-
-                                {globalRank !== null && totalAthletes !== null && (
-                                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-200">
-                                    #{globalRank} / {totalAthletes}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="mt-3 text-xs text-zinc-400 leading-relaxed">
-                                <span className="text-white font-semibold">{archetypeInfo.tagline}</span>
-                              </div>
-                            </div>
-
-                            <div className="text-left sm:text-right">
-                              <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                Hybrid Quotient
-                              </div>
-                              <div className="mt-1 text-[72px] sm:text-[88px] font-semibold tracking-tight text-white leading-none drop-shadow-[0_0_28px_rgba(34,197,94,0.42)]">
-                                {Number.isFinite(hqScore) ? hqScore : 0}
-                              </div>
-                              <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
-                                HQ SCORE
-                              </div>
-                            </div>
-                          </div>
-
-                          
-
-                          {/* BRAND STAMP */}
-                          <div className="mt-7 flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                            <span className="text-zinc-400">STRENDEX</span>
-                            <span className="text-zinc-600">TEST YOURSELF → {siteLabel}</span>
-                          </div>
-                        </div>
-                      </div>
+                        Download
+                      </button>
+                      <button
+                        onClick={copyShareLink}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+                      >
+                        Copy link
+                      </button>
                     </div>
-                  </section>
-                ) : null}
+                  </div>
 
-                {/* Advanced (optional) */}
-                {showAdvanced && !isScanning ? (
-                  <>
+                  <div className="mt-5 grid place-items-center">
                     <div
-                      id="profile"
-                      className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
+                      ref={cardRef}
+                      className="relative w-full max-w-[680px] overflow-hidden rounded-[32px] border border-white/10 bg-[#07070A] p-6"
                     >
-                      <div aria-hidden className="absolute inset-0">
-                        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_center,_rgba(34,197,94,0.18),_transparent_65%)] blur-2xl" />
+                      <div aria-hidden className="pointer-events-none absolute inset-0">
+                        <div className="absolute -top-44 left-1/2 h-[560px] w-[980px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(223,255,0,0.22),_transparent_62%)] blur-3xl" />
+                        <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:56px_56px]" />
+                        <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_0%,transparent_0%,rgba(7,7,10,0.55)_55%,rgba(7,7,10,0.98)_100%)]" />
                       </div>
 
-                      <div className="relative z-10 flex items-center justify-between gap-6">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                            Radar
-                          </div>
-                          <h3 className="mt-2 text-xl font-semibold text-white">
-                            Performance Signature
-                          </h3>
-                          <p className="mt-1 text-sm text-zinc-400">
-                            Normalized across strength + endurance.
-                          </p>
-                        </div>
-
-                        <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-zinc-300">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          ACTIVE
-                        </div>
-                      </div>
-
-                      <div className="relative z-10 mt-6 grid place-items-center rounded-2xl border border-white/10 bg-black/30 p-4 md:p-6">
-                        <StrendexChart data={chartData} />
-                      </div>
-
-                      {/* Optional: show percentiles if your API returns them */}
-                      {(strengthPercentile !== null || endurancePercentile !== null) && (
-                        <div className="relative z-10 mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                              Strength Percentile
-                            </div>
-                            <div className="mt-1 text-lg font-semibold text-white">
-                              {strengthPercentile === null ? "—" : `${strengthPercentile.toFixed(1)}%`}
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
+                            <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-white/50">
+                              HYBRID ATHLETE CARD
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                            <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-                              Endurance Percentile
-                            </div>
-                            <div className="mt-1 text-lg font-semibold text-white">
-                              {endurancePercentile === null ? "—" : `${endurancePercentile.toFixed(1)}%`}
+
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-widest text-white/40">Standing</div>
+                            <div className="mt-1 text-sm font-semibold text-white">
+                              {topPercent === null ? "—" : `Better than ${topPercent.toFixed(1)}%`}
                             </div>
                           </div>
                         </div>
-                      )}
-                    </div>
 
-                    <div id="standards" className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
-                      <div className="flex items-center justify-between px-6 py-5">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-                            Standards
+                        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                          <div className="min-w-0">
+                            <div className="text-[10px] uppercase tracking-widest text-white/40">Athlete</div>
+                            <div className="mt-1 truncate text-[26px] font-semibold tracking-tight text-white">
+                              {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
+                                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+                                {tier}
+                              </span>
+
+                              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-white">
+                                <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-[#DFFF00]">
+                                  <ArchetypeIcon archetype={archetype} className="h-3.5 w-3.5" />
+                                </span>
+                                {archetype}
+                              </span>
+
+                              {globalRank !== null && totalAthletes !== null && (
+                                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-white">
+                                  #{globalRank} / {totalAthletes}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-3 text-sm text-white/60">
+                              <span className="font-semibold text-white">{archetypeInfo.tagline}</span>
+                            </div>
                           </div>
-                          <h3 className="mt-1 text-lg font-semibold text-white">HQ Rank Bands</h3>
+
+                          <div className="text-left sm:text-right">
+                            <div className="text-[10px] uppercase tracking-widest text-white/40">Hybrid Score</div>
+                            <div className="mt-1 text-[78px] font-semibold leading-none tracking-tight text-white drop-shadow-[0_0_30px_rgba(223,255,0,0.26)]">
+                              {hasResults ? hybridScore : 0}
+                            </div>
+                            <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-white/50">
+                              0–100
+                            </div>
+                          </div>
                         </div>
-                        <Link
-                          href="/rankings"
-                          className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          Open Rankings →
-                        </Link>
-                      </div>
 
-                      <div className="border-t border-white/10">
-                        <table className="w-full text-left text-sm">
-                          <thead className="bg-black/30 text-[10px] uppercase tracking-widest text-zinc-500">
-                            <tr>
-                              <th className="px-6 py-4 font-semibold">Rank</th>
-                              <th className="px-6 py-4 font-semibold">Score Range</th>
-                            </tr>
-                          </thead>
-
-                          <tbody className="divide-y divide-white/10">
-                            {[
-                              { label: "WORLD CLASS", range: "90+" },
-                              { label: "ELITE", range: "75 – 89" },
-                              { label: "ADVANCED", range: "60 – 74" },
-                              { label: "INTERMEDIATE", range: "40 – 59" },
-                              { label: "NOVICE", range: "0 – 39" },
-                            ].map((row) => {
-                              const active = currentRank === (row.label as Rank);
-                              return (
-                                <tr key={row.label} className={active ? "bg-emerald-400/10" : ""}>
-                                  <td className="px-6 py-4 font-semibold text-zinc-200">{row.label}</td>
-                                  <td className="px-6 py-4 text-zinc-400">{row.range}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </>
-                ) : null}
-
-                {/* Small footer nav */}
-                {!isScanning ? (
-                  <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <p className="text-sm text-zinc-400">
-                        Tip: use true 1RMs and your most recent endurance time.
-                      </p>
-                      <div className="flex gap-3">
-                        <Link
-                          href="/rankings"
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-black/30 px-4 py-2 text-xs font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          Rankings
-                        </Link>
-                        <Link
-                          href="/"
-                          className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white hover:bg-white/[0.06] transition"
-                        >
-                          Home
-                        </Link>
+                        <div className="mt-6 flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-white/40">
+                          <span>STRENDEX</span>
+                          <span className="text-white/30">TEST YOURSELF → {siteLabel}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                ) : null}
-              </>
+                </div>
+
+                {/* Ranking bands */}
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Tiers</div>
+                      <div className="mt-1 text-base font-semibold text-white">Score bands</div>
+                    </div>
+                    <Link
+                      href="/rankings"
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.06]"
+                    >
+                      Open rankings →
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-white/10">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-white/[0.03] text-[10px] uppercase tracking-widest text-white/40">
+                        <tr>
+                          <th className="px-5 py-3 font-semibold">Tier</th>
+                          <th className="px-5 py-3 font-semibold">Score</th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y divide-white/10">
+                        {[
+                          { label: "WORLD CLASS", range: "90+" },
+                          { label: "ELITE", range: "75 – 89" },
+                          { label: "ADVANCED", range: "60 – 74" },
+                          { label: "INTERMEDIATE", range: "40 – 59" },
+                          { label: "NOVICE", range: "0 – 39" },
+                        ].map((row) => {
+                          const active = tier === (row.label as Tier);
+                          return (
+                            <tr key={row.label} className={active ? "bg-[#DFFF00]/10" : ""}>
+                              <td className="px-5 py-3 font-semibold text-white">{row.label}</td>
+                              <td className="px-5 py-3 text-white/60">{row.range}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!showDetails && (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Next</div>
+                <div className="mt-2 text-sm text-white/60">
+                  Want more detail? Open <span className="text-white font-semibold">Show details</span> for archetype, radar, and share card.
+                </div>
+              </div>
             )}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Sticky Results Dock (mobile-first) */}
-      {showResults && !isScanning && (
-        <div className="fixed bottom-3 left-3 right-3 z-50 md:hidden">
+      {/* Mobile quick dock */}
+      {hasResults && !isWorking && (
+        <div className="fixed bottom-3 left-3 right-3 z-50 lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#020203]/85 px-3 py-2 backdrop-blur-xl">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="text-xs font-semibold text-white">
-                  HQ {Number.isFinite(hqScore) ? hqScore : 0}
-                </div>
-
-                <span
-                  className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${rankMeta[currentRank].pill}`}
-                >
+                <div className="text-xs font-semibold text-white">Hybrid {hybridScore}</div>
+                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
                   <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-                  {currentRank}
+                  {tier}
                 </span>
               </div>
             </div>
@@ -1384,15 +1258,94 @@ if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
               >
                 CARD
               </button>
+              <button
+                onClick={() => setShowDetails(true)}
+                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold tracking-widest text-white"
+              >
+                DETAILS
+              </button>
             </div>
           </div>
         </div>
       )}
-    </main>
+    </section>
   );
 }
 
-// ---------------- Components ----------------
+// ---------- Small UI components ----------
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="text-white/60">{label}</div>
+      <div className="text-white font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="text-[10px] uppercase tracking-widest text-white/40">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+function TextField({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">{label}</label>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={24}
+        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+      />
+    </div>
+  );
+}
+
+function Field({
+  label,
+  placeholder,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  placeholder?: string;
+  value: string;
+  onChange: (v: string) => void;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">{label}</label>
+      <input
+        type="number"
+        inputMode="decimal"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+      />
+      {hint ? <div className="mt-1 text-[11px] text-white/45">{hint}</div> : null}
+    </div>
+  );
+}
 
 function ArchetypeIcon({
   archetype,
@@ -1476,13 +1429,12 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
   const meta: Record<Archetype, { label: string; ring: string; bg: string; icon: ReactNode }> = {
     "STRENGTH BEAST": {
       label: "Strength Beast",
-      ring: "border-emerald-400/20",
-      bg: "bg-emerald-400/10 text-emerald-200",
+      ring: "border-[#DFFF00]/25",
+      bg: "bg-[#DFFF00]/10 text-[#DFFF00]",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M4 12c2.5-3.5 5.5-5 8-5s5.5 1.5 8 5c-2.5 3.5-5.5 5-8 5s-5.5-1.5-8-5Z" stroke="currentColor" strokeWidth="1.6" />
           <path d="M9 12h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M7.2 10.6 6 9.4M16.8 10.6 18 9.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       ),
     },
@@ -1504,7 +1456,6 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M12 3v18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <path d="M6 7h12M7.5 17h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M8 7c0 4-2 6-2 6h4s-2-2-2-6ZM16 7c0 4 2 6 2 6h-4s2-2 2-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
         </svg>
       ),
     },
@@ -1515,7 +1466,6 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M12 2 5 9l7 13 7-13-7-7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-          <path d="M12 6v14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       ),
     },
@@ -1532,12 +1482,11 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
     },
     "STRENGTH-LEANING HYBRID": {
       label: "Strength Leaning",
-      ring: "border-emerald-400/20",
-      bg: "bg-emerald-400/10 text-emerald-200",
+      ring: "border-[#DFFF00]/25",
+      bg: "bg-[#DFFF00]/10 text-[#DFFF00]",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M7 9h10M9 7v10M15 7v10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M4 12h3M17 12h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       ),
     },
@@ -1548,7 +1497,6 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M5 19V9l7-4 7 4v10" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-          <path d="M9 19v-6h6v6" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
         </svg>
       ),
     },
@@ -1557,61 +1505,12 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
   const m = meta[archetype];
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${m.ring} ${m.bg}`} title={m.label}>
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${m.ring} ${m.bg}`}
+      title={m.label}
+    >
       <span className="grid place-items-center">{m.icon}</span>
       {m.label}
     </span>
-  );
-}
-
-function TextField({
-  label,
-  placeholder,
-  value,
-  onChange,
-}: {
-  label: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">{label}</label>
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        maxLength={24}
-        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-      />
-    </div>
-  );
-}
-
-function Field({
-  label,
-  placeholder,
-  value,
-  onChange,
-}: {
-  label: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">{label}</label>
-      <input
-        type="number"
-        inputMode="decimal"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-      />
-    </div>
   );
 }
