@@ -417,34 +417,50 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
     apiStrengthIndex: number | null;
     apiEnduranceIndex: number | null;
   }) {
-    const { finalName, hq, strP, endP, endurance_seconds_for_db } = args;
-
-    // NOTE: your table uses LB columns for lifts/bodyweight; keep consistent.
+    const {
+      finalName,
+      hq,
+      strP,
+      endP,
+      endurance_seconds_for_db,
+      apiStrengthIndex,
+      apiEnduranceIndex,
+    } = args;
+  
+    // 90+ should NOT auto-approve
+    const status = hq >= 90 ? "pending" : "approved";
+  
+    // Debug: verify what you're about to write
+    console.log("[SAVE SUBMISSION]", { finalName, hq, status });
+  
     const { error } = await supabase.from("submissions").insert([
       {
         athlete_name: finalName,
         bodyweight: wLb,
-
-// store endurance as half-marathon-equivalent seconds in the *new* column
-endurance_seconds: endurance_seconds_for_db,
-
-bench: bLb || null,
-squat: sLb || null,
-deadlift: dLb || null,
-
+  
+        endurance_seconds: endurance_seconds_for_db,
+  
+        bench: bLb || null,
+        squat: sLb || null,
+        deadlift: dLb || null,
+  
         hq_score: hq,
         rank: getTier(hq),
         archetype,
+  
         strength_index: apiStrengthIndex,
-endurance_index: apiEnduranceIndex,
+        endurance_index: apiEnduranceIndex,
         total_lift: totalLift,
         strength_ratio: strengthRatio,
-
+  
         strength_percentile: strP,
         endurance_percentile: endP,
+  
+        // Verification gate:
+        status: status,
       },
     ]);
-
+  
     return { error };
   }
 
@@ -497,7 +513,11 @@ endurance_index: apiEnduranceIndex,
         console.error(error);
         setStatusText("Saved locally. Couldn’t log right now — try again later.");
       } else {
-        setStatusText("Saved to rankings.");
+        setStatusText(
+          computed.hq >= 90
+            ? "Submitted — pending verification (won’t appear on leaderboard yet)."
+            : "Saved to rankings."
+        );
       }
 
       // Move user to results view

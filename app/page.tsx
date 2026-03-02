@@ -4,41 +4,42 @@ import Image from "next/image";
 export default function Home() {
   const chips = [
     { label: "No sign-up" },
+    { label: "< 60 seconds" },
     { label: "Mobile-first" },
     { label: "Shareable card" },
-    { label: "Global rankings" },
   ];
 
   const outputs = [
-    { k: "Hybrid Score", v: "Your hybrid benchmark (0–100)" },
-    { k: "Tier", v: "Novice → World Class" },
-    { k: "Archetype", v: "Strength vs Engine profile" },
-    { k: "Percentiles", v: "Strength + Engine ranks" },
+    { k: "HQ Score", v: "0–100 hybrid benchmark" },
+    { k: "Top%", v: "See where you rank" },
+    { k: "Split", v: "Strength vs Engine" },
+    { k: "Archetype", v: "Your profile label" },
   ];
 
   const steps = [
     {
       n: "01",
-      t: "Enter your stats",
-      d: "Bodyweight + lifts + one endurance test time.",
+      t: "Enter a few metrics",
+      d: "Bodyweight + 3 lifts + one endurance time.",
     },
     {
       n: "02",
-      t: "Get your Hybrid Score",
-      d: "Tier, archetype, and strength/engine percentiles.",
+      t: "Get your result",
+      d: "HQ Score (0–100), top%, archetype, and split.",
     },
     {
       n: "03",
       t: "Share & compare",
-      d: "Download a clean card for stories. Climb the rankings.",
+      d: "Post the card. Compare with friends and rankings.",
     },
   ];
 
+  // Canonical tier framing: derived from percentile nature (Top% bands)
   const tiers = [
     {
       label: "WORLD CLASS",
-      range: "90+",
-      sub: "Hybrid outliers",
+      range: "Top 1%",
+      sub: "Rare hybrid outliers",
       color: "text-emerald-300",
       bg: "bg-emerald-400/10 border-emerald-400/20",
       glow:
@@ -46,7 +47,7 @@ export default function Home() {
     },
     {
       label: "ELITE",
-      range: "75–89",
+      range: "Top 5%",
       sub: "Highly competitive",
       color: "text-sky-300",
       bg: "bg-sky-400/10 border-sky-400/20",
@@ -55,8 +56,8 @@ export default function Home() {
     },
     {
       label: "ADVANCED",
-      range: "60–74",
-      sub: "Strong base",
+      range: "Top 15%",
+      sub: "Strong hybrid base",
       color: "text-violet-300",
       bg: "bg-violet-400/10 border-violet-400/20",
       glow:
@@ -64,8 +65,8 @@ export default function Home() {
     },
     {
       label: "INTERMEDIATE",
-      range: "40–59",
-      sub: "Developing",
+      range: "Top 40%",
+      sub: "Developing fast",
       color: "text-amber-300",
       bg: "bg-amber-400/10 border-amber-400/20",
       glow:
@@ -73,7 +74,7 @@ export default function Home() {
     },
     {
       label: "NOVICE",
-      range: "0–39",
+      range: "Bottom 60%",
       sub: "Starting point",
       color: "text-zinc-200",
       bg: "bg-white/[0.03] border-white/10",
@@ -85,7 +86,7 @@ export default function Home() {
     { q: "Do I need to sign up?", a: "No — run the scan and get your result instantly." },
     {
       q: "What endurance test do I use?",
-      a: "Pick a distance (5K, 10K, half, etc.) and enter a real time. We normalize it for scoring.",
+      a: "Use a real time for a distance you know (5K, 10K, half, etc.). We normalize it for scoring.",
     },
     {
       q: "What should I input for lifts?",
@@ -93,7 +94,7 @@ export default function Home() {
     },
     {
       q: "Can I compare with friends?",
-      a: "Yes — share your card and check the rankings.",
+      a: "Yes — share your card and check rankings to see where you land.",
     },
   ];
 
@@ -119,16 +120,16 @@ export default function Home() {
               </div>
 
               <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
-                The{" "}
+                Know your{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-zinc-500">
-                  Hybrid Score
-                </span>{" "}
-                standard.
+                  HQ Score
+                </span>
+                .
               </h1>
 
               <p className="mt-4 max-w-prose text-base leading-relaxed text-zinc-300 sm:text-lg">
-                A clean scan of your strength + engine. Get a score, a tier, your archetype, and a shareable card in
-                under a minute.
+                A clean scan of your strength + engine. Get your HQ Score (0–100), top%, tier, archetype, and a
+                shareable card in under a minute.
               </p>
 
               <div className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -136,7 +137,7 @@ export default function Home() {
                   href="/tool"
                   className="group inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:w-auto"
                 >
-                  Calculate Hybrid Score
+                  Run the scan
                   <span className="ml-2 inline-block transition-transform group-hover:translate-x-0.5">→</span>
                 </Link>
 
@@ -170,16 +171,16 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Micro reassurance */}
+              {/* Trust / clarity (keep it non-overwhelming) */}
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm font-semibold text-white">No account. No onboarding. Just results.</div>
-                  <div className="text-xs text-zinc-400">Built for sharing & comparing.</div>
+                  <div className="text-sm font-semibold text-white">Built for normal people — fast, clear, no fluff.</div>
+                  <div className="text-xs text-zinc-400">Early datasets improve as more athletes submit.</div>
                 </div>
               </div>
             </div>
 
-            {/* Right: premium preview */}
+            {/* Right: premium preview (mobile-first readable) */}
             <div className="md:col-span-5">
               <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6">
                 <div aria-hidden className="absolute inset-0">
@@ -201,8 +202,8 @@ export default function Home() {
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Standing</div>
-                      <div className="mt-1 text-sm font-semibold text-white">Better than 72%</div>
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Top%</div>
+                      <div className="mt-1 text-sm font-semibold text-white">Top 28%</div>
                     </div>
                   </div>
 
@@ -218,20 +219,20 @@ export default function Home() {
                           ADVANCED
                         </span>
                         <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold tracking-widest text-zinc-300">
-                          STRENGTH-LEANING HYBRID
+                          STRENGTH-LEANING
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Hybrid Score</div>
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">HQ Score</div>
                       <div className="mt-1 text-5xl font-semibold tracking-tight text-white">68</div>
 
                       <div className="mt-2 flex flex-col gap-2">
                         <div className="w-40 max-w-[52vw]">
                           <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
                             <span>Strength</span>
-                            <span className="text-zinc-400">72%</span>
+                            <span className="text-zinc-400">72</span>
                           </div>
                           <div className="mt-1 h-2 rounded-full bg-white/10">
                             <div className="h-2 w-[72%] rounded-full bg-emerald-400/70 shadow-[0_0_18px_rgba(34,197,94,0.35)]" />
@@ -241,7 +242,7 @@ export default function Home() {
                         <div className="w-40 max-w-[52vw]">
                           <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
                             <span>Engine</span>
-                            <span className="text-zinc-400">58%</span>
+                            <span className="text-zinc-400">58</span>
                           </div>
                           <div className="mt-1 h-2 rounded-full bg-white/10">
                             <div className="h-2 w-[58%] rounded-full bg-sky-400/60 shadow-[0_0_18px_rgba(59,130,246,0.28)]" />
@@ -271,7 +272,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-3 text-xs text-zinc-500">Made to look clean on stories — export as PNG.</div>
+              <div className="mt-3 text-xs text-zinc-500">Designed to look clean on stories — export as PNG.</div>
             </div>
           </div>
 
@@ -291,7 +292,7 @@ export default function Home() {
         <div className="mb-8 max-w-2xl">
           <h2 className="text-2xl font-semibold text-white md:text-3xl">How it works</h2>
           <p className="mt-2 text-sm text-zinc-400 md:text-base">
-            Simple inputs. Clean output. Designed for comparison.
+            Minimal inputs → clear outputs → easy to share.
           </p>
         </div>
 
@@ -309,9 +310,9 @@ export default function Home() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Promise</div>
-              <div className="mt-2 text-sm font-semibold text-white">Done in under a minute.</div>
+              <div className="mt-2 text-sm font-semibold text-white">Clear result, fast.</div>
               <div className="mt-1 text-sm text-zinc-400">
-                You’ll understand your result even if you’ve never heard of “hybrid training”.
+                If you’ve never heard of “hybrid training,” you’ll still understand your score.
               </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -332,14 +333,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* STANDARDS */}
-      <section id="bands" className="mx-auto max-w-7xl px-5 pb-16 sm:px-6 sm:pb-20">
+      {/* TIERS */}
+      <section id="tiers" className="mx-auto max-w-7xl px-5 pb-16 sm:px-6 sm:pb-20">
         <div className="rounded-3xl border border-white/10 bg-white/[0.03]">
           <div className="flex flex-col gap-5 px-6 py-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Standards</div>
-              <h2 className="mt-2 text-xl font-semibold text-white">Hybrid Score tiers</h2>
-              <p className="mt-1 text-sm text-zinc-400">So the number actually means something.</p>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Tiers</div>
+              <h2 className="mt-2 text-xl font-semibold text-white">What the result means</h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                Tiering is based on where you land relative to the dataset.
+              </p>
             </div>
 
             <div className="flex gap-3">
@@ -370,7 +373,7 @@ export default function Home() {
             </div>
 
             <div className="mt-4 text-xs text-zinc-500">
-              Hybrid Score is computed from your strength + endurance performance and ranked against the dataset.
+              Early datasets are noisier — the benchmark gets more accurate as submissions grow.
             </div>
           </div>
         </div>
@@ -381,7 +384,7 @@ export default function Home() {
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
           <div className="max-w-2xl">
             <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">FAQ</div>
-            <h2 className="mt-2 text-xl font-semibold text-white md:text-2xl">Common questions</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white md:text-2xl">Quick questions</h2>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -402,7 +405,7 @@ export default function Home() {
             <div className="max-w-2xl">
               <h2 className="text-3xl font-semibold text-white md:text-4xl">Run your scan.</h2>
               <p className="mt-3 text-zinc-400">
-                Hybrid Score, tier, archetype, percentiles, share card — under a minute.
+                HQ Score (0–100), top%, tier, archetype, share card — under a minute.
               </p>
             </div>
 
@@ -411,7 +414,7 @@ export default function Home() {
                 href="/tool"
                 className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-8 py-4 text-sm font-semibold text-black hover:bg-emerald-300 transition"
               >
-                Calculate Hybrid Score
+                Start
               </Link>
 
               <Link

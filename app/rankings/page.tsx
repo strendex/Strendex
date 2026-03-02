@@ -8,9 +8,10 @@ type Row = {
   id?: string;
   created_at?: string;
   athlete_name?: string | null;
-  hq_score?: number | string | null; // still using existing column in DB
+  hq_score?: number | string | null;
   rank?: string | null;
   archetype?: string | null;
+  status?: "approved" | "pending" | "rejected" | string | null;
 };
 
 type Player = {
@@ -20,6 +21,7 @@ type Player = {
   score: number;
   tier: string;
   archetype: string;
+  created_at?: string;
 };
 
 function safeName(v: any) {
@@ -78,17 +80,24 @@ export default function RankingsPage() {
   const [query, setQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("ALL");
 
+  // new, user-friendly filters
+  const [minScore, setMinScore] = useState<string>(""); // empty = no limit
+  const [maxScore, setMaxScore] = useState<string>(""); // empty = no limit
+  const [timeFilter, setTimeFilter] = useState<"ALL" | "30D" | "7D">("ALL");
+  const [sortBy, setSortBy] = useState<"SCORE_DESC" | "NEWEST" | "NAME_ASC">("SCORE_DESC");
+
   useEffect(() => {
     async function fetchRankings() {
       setLoading(true);
       setErr("");
 
       const { data, error } = await supabase
-        .from("submissions")
-        .select("id,created_at,athlete_name,hq_score,rank,archetype")
-        .not("hq_score", "is", null)
-        .order("hq_score", { ascending: false })
-        .limit(200);
+  .from("submissions")
+  .select("id,created_at,athlete_name,hq_score,rank,archetype,status")
+  .eq("status", "approved") // ONLY show verified rows
+  .not("hq_score", "is", null)
+  .order("hq_score", { ascending: false })
+  .limit(200);
 
       if (error) {
         console.error(error);
@@ -107,6 +116,7 @@ export default function RankingsPage() {
         score: Number(safeNumber(item.hq_score).toFixed(1)),
         tier: (item.rank ?? "—").toString(),
         archetype: (item.archetype ?? "—").toString(),
+        created_at: item.created_at,
       }));
 
       setRows(formatted);
@@ -121,19 +131,49 @@ export default function RankingsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    return rows.filter((p) => {
-      const matchesQuery =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.archetype.toLowerCase().includes(q) ||
-        p.tier.toLowerCase().includes(q);
+    const min = minScore.trim() === "" ? -Infinity : Number(minScore);
+    const max = maxScore.trim() === "" ? Infinity : Number(maxScore);
 
-      const matchesTier =
-        tierFilter === "ALL" ? true : p.tier === tierFilter;
+    const now = Date.now();
+    const cutoff =
+      timeFilter === "7D"
+        ? now - 7 * 24 * 60 * 60 * 1000
+        : timeFilter === "30D"
+        ? now - 30 * 24 * 60 * 60 * 1000
+        : -Infinity;
 
-      return matchesQuery && matchesTier;
+    let out = rows.filter((p) => {
+      // Search should feel normal: NAME ONLY
+      const matchesQuery = !q || p.name.toLowerCase().includes(q);
+
+      const matchesTier = tierFilter === "ALL" ? true : p.tier === tierFilter;
+
+      const matchesScore = p.score >= min && p.score <= max;
+
+      // time filter uses created_at from Row; we didn't store it on Player,
+      // so either (A) add created_at to Player, OR (B) skip this filter.
+      // We'll do (A) below in Step 3.
+      const createdMs = (p as any).created_at ? Date.parse((p as any).created_at) : 0;
+      const matchesTime = cutoff === -Infinity ? true : createdMs >= cutoff;
+
+      return matchesQuery && matchesTier && matchesScore && matchesTime;
     });
-  }, [rows, query, tierFilter]);
+
+    // Sort
+    out.sort((a, b) => {
+      if (sortBy === "NEWEST") {
+        const am = (a as any).created_at ? Date.parse((a as any).created_at) : 0;
+        const bm = (b as any).created_at ? Date.parse((b as any).created_at) : 0;
+        return bm - am;
+      }
+      if (sortBy === "NAME_ASC") return a.name.localeCompare(b.name);
+      // SCORE_DESC default
+      return b.score - a.score;
+    });
+
+    // Recompute places AFTER filtering/sorting (so rank column matches what they see)
+    return out.map((p, i) => ({ ...p, place: i + 1 }));
+  }, [rows, query, tierFilter, minScore, maxScore, timeFilter, sortBy]);
 
   const topThree = filtered.slice(0, 3);
 
@@ -179,85 +219,158 @@ export default function RankingsPage() {
           </div>
         </div>
 
-        {/* Controls */}
+                        {/* Controls */}
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-center">
-            <div className="md:col-span-7">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                Search
-              </label>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search athlete, tier, or archetype…"
-                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-              />
-              <div className="mt-1 text-[11px] text-zinc-500">
-                Showing{" "}
-                <span className="text-zinc-200 font-semibold">{filtered.length}</span>{" "}
-                of{" "}
-                <span className="text-zinc-200 font-semibold">{totalCount}</span>
-              </div>
-            </div>
-
-            <div className="md:col-span-3">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                Tier
-              </label>
-              <div className="relative">
-                <select
-                  value={tierFilter}
-                  onChange={(e) => setTierFilter(e.target.value)}
-                  className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 pr-11 text-sm text-white outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
-                >
-                  <option value="ALL">All tiers</option>
-                  <option value="WORLD CLASS">World Class</option>
-                  <option value="ELITE">Elite</option>
-                  <option value="ADVANCED">Advanced</option>
-                  <option value="INTERMEDIATE">Intermediate</option>
-                  <option value="NOVICE">Novice</option>
-                </select>
-
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                  <div className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 text-zinc-300" fill="none">
-                      <path
-                        d="M7 10l5 5 5-5"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-1 text-[11px] text-zinc-500">
-                Filter by tier label.
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                Reset
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setTierFilter("ALL");
-                }}
-                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
-              >
-                Clear
-              </button>
-              <div className="mt-1 text-[11px] text-zinc-500">
-                Back to defaults.
-              </div>
+          {/* Search (always visible) */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              Search
+            </label>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search athlete name…"
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+            />
+            <div className="mt-1 text-[11px] text-zinc-500">
+              Showing{" "}
+              <span className="text-zinc-200 font-semibold">{filtered.length}</span>{" "}
+              of{" "}
+              <span className="text-zinc-200 font-semibold">{totalCount}</span>
             </div>
           </div>
-        </div>
 
+          {/* Filters (collapsed by default on mobile) */}
+          <details className="mt-4 rounded-2xl border border-white/10 bg-black/30 open:bg-black/40">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-white">Filters</span>
+                <span className="text-[11px] text-zinc-500">
+                  {tierFilter !== "ALL" ||
+                  minScore ||
+                  maxScore ||
+                  timeFilter !== "ALL" ||
+                  sortBy !== "SCORE_DESC"
+                    ? "Active"
+                    : "Off"}
+                </span>
+              </div>
+
+              <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.03]">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-zinc-300" fill="none">
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </summary>
+
+            <div className="px-4 pb-4 pt-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-12 sm:items-end">
+                {/* Tier */}
+                <div className="sm:col-span-4">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                    Tier
+                  </label>
+                  <select
+                    value={tierFilter}
+                    onChange={(e) => setTierFilter(e.target.value)}
+                    className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+                  >
+                    <option value="ALL">All tiers</option>
+                    <option value="WORLD CLASS">World Class</option>
+                    <option value="ELITE">Elite</option>
+                    <option value="ADVANCED">Advanced</option>
+                    <option value="INTERMEDIATE">Intermediate</option>
+                    <option value="NOVICE">Novice</option>
+                  </select>
+                </div>
+
+                {/* Sort */}
+                <div className="sm:col-span-4">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                    Sort
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+                  >
+                    <option value="SCORE_DESC">Highest score</option>
+                    <option value="NEWEST">Newest</option>
+                    <option value="NAME_ASC">Name A–Z</option>
+                  </select>
+                </div>
+
+                {/* Time */}
+                <div className="sm:col-span-4">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                    Time
+                  </label>
+                  <select
+                    value={timeFilter}
+                    onChange={(e) => setTimeFilter(e.target.value as any)}
+                    className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition hover:bg-white/[0.04] focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+                  >
+                    <option value="ALL">All-time</option>
+                    <option value="30D">Last 30 days</option>
+                    <option value="7D">Last 7 days</option>
+                  </select>
+                </div>
+
+                {/* Score range */}
+                <div className="sm:col-span-8">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                    Score range
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      inputMode="decimal"
+                      value={minScore}
+                      onChange={(e) => setMinScore(e.target.value)}
+                      placeholder="Min"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+                    />
+                    <input
+                      inputMode="decimal"
+                      value={maxScore}
+                      onChange={(e) => setMaxScore(e.target.value)}
+                      placeholder="Max"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
+                    />
+                  </div>
+                  <div className="mt-1 text-[11px] text-zinc-500">Leave blank to ignore.</div>
+                </div>
+
+                {/* Reset */}
+                <div className="sm:col-span-4">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                    Reset
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setTierFilter("ALL");
+                      setMinScore("");
+                      setMaxScore("");
+                      setTimeFilter("ALL");
+                      setSortBy("SCORE_DESC");
+                    }}
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
+                  >
+                    Clear filters
+                  </button>
+                  <div className="mt-1 text-[11px] text-zinc-500">Back to defaults.</div>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
         {/* Loading / error */}
         {loading ? (
           <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
