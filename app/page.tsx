@@ -47,17 +47,15 @@ export default function Home() {
   The hybrid benchmark for real athletes.
 </h1>
 
-              <p className="mt-4 max-w-prose text-base leading-relaxed text-zinc-300 sm:text-lg">
-                Enter your bodyweight, three lifts, and a 5K time. Get your{" "}
-                <span className="text-white font-semibold">Hybrid Score (0–100)</span>, Top %, and a shareable athlete card —
-                in under a minute.
-              </p>
+<p className="mt-3 text-sm text-zinc-400 sm:text-base">
+  Calculate your Hybrid Score in under a minute.
+</p>
 
               {/* CTA — make it the obvious next step */}
               <div className="mt-7">
                 <Link
                   href="/tool"
-                  className="group inline-flex w-full items-center justify-center rounded-full bg-white px-8 py-4 text-sm font-semibold text-black hover:bg-zinc-200 transition sm:w-auto"
+                  className="group inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.06] px-8 py-4 text-sm font-semibold text-white backdrop-blur hover:bg-white/[0.10] transition sm:w-auto"
                 >
                   Start the calculator
                   <span className="ml-2 inline-block transition-transform group-hover:translate-x-0.5">→</span>
@@ -159,7 +157,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="mt-10 flex justify-center">
+          <div className="mt-12 mb-8 flex justify-center">
   <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-zinc-400">
     <span className="h-1 w-10 rounded-full bg-white/10" />
     Scroll for how it works
@@ -240,23 +238,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#020203]/80 backdrop-blur sm:hidden">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <Link
-            href="/tool"
-            className="inline-flex flex-1 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-zinc-200 transition"
-          >
-            Start calculator →
-          </Link>
-          <Link
-            href="/rankings"
-            className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white"
-          >
-            Rankings
-          </Link>
-        </div>
-      </div>
+      
 
       {/* RootLayout already renders Footer */}
     </main>
