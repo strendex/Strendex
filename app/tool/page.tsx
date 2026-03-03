@@ -371,7 +371,7 @@ const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
       throw new Error(data?.error ?? "Scoring failed");
     }
 
-    const hq = typeof data.hq === "number" ? data.hq : 0;
+    const hq = typeof data.hq === "number" ? Math.round(data.hq) : 0;
     const strP = typeof data.strengthPercentile === "number" ? data.strengthPercentile : null;
     const endP = typeof data.endurancePercentile === "number" ? data.endurancePercentile : null;
     const apiStrengthIndex = typeof data.strengthIndex === "number" ? data.strengthIndex : null;
@@ -1010,8 +1010,8 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-white/40">Hybrid Score</div>
                   <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
-                    {hasResults ? hybridScore : "—"}
-                  </div>
+  {hasResults ? Math.round(hybridScore) : "—"}
+</div>
                 </div>
 
                 <div className="text-right">
@@ -1181,7 +1181,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
                           <div className="text-left sm:text-right">
                             <div className="text-[10px] uppercase tracking-widest text-white/40">Hybrid Score</div>
                             <div className="mt-1 text-[78px] font-semibold leading-none tracking-tight text-white drop-shadow-[0_0_30px_rgba(223,255,0,0.26)]">
-                              {hasResults ? hybridScore : 0}
+                            {hasResults ? Math.round(hybridScore) : 0}
                             </div>
                             <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-white/50">
                               0–100
@@ -1263,7 +1263,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#020203]/85 px-3 py-2 backdrop-blur-xl">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="text-xs font-semibold text-white">Hybrid {hybridScore}</div>
+                <div className="text-xs font-semibold text-white">Hybrid {Math.round(hybridScore)}</div>
                 <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
                   <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
                   {tier}

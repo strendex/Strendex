@@ -9,6 +9,27 @@ const supabase = createClient(
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
+// ------------------ Canonical Score Definition ------------------
+// Canonical Score (0–100) = 0.5 * Strength Percentile + 0.5 * Endurance Percentile
+// This is the ONLY place score math should exist.
+// Everything else (tool UI, share card, leaderboard, DB) must consume the returned `hq`.
+const SCORE_WEIGHTS = {
+  strength: 0.5,
+  endurance: 0.5,
+} as const;
+
+function canonicalScoreFromPercentiles(
+  strengthPercentile: number,
+  endurancePercentile: number
+): number {
+  const sp = clamp(strengthPercentile, 0, 100);
+  const ep = clamp(endurancePercentile, 0, 100);
+
+  const raw = SCORE_WEIGHTS.strength * sp + SCORE_WEIGHTS.endurance * ep;
+
+  // Integer score (0–100)
+  return clamp(Math.round(raw), 0, 100);
+}
 
 // Percentile with tie handling (midrank / "Hazen-ish" style):
 // percentile = (count(x < v) + 0.5*count(x == v)) / N * 100
@@ -106,11 +127,11 @@ export async function POST(req: Request) {
     // IMPORTANT: if user doesn’t enter endurance, enduranceIndex=0 will crush them.
     // For MVP, we still compute it, but the UI can message "best with both".
     const strengthPercentile = percentileMidrank(strengthScores, strengthIndex);
-    const endurancePercentile = enduranceSeconds ? percentileMidrank(enduranceScores, enduranceIndex) : 0;
+    const endurancePercentile =
+  enduranceSeconds !== null ? percentileMidrank(enduranceScores, enduranceIndex) : 0;
 
-    // ---- Hybrid Score (0–100) = avg of percentiles ----
-    const hq = Number(((strengthPercentile + endurancePercentile) / 2).toFixed(1));
-
+// ---- Canonical Score (0–100) = 0.5*StrengthP + 0.5*EnduranceP ----
+const hq = canonicalScoreFromPercentiles(strengthPercentile, endurancePercentile);
     // ---- Rank / better-than% ----
     // Include current athlete in displayed total
     const totalExisting = hqScores.length;

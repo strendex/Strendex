@@ -113,7 +113,7 @@ export default function RankingsPage() {
         place: index + 1,
         id: String(item.id ?? `${index}`),
         name: safeName(item.athlete_name),
-        score: Number(safeNumber(item.hq_score).toFixed(1)),
+        score: Math.round(safeNumber(item.hq_score)),
         tier: (item.rank ?? "—").toString(),
         archetype: (item.archetype ?? "—").toString(),
         created_at: item.created_at,
@@ -362,7 +362,7 @@ export default function RankingsPage() {
                       setSortBy("SCORE_DESC");
                     }}
                     className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
-                  >
+                  > 
                     Clear filters
                   </button>
                   <div className="mt-1 text-[11px] text-zinc-500">Back to defaults.</div>
