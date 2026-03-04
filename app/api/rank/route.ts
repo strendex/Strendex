@@ -102,8 +102,8 @@ export async function POST(req: Request) {
 
     // ---- Pull dataset for percentiles + ranking ----
     const { data, error } = await supabase
-      .from("submissions")
-      .select("hq_score,strength_index,endurance_index");
+  .from("submissions")
+  .select("hq_score,strength_index,endurance_index,endurance_seconds");
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -115,20 +115,35 @@ export async function POST(req: Request) {
       .map((r: any) => Number(r.hq_score))
       .filter((n: number) => Number.isFinite(n));
 
-    const strengthScores = rows
+      const strengthScores = rows
       .map((r: any) => Number(r.strength_index))
-      .filter((n: number) => Number.isFinite(n));
+      .filter((n: number) => Number.isFinite(n) && n > 0);
 
-    const enduranceScores = rows
-      .map((r: any) => Number(r.endurance_index))
-      .filter((n: number) => Number.isFinite(n));
+      const enduranceScores = rows
+      .filter(
+        (r: any) =>
+          r.endurance_seconds !== null &&
+          Number.isFinite(Number(r.endurance_index)) &&
+          Number(r.endurance_index) > 0
+      )
+      .map((r: any) => Number(r.endurance_index));
 
     // ---- Percentiles (this is your real "score basis") ----
     // IMPORTANT: if user doesn’t enter endurance, enduranceIndex=0 will crush them.
     // For MVP, we still compute it, but the UI can message "best with both".
     const strengthPercentile = percentileMidrank(strengthScores, strengthIndex);
-    const endurancePercentile =
-  enduranceSeconds !== null ? percentileMidrank(enduranceScores, enduranceIndex) : 0;
+    const MIN_ENDURANCE_SAMPLE = 30; // change later if you want
+
+let endurancePercentile = 0;
+
+if (enduranceSeconds !== null) {
+  // If dataset is too small, percentiles are meaningless.
+  // Fallback: use the enduranceIndex itself (0–100) until you have enough data.
+  endurancePercentile =
+    enduranceScores.length >= MIN_ENDURANCE_SAMPLE
+      ? percentileMidrank(enduranceScores, enduranceIndex)
+      : enduranceIndex;
+}
 
 // ---- Canonical Score (0–100) = 0.5*StrengthP + 0.5*EnduranceP ----
 const hq = canonicalScoreFromPercentiles(strengthPercentile, endurancePercentile);

@@ -247,6 +247,7 @@ export default function ToolPage() {
   const [topPercent, setTopPercent] = useState<number | null>(null);
   const [apiStrengthIndex, setApiStrengthIndex] = useState<number | null>(null);
 const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
+const [computedArchetype, setComputedArchetype] = useState<Archetype>("BASE BUILDER");
 
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -286,8 +287,11 @@ const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
     ).toFixed(1)
   );
 
-  const archetype = getArchetype(strengthIndex, enduranceIndex);
-  const archetypeInfo = ARCHETYPE_COPY[archetype];
+  // Default before API returns
+const [computedArchetype, setComputedArchetype] = useState<Archetype>("BASE BUILDER");
+
+// Use computedArchetype for UI copy
+const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
 
   const tier = useMemo(() => getTier(hybridScore), [hybridScore]);
 
@@ -416,6 +420,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
     endurance_seconds_for_db: number | null;
     apiStrengthIndex: number | null;
     apiEnduranceIndex: number | null;
+    computedArchetype: Archetype;
   }) {
     const {
       finalName,
@@ -425,6 +430,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
       endurance_seconds_for_db,
       apiStrengthIndex,
       apiEnduranceIndex,
+      computedArchetype,
     } = args;
   
     // 90+ should NOT auto-approve
@@ -446,7 +452,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
   
         hq_score: hq,
         rank: getTier(hq),
-        archetype,
+        archetype: computedArchetype,
   
         strength_index: apiStrengthIndex,
         endurance_index: apiEnduranceIndex,
@@ -486,6 +492,8 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
 
       const finalName = cleanedName();
       const computed = await computeScoreFromAPI();
+      const a = getArchetype(computed.strP ?? 0, computed.endP ?? 0);
+setComputedArchetype(a);
 
       // Apply UI states immediately (do NOT rely on async setState for DB values)
       setHybridScore(computed.hq);
@@ -507,6 +515,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
         endurance_seconds_for_db: computed.endurance_seconds,
         apiStrengthIndex: computed.apiStrengthIndex,
         apiEnduranceIndex: computed.apiEnduranceIndex,
+        computedArchetype: a,
       });
 
       if (error) {
@@ -1045,7 +1054,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
 
   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
     <div className="text-[10px] uppercase tracking-widest text-white/40">Athlete type</div>
-    <div className="mt-1 text-sm font-semibold text-white">{archetype}</div>
+    <div className="mt-1 text-sm font-semibold text-white">{computedArchetype}</div>
     <div className="mt-1 text-[11px] text-white/55 line-clamp-2">{archetypeInfo.tagline}</div>
   </div>
 </div>
@@ -1075,7 +1084,7 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
                   <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Archetype</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <ArchetypeBadge archetype={archetype} />
+                  <ArchetypeBadge archetype={computedArchetype} />
                     <span className="text-sm text-white/70">{archetypeInfo.tagline}</span>
                   </div>
 
@@ -1161,9 +1170,9 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
 
                               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-white">
                                 <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-[#DFFF00]">
-                                  <ArchetypeIcon archetype={archetype} className="h-3.5 w-3.5" />
+                                  <ArchetypeIcon archetype={computedArchetype} className="h-3.5 w-3.5" />
                                 </span>
-                                {archetype}
+                                {computedArchetype}
                               </span>
 
                               {globalRank !== null && totalAthletes !== null && (
@@ -1368,7 +1377,7 @@ function Field({
 }
 
 function ArchetypeIcon({
-  archetype,
+  archetype: computedArchetype,
   className = "h-4 w-4",
 }: {
   archetype: Archetype;
