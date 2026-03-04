@@ -247,7 +247,6 @@ export default function ToolPage() {
   const [topPercent, setTopPercent] = useState<number | null>(null);
   const [apiStrengthIndex, setApiStrengthIndex] = useState<number | null>(null);
 const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
-const [computedArchetype, setComputedArchetype] = useState<Archetype>("BASE BUILDER");
 
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -288,7 +287,8 @@ const [computedArchetype, setComputedArchetype] = useState<Archetype>("BASE BUIL
   );
 
   // Default before API returns
-const [computedArchetype, setComputedArchetype] = useState<Archetype>("BASE BUILDER");
+  const firstArchetype = Object.keys(ARCHETYPE_COPY)[0] as Archetype;
+  const [computedArchetype, setComputedArchetype] = useState<Archetype>(firstArchetype);
 
 // Use computedArchetype for UI copy
 const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
@@ -1383,7 +1383,7 @@ function ArchetypeIcon({
   archetype: Archetype;
   className?: string;
 }) {
-  switch (archetype) {
+  switch (computedArchetype) {
     case "STRENGTH BEAST":
       return (
         <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
