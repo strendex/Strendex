@@ -10,7 +10,7 @@ type Tier = "WORLD CLASS" | "ELITE" | "ADVANCED" | "INTERMEDIATE" | "NOVICE";
 type Archetype =
   | "BALANCED HYBRID"
   | "STRENGTH BEAST"
-  | "ENGINE MACHINE"
+  | "ENDURANCE MACHINE"
   | "POWER HYBRID"
   | "ENDURANCE-LEANING HYBRID"
   | "STRENGTH-LEANING HYBRID"
@@ -26,14 +26,14 @@ const ARCHETYPE_COPY: Record<
   "STRENGTH BEAST": {
     tagline: "Strength-dominant — endurance is the limiter.",
     description:
-      "Your strength output is significantly higher than your endurance capacity. You’ll score well off the big lifts, but your engine is the main thing holding your hybrid profile back.",
+      "Your strength output is significantly higher than your endurance capacity. You’ll score well off the big lifts, but your endurance is the main thing holding your hybrid profile back.",
     focus:
       "Add 2–3 aerobic sessions/week (easy Zone 2) + 1 short interval day. Keep lifting heavy, but avoid maxing too often.",
   },
-  "ENGINE MACHINE": {
+  "ENDURANCE MACHINE": {
     tagline: "Endurance-dominant — strength is the limiter.",
     description:
-      "Your endurance is strong relative to your strength totals. Your engine boosts your profile, but adding strength will raise your overall score quickly.",
+      "Your endurance is strong relative to your strength totals. Your endurance boosts your profile, but adding strength will raise your overall score quickly.",
     focus:
       "Maintain running 2–3 days/week, then push progressive overload on bench/squat/deadlift (2–4 hard sets each, 2–3x/week).",
   },
@@ -47,7 +47,7 @@ const ARCHETYPE_COPY: Record<
   "POWER HYBRID": {
     tagline: "High-high — strong and fast together.",
     description:
-      "You’re strong and you’ve got a solid engine. This profile pushes into elite territory when trained consistently.",
+      "You’re strong and you’ve got a solid endurance. This profile pushes into elite territory when trained consistently.",
     focus:
       "Keep strength volume efficient (quality over quantity) and add running quality (tempo + intervals). Prioritize recovery and sleep.",
   },
@@ -179,7 +179,7 @@ function getArchetype(str: number, end: number): Archetype {
 
   if (str >= 75 && end >= 75) return "POWER HYBRID";
   if (diff >= 20) return "STRENGTH BEAST";
-  if (diff <= -20) return "ENGINE MACHINE";
+  if (diff <= -20) return "ENDURANCE MACHINE";
   if (Math.abs(diff) <= 8) return "BALANCED HYBRID";
   if (diff > 0) return "STRENGTH-LEANING HYBRID";
   return "ENDURANCE-LEANING HYBRID";
@@ -247,7 +247,58 @@ export default function ToolPage() {
   const [topPercent, setTopPercent] = useState<number | null>(null);
   const [apiStrengthIndex, setApiStrengthIndex] = useState<number | null>(null);
 const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
+  // AI analysis (optional)
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiCached, setAiCached] = useState<boolean>(false);
 
+  async function generateAIAnalysis() {
+    try {
+      setAiError(null);
+      setAiLoading(true);
+
+      // Must have real results first
+      if (!hasResults) throw new Error("Generate your score first.");
+
+      const payload = {
+        // Inputs (what user entered)
+        bodyweight: wLb,
+        unitSystem,
+        bench: bLb || null,
+        squat: sLb || null,
+        deadlift: dLb || null,
+        runDistance,
+        runTimeText: runTimeText.trim() || null,
+
+        // Canonical / computed results
+        strengthIndex: apiStrengthIndex,
+        enduranceIndex: apiEnduranceIndex,
+        strengthPercentile,
+        endurancePercentile,
+        hqScore: Math.round(hybridScore),
+        tier,
+        archetype: computedArchetype,
+      };
+
+      const res = await fetch("/api/ai-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error ?? "AI analysis failed");
+
+      setAiAnalysis(String(data.analysis || "").trim());
+      setAiCached(Boolean(data.cached));
+    } catch (e: any) {
+      setAiError(e?.message ?? "AI analysis failed");
+    } finally {
+      setAiLoading(false);
+    }
+  }
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -630,23 +681,23 @@ setComputedArchetype(a);
   const stepTitle: Record<Step, { kicker: string; title: string; sub: string }> = {
     1: {
       kicker: "Step 1 of 4",
-      title: "Basics",
-      sub: "Just enough to personalize your profile.",
+      title: "Your basics",
+      sub: "Start with your name and bodyweight.",
     },
     2: {
       kicker: "Step 2 of 4",
-      title: "Strength",
-      sub: "Use true 1RMs (or best recent top set).",
+      title: "Your lifts",
+      sub: "Enter your best recent numbers.",
     },
     3: {
       kicker: "Step 3 of 4",
-      title: "Endurance",
-      sub: "Pick a test and enter your time.",
+      title: "Your run",
+      sub: "Choose a distance and enter your time.",
     },
     4: {
-      kicker: "Results",
-      title: "Hybrid Score",
-      sub: "Share your card or explore rankings.",
+      kicker: "Final step",
+      title: "Review and calculate",
+      sub: "Check your inputs, then generate your score.",
     },
   };
 
@@ -676,15 +727,15 @@ setComputedArchetype(a);
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             Calculate your <span className="text-[#DFFF00]">Hybrid Score</span>
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-white/60">
-            A single score from 0–100 based on strength + endurance percentiles. Built to be simple, fast, and shareable.
-          </p>
+          <p className="mt-3 max-w-2xl text-base text-white/70">
+  Enter your lifts and run time to see where you rank.
+</p>
         </div>
 
         <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <Progress />
-          <div className="hidden sm:block text-[11px] text-white/60">No sign-up. Takes 60 seconds.</div>
-        </div>
+  <Progress />
+  <div className="hidden sm:block text-sm text-white/70">Takes about a minute</div>
+</div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -693,34 +744,34 @@ setComputedArchetype(a);
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-                  {stepTitle[step].kicker}
-                </div>
-                <div className="mt-2 text-xl font-semibold text-white">{stepTitle[step].title}</div>
-                <div className="mt-1 text-sm text-white/60">{stepTitle[step].sub}</div>
+              <div className="text-sm font-medium text-white/60">
+  {stepTitle[step].kicker}
+</div>
+<div className="mt-2 text-2xl font-semibold text-white">{stepTitle[step].title}</div>
+<div className="mt-1 text-base text-white/70">{stepTitle[step].sub}</div>
               </div>
 
               {/* Units toggle */}
               <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-black/30">
-                <button
-                  type="button"
-                  onClick={() => setUnitSystem("lb")}
-                  className={`px-4 py-2 text-[11px] font-semibold tracking-widest transition ${
-                    unitSystem === "lb" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
-                  }`}
-                >
-                  LB
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUnitSystem("kg")}
-                  className={`px-4 py-2 text-[11px] font-semibold tracking-widest transition ${
-                    unitSystem === "kg" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
-                  }`}
-                >
-                  KG
-                </button>
-              </div>
+  <button
+    type="button"
+    onClick={() => setUnitSystem("lb")}
+    className={`px-4 py-2 text-sm font-semibold transition ${
+      unitSystem === "lb" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
+    }`}
+  >
+    LB
+  </button>
+  <button
+    type="button"
+    onClick={() => setUnitSystem("kg")}
+    className={`px-4 py-2 text-sm font-semibold transition ${
+      unitSystem === "kg" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
+    }`}
+  >
+    KG
+  </button>
+</div>
             </div>
 
             <div className="mt-6 space-y-4">
@@ -757,7 +808,7 @@ setComputedArchetype(a);
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60">
-                    Tip: If you don’t want your name on the card, leave it blank — you’ll be “Anonymous Athlete.”
+                    
                   </div>
                 </>
               )}
@@ -770,14 +821,14 @@ setComputedArchetype(a);
                   <Field label={`Deadlift (${unitSystem.toUpperCase()})`} placeholder="e.g., 425" value={deadlift} onChange={setDeadlift} />
 
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">Total lift</span>
-                      <span className="text-white font-semibold">{totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-white/60">Strength ratio</span>
-                      <span className="text-white font-semibold">{strengthRatio > 0 ? strengthRatio.toFixed(2) : "—"}</span>
-                    </div>
+                  <div className="flex items-center justify-between text-sm">
+  <span className="text-white/70">Total lift</span>
+  <span className="text-white font-semibold">{totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}</span>
+</div>
+<div className="mt-2 flex items-center justify-between text-sm">
+  <span className="text-white/70">Strength ratio</span>
+  <span className="text-white font-semibold">{strengthRatio > 0 ? strengthRatio.toFixed(2) : "—"}</span>
+</div>
                   </div>
 
                   <div className="mt-2 flex gap-2">
@@ -798,9 +849,9 @@ setComputedArchetype(a);
                     </button>
                   </div>
 
-                  <div className="text-xs text-white/50">
-                    You can skip endurance if you want — you’ll still get a score, but it will be less representative.
-                  </div>
+                  <div className="text-sm text-white/60">
+  You can still continue if you don’t have a run time yet.
+</div>
                 </>
               )}
 
@@ -823,7 +874,7 @@ setComputedArchetype(a);
                         <option value="half">Half Marathon</option>
                         <option value="marathon">Marathon</option>
                       </select>
-                      <div className="mt-1 text-[11px] text-white/45">We normalize all tests to a half-marathon equivalent.</div>
+                      <div className="mt-1 text-sm text-white/55">All distances are adjusted to the same standard.</div>
                     </div>
 
                     <div>
@@ -881,10 +932,9 @@ setComputedArchetype(a);
                         }}
                       />
 
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-white/45">
-                        <span>Auto-format</span>
-                        <span className="font-mono tabular-nums text-white/55">{runTimeText ? runTimeText : "—"}</span>
-                      </div>
+<div className="mt-1 text-sm text-white/55">
+  {runTimeText ? `Formatted: ${runTimeText}` : "Enter digits only"}
+</div>
                     </div>
                   </div>
 
@@ -906,9 +956,9 @@ setComputedArchetype(a);
                     </button>
                   </div>
 
-                  <div className="text-xs text-white/50">
-                    Don’t have an endurance time? You can still generate with strength only — but hybrid athletes get the best accuracy with both.
-                  </div>
+                  <div className="text-sm text-white/60">
+  For the best result, include both lifting and endurance.
+</div>
                 </>
               )}
 
@@ -916,8 +966,8 @@ setComputedArchetype(a);
               {step === 4 && (
                 <>
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Review</div>
-                    <div className="mt-2 grid grid-cols-1 gap-3 text-sm">
+                  <div className="text-sm font-medium text-white/60">Review</div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 text-base">
                       <Row label="Name" value={displayName.trim() ? displayName.trim() : "Anonymous Athlete"} />
                       <Row label="Bodyweight" value={wLb > 0 ? `${Math.round(wLb)} lb` : "—"} />
                       <Row label="Strength" value={totalLift > 0 ? `${Math.round(totalLift)} lb total` : "—"} />
@@ -939,9 +989,9 @@ setComputedArchetype(a);
                   {statusText ? (
                     <div className="text-xs text-white/60">{statusText}</div>
                   ) : (
-                    <div className="text-xs text-white/50">
-                      This generates your score + logs it to rankings automatically.
-                    </div>
+                    <div className="text-sm text-white/60">
+  Your score will also be added to the rankings.
+</div>
                   )}
 
                   <div className="flex gap-2">
@@ -981,12 +1031,12 @@ setComputedArchetype(a);
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60">
-            <div className="font-semibold text-white">Scoring transparency</div>
-            <div className="mt-1">
-              Hybrid Score = 50% Strength Percentile + 50% Endurance Percentile. Your percentiles are computed relative to the dataset.
-            </div>
-          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/65">
+  <div className="font-semibold text-white">How scoring works</div>
+  <div className="mt-1">
+    Your Hybrid Score combines your strength and endurance relative to the dataset.
+  </div>
+</div>
         </div>
 
         {/* RIGHT — Results / Reveal */}
@@ -995,17 +1045,17 @@ setComputedArchetype(a);
           <div className={`rounded-3xl border border-white/10 bg-white/[0.03] p-6 ${tierMeta[tier].glow}`}>
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-                  {isWorking ? "Computing" : hasResults ? "Your result" : "Ready when you are"}
-                </div>
+              <div className="text-sm font-medium text-white/60">
+  {isWorking ? "Computing" : hasResults ? "Your result" : "Ready when you are"}
+</div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
                   Hybrid Score <span className="text-white/60">(0–100)</span>
                 </h2>
-                <p className="mt-2 text-sm text-white/60">
-                  {hasResults
-                    ? "This is your benchmark across strength + endurance."
-                    : "Enter your stats on the left. The result will show here instantly."}
-                </p>
+                <p className="mt-2 text-base text-white/70">
+  {hasResults
+    ? "Here’s your Strendex result."
+    : "Enter your stats on the left to generate your score."}
+</p>
               </div>
 
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-white/70">
@@ -1017,14 +1067,14 @@ setComputedArchetype(a);
             <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-white/40">Hybrid Score</div>
+                <div className="text-sm text-white/55">Hybrid Score</div>
                   <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
   {hasResults ? Math.round(hybridScore) : "—"}
 </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-widest text-white/40">Tier</div>
+                <div className="text-sm text-white/55">Tier</div>
                   <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
                     <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
                     {tier}
@@ -1035,7 +1085,7 @@ setComputedArchetype(a);
               {/* Dopamine-first stats */}
 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-    <div className="text-[10px] uppercase tracking-widest text-white/40">You beat</div>
+  <div className="text-sm text-white/55">You beat</div>
     <div className="mt-1 text-2xl font-semibold text-white">
       {topPercent === null ? "—" : `${topPercent.toFixed(1)}%`}
     </div>
@@ -1043,7 +1093,7 @@ setComputedArchetype(a);
   </div>
 
   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-    <div className="text-[10px] uppercase tracking-widest text-white/40">Leaderboard</div>
+  <div className="text-sm text-white/55">Leaderboard</div>
     <div className="mt-1 text-2xl font-semibold text-white">
       {globalRank === null || totalAthletes === null ? "—" : `#${globalRank}`}
     </div>
@@ -1053,7 +1103,7 @@ setComputedArchetype(a);
   </div>
 
   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-    <div className="text-[10px] uppercase tracking-widest text-white/40">Athlete type</div>
+  <div className="text-sm text-white/55">Athlete type</div>
     <div className="mt-1 text-sm font-semibold text-white">{computedArchetype}</div>
     <div className="mt-1 text-[11px] text-white/55 line-clamp-2">{archetypeInfo.tagline}</div>
   </div>
@@ -1063,20 +1113,56 @@ setComputedArchetype(a);
             </div>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <button
-                onClick={() => setShowDetails((v) => !v)}
-                className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
-              >
-                {showDetails ? "Hide details" : "Show details"}
-              </button>
+  <button
+    onClick={() => setShowDetails((v) => !v)}
+    className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+  >
+    {showDetails ? "Hide details" : "Show details"}
+  </button>
 
-              <Link
-                href="/rankings"
-                className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
-              >
-                View Rankings
-              </Link>
-            </div>
+  <button
+    type="button"
+    onClick={generateAIAnalysis}
+    disabled={!hasResults || isWorking || aiLoading}
+    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-40"
+  >
+    {aiLoading ? "Generating…" : "Generate with AI"}
+  </button>
+
+  <Link
+    href="/rankings"
+    className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
+  >
+    View Rankings
+  </Link>
+</div>
+{(aiError || aiAnalysis) && (
+  <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-5">
+    <div className="flex items-center justify-between gap-3">
+      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+        AI Performance Analysis
+      </div>
+      {aiAnalysis && (
+        <div className="text-[11px] text-white/50">
+          {aiCached ? "Cached" : "New"}
+        </div>
+      )}
+    </div>
+
+    {aiError ? (
+      <div className="mt-2 text-sm text-red-200">{aiError}</div>
+    ) : (
+      <>
+        <pre className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/70">
+          {aiAnalysis}
+        </pre>
+        <div className="mt-3 text-[11px] text-white/45">
+          AI guidance is informational, not medical advice.
+        </div>
+      </>
+    )}
+  </div>
+)}
 
             {/* Details */}
             {showDetails && (
@@ -1256,11 +1342,10 @@ setComputedArchetype(a);
 
             {!showDetails && (
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Next</div>
-                <div className="mt-2 text-sm text-white/60">
-                  Want more detail? Open <span className="text-white font-semibold">Show details</span> for archetype, radar, and share card.
-                </div>
+              <div className="text-base text-white/70">
+                Open details to view your archetype, chart, and share card.
               </div>
+            </div>
             )}
           </div>
         </div>
@@ -1312,14 +1397,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="text-[10px] uppercase tracking-widest text-white/40">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-white">{value}</div>
-    </div>
-  );
-}
+
 
 function TextField({
   label,
@@ -1334,14 +1412,14 @@ function TextField({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">{label}</label>
+      <label className="mb-2 block text-sm font-medium text-white/70">{label}</label>
       <input
         type="text"
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         maxLength={24}
-        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3.5 text-base text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
       />
     </div>
   );
@@ -1369,9 +1447,9 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3.5 text-base text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
       />
-      {hint ? <div className="mt-1 text-[11px] text-white/45">{hint}</div> : null}
+      {hint ? <div className="mt-1 text-sm text-white/55">{hint}</div> : null}
     </div>
   );
 }
@@ -1391,7 +1469,7 @@ function ArchetypeIcon({
           <path d="M7 12h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
-    case "ENGINE MACHINE":
+    case "ENDURANCE MACHINE":
       return (
         <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -1467,8 +1545,8 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
         </svg>
       ),
     },
-    "ENGINE MACHINE": {
-      label: "Engine Machine",
+    "ENDURANCE MACHINE": {
+      label: "Endurance Machine",
       ring: "border-sky-400/20",
       bg: "bg-sky-400/10 text-sky-200",
       icon: (
