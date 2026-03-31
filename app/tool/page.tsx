@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { supabase } from "../../lib/supabaseClient";
 import StrendexChart from "./StrendexChart";
 import { toPng } from "html-to-image";
 
@@ -234,8 +233,8 @@ export default function ToolPage() {
 
   // saving / scan moment
   const [isWorking, setIsWorking] = useState(false);
-  const [scanStage, setScanStage] = useState<"CALIBRATING" | "SCORING" | "COMPILING">("CALIBRATING");
-  const [statusText, setStatusText] = useState<string>("");
+const [scanStage, setScanStage] = useState<"CALIBRATING" | "SCORING" | "COMPILING">("CALIBRATING");
+const [statusText, setStatusText] = useState<string>("");
 
   // results
   const [hasResults, setHasResults] = useState(false);
@@ -244,61 +243,12 @@ export default function ToolPage() {
   const [endurancePercentile, setEndurancePercentile] = useState<number | null>(null);
   const [globalRank, setGlobalRank] = useState<number | null>(null);
   const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
-  const [topPercent, setTopPercent] = useState<number | null>(null);
+  const [betterThanPercent, setBetterThanPercent] = useState<number | null>(null);
   const [apiStrengthIndex, setApiStrengthIndex] = useState<number | null>(null);
 const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
-  // AI analysis (optional)
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [aiCached, setAiCached] = useState<boolean>(false);
+ 
 
-  async function generateAIAnalysis() {
-    try {
-      setAiError(null);
-      setAiLoading(true);
-
-      // Must have real results first
-      if (!hasResults) throw new Error("Generate your score first.");
-
-      const payload = {
-        // Inputs (what user entered)
-        bodyweight: wLb,
-        unitSystem,
-        bench: bLb || null,
-        squat: sLb || null,
-        deadlift: dLb || null,
-        runDistance,
-        runTimeText: runTimeText.trim() || null,
-
-        // Canonical / computed results
-        strengthIndex: apiStrengthIndex,
-        enduranceIndex: apiEnduranceIndex,
-        strengthPercentile,
-        endurancePercentile,
-        hqScore: Math.round(hybridScore),
-        tier,
-        archetype: computedArchetype,
-      };
-
-      const res = await fetch("/api/ai-analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data?.error ?? "AI analysis failed");
-
-      setAiAnalysis(String(data.analysis || "").trim());
-      setAiCached(Boolean(data.cached));
-    } catch (e: any) {
-      setAiError(e?.message ?? "AI analysis failed");
-    } finally {
-      setAiLoading(false);
-    }
-  }
+  
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -432,38 +382,40 @@ const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
     const apiStrengthIndex = typeof data.strengthIndex === "number" ? data.strengthIndex : null;
 const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduranceIndex : null;
 
-    const rankRaw = typeof data.rank === "number" ? data.rank : null;
-    const totalRaw = typeof data.total === "number" ? data.total : null;
+const rankRaw = typeof data.rank === "number" ? data.rank : null;
+const totalRaw = typeof data.total === "number" ? data.total : null;
+const betterThanFromApi =
+  typeof data.betterThanPercent === "number" ? data.betterThanPercent : null;
 
-    // normalize rank to 1-based (defensive)
-    let rankPos: number | null = rankRaw;
-    if (rankRaw !== null) {
-      let cleanRank = rankRaw;
-      if (cleanRank === 0) cleanRank = 1;
-      cleanRank = Math.max(1, Math.floor(cleanRank));
-      rankPos = cleanRank;
-    }
+// normalize rank to 1-based (defensive)
+let rankPos: number | null = rankRaw;
+if (rankRaw !== null) {
+  let cleanRank = rankRaw;
+  if (cleanRank === 0) cleanRank = 1;
+  cleanRank = Math.max(1, Math.floor(cleanRank));
+  rankPos = cleanRank;
+}
 
-    // better-than%
-    let betterThan: number | null = null;
-    if (rankPos !== null && totalRaw !== null && totalRaw > 0) {
-      betterThan = clamp(((totalRaw - rankPos) / totalRaw) * 100, 0, 100);
-    }
+// fallback if API field is missing for any reason
+let betterThan: number | null = betterThanFromApi;
+if (betterThan === null && rankPos !== null && totalRaw !== null && totalRaw > 0) {
+  betterThan = clamp(((totalRaw - rankPos) / totalRaw) * 100, 0, 100);
+}
 
-    return {
-      hq,
-      strP,
-      endP,
-      rankPos,
-      totalRaw,
-      betterThan,
-      endurance_seconds,
-      apiStrengthIndex,
-      apiEnduranceIndex,
-    };
+return {
+  hq,
+  strP,
+  endP,
+  rankPos,
+  totalRaw,
+  betterThan,
+  endurance_seconds,
+  apiStrengthIndex,
+  apiEnduranceIndex,
+};
   }
 
-  async function saveSubmissionToSupabase(args: {
+  async function saveSubmissionToServer(args: {
     finalName: string;
     hq: number;
     strP: number | null;
@@ -484,41 +436,37 @@ const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduran
       computedArchetype,
     } = args;
   
-    // 90+ should NOT auto-approve
-    const status = hq >= 90 ? "pending" : "approved";
-  
-    // Debug: verify what you're about to write
-    console.log("[SAVE SUBMISSION]", { finalName, hq, status });
-  
-    const { error } = await supabase.from("submissions").insert([
-      {
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         athlete_name: finalName,
         bodyweight: wLb,
-  
         endurance_seconds: endurance_seconds_for_db,
-  
         bench: bLb || null,
         squat: sLb || null,
         deadlift: dLb || null,
-  
         hq_score: hq,
         rank: getTier(hq),
         archetype: computedArchetype,
-  
         strength_index: apiStrengthIndex,
         endurance_index: apiEnduranceIndex,
         total_lift: totalLift,
         strength_ratio: strengthRatio,
-  
         strength_percentile: strP,
         endurance_percentile: endP,
+      }),
+    });
   
-        // Verification gate:
-        status: status,
-      },
-    ]);
+    const data = await res.json();
   
-    return { error };
+    if (!res.ok) {
+      return { error: { message: data?.error ?? "Failed to save submission." } };
+    }
+  
+    return { error: null };
   }
 
   async function generateProfile() {
@@ -552,13 +500,15 @@ setComputedArchetype(a);
       setEndurancePercentile(computed.endP);
       setGlobalRank(computed.rankPos);
       setTotalAthletes(computed.totalRaw);
-      setTopPercent(computed.betterThan);
+      setBetterThanPercent(computed.betterThan);
       setApiStrengthIndex(computed.apiStrengthIndex);
       setApiEnduranceIndex(computed.apiEnduranceIndex);
 
-      // Save to Supabase with canonical computed values
+      
+
+                  // Save to Supabase with canonical computed values
       setStatusText("Saving to rankings…");
-      const { error } = await saveSubmissionToSupabase({
+      const { error } = await saveSubmissionToServer({
         finalName,
         hq: computed.hq,
         strP: computed.strP,
@@ -570,8 +520,9 @@ setComputedArchetype(a);
       });
 
       if (error) {
-        console.error(error);
-        setStatusText("Saved locally. Couldn’t log right now — try again later.");
+        console.error("[SAVE ERROR]", error);
+        setStatusText(`Couldn’t save to rankings: ${error.message}`);
+        alert(`Couldn’t save to rankings: ${error.message}`);
       } else {
         setStatusText(
           computed.hq >= 90
@@ -581,9 +532,13 @@ setComputedArchetype(a);
       }
 
       // Move user to results view
-      setStep(4);
-      setShowDetails(false);
-      setTimeout(() => setStatusText(""), 1800);
+      // Move user to results view
+setStep(4);
+setShowDetails(false);
+
+if (!error) {
+  setTimeout(() => setStatusText(""), 1800);
+}
     } catch (e: any) {
       console.error(e);
       alert(e?.message ?? "Something went wrong.");
@@ -592,7 +547,7 @@ setComputedArchetype(a);
       setIsWorking(false);
     }
   }
-
+  
   async function downloadScorecard() {
     if (!cardRef.current) return;
     try {
@@ -987,12 +942,12 @@ setComputedArchetype(a);
                   </button>
 
                   {statusText ? (
-                    <div className="text-xs text-white/60">{statusText}</div>
-                  ) : (
-                    <div className="text-sm text-white/60">
-  Your score will also be added to the rankings.
-</div>
-                  )}
+  <div className="text-xs text-white/60">{statusText}</div>
+) : (
+  <div className="text-sm text-white/60">
+    Your result will be submitted to the rankings automatically after calculating.
+  </div>
+)}
 
                   <div className="flex gap-2">
                     <button
@@ -1016,7 +971,7 @@ setComputedArchetype(a);
                         setEndurancePercentile(null);
                         setGlobalRank(null);
                         setTotalAthletes(null);
-                        setTopPercent(null);
+                        setBetterThanPercent(null);
                         setShowDetails(false);
                         setStatusText("");
                         setStep(1);
@@ -1087,7 +1042,7 @@ setComputedArchetype(a);
   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
   <div className="text-sm text-white/55">You beat</div>
     <div className="mt-1 text-2xl font-semibold text-white">
-      {topPercent === null ? "—" : `${topPercent.toFixed(1)}%`}
+      {betterThanPercent === null ? "—" : `${betterThanPercent.toFixed(1)}%`}
     </div>
     <div className="mt-1 text-[11px] text-white/55">of athletes</div>
   </div>
@@ -1120,14 +1075,7 @@ setComputedArchetype(a);
     {showDetails ? "Hide details" : "Show details"}
   </button>
 
-  <button
-    type="button"
-    onClick={generateAIAnalysis}
-    disabled={!hasResults || isWorking || aiLoading}
-    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-40"
-  >
-    {aiLoading ? "Generating…" : "Generate with AI"}
-  </button>
+  
 
   <Link
     href="/rankings"
@@ -1136,33 +1084,10 @@ setComputedArchetype(a);
     View Rankings
   </Link>
 </div>
-{(aiError || aiAnalysis) && (
-  <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-5">
-    <div className="flex items-center justify-between gap-3">
-      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-        AI Performance Analysis
-      </div>
-      {aiAnalysis && (
-        <div className="text-[11px] text-white/50">
-          {aiCached ? "Cached" : "New"}
-        </div>
-      )}
-    </div>
 
-    {aiError ? (
-      <div className="mt-2 text-sm text-red-200">{aiError}</div>
-    ) : (
-      <>
-        <pre className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/70">
-          {aiAnalysis}
-        </pre>
-        <div className="mt-3 text-[11px] text-white/45">
-          AI guidance is informational, not medical advice.
-        </div>
-      </>
-    )}
-  </div>
-)}
+
+    
+
 
             {/* Details */}
             {showDetails && (
@@ -1212,6 +1137,7 @@ setComputedArchetype(a);
                       </button>
                     </div>
                   </div>
+                  
 
                   <div className="mt-5 grid place-items-center">
                     <div
@@ -1236,7 +1162,7 @@ setComputedArchetype(a);
                           <div className="text-right">
                             <div className="text-[10px] uppercase tracking-widest text-white/40">Standing</div>
                             <div className="mt-1 text-sm font-semibold text-white">
-                              {topPercent === null ? "—" : `Better than ${topPercent.toFixed(1)}%`}
+                            {betterThanPercent === null ? "—" : `Better than ${betterThanPercent.toFixed(1)}%`}
                             </div>
                           </div>
                         </div>
