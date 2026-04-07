@@ -19,15 +19,14 @@ export async function POST(req: Request) {
   try {
     const supabaseUrl =
       process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SECRET_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
         {
-          error:
-            "Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) or SUPABASE_SERVICE_ROLE_KEY in env.",
+          error: "Missing SUPABASE_URL or SUPABASE_SECRET_KEY in env.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -35,50 +34,61 @@ export async function POST(req: Request) {
       auth: { persistSession: false },
     });
     async function upsertAndGetSubmitCount(
-        ip: string,
-        bucket: "minute" | "day",
-        bucketId: number
-      ) {
-        const { data, error } = await supabaseAdmin.rpc("ai_rl_hit", {
-          p_ip: `submit:${ip}`,
-          p_bucket: bucket,
-          p_bucket_id: bucketId,
-        });
-      
-        if (error) throw error;
-      
-        return Number(data) || 0;
-      }
-      
-      async function incrementAndCheckSubmitLimit(ip: string) {
-        const t = nowUnixSeconds();
-        const minuteBucketId = Math.floor(t / 60);
-        const dayBucketId = Math.floor(t / 86400);
-      
-        const minute = await upsertAndGetSubmitCount(ip, "minute", minuteBucketId);
-        if (minute > MAX_SUBMIT_PER_MINUTE) {
-          return { ok: false, reason: "Too many submissions. Please wait a minute." };
-        }
-      
-        const day = await upsertAndGetSubmitCount(ip, "day", dayBucketId);
-        if (day > MAX_SUBMIT_PER_DAY) {
-          return { ok: false, reason: "Daily submission limit reached. Try again tomorrow." };
-        }
-      
-        return { ok: true as const };
+      ip: string,
+      bucket: "minute" | "day",
+      bucketId: number,
+    ) {
+      const { data, error } = await supabaseAdmin.rpc("ai_rl_hit", {
+        p_ip: `submit:${ip}`,
+        p_bucket: bucket,
+        p_bucket_id: bucketId,
+      });
+
+      if (error) throw error;
+
+      return Number(data) || 0;
+    }
+
+    async function incrementAndCheckSubmitLimit(ip: string) {
+      const t = nowUnixSeconds();
+      const minuteBucketId = Math.floor(t / 60);
+      const dayBucketId = Math.floor(t / 86400);
+
+      const minute = await upsertAndGetSubmitCount(
+        ip,
+        "minute",
+        minuteBucketId,
+      );
+      if (minute > MAX_SUBMIT_PER_MINUTE) {
+        return {
+          ok: false,
+          reason: "Too many submissions. Please wait a minute.",
+        };
       }
 
-      const ip = getClientIp(req);
-      const limit = await incrementAndCheckSubmitLimit(ip);
-      
-      if (!limit.ok) {
-        return NextResponse.json({ error: limit.reason }, { status: 429 });
+      const day = await upsertAndGetSubmitCount(ip, "day", dayBucketId);
+      if (day > MAX_SUBMIT_PER_DAY) {
+        return {
+          ok: false,
+          reason: "Daily submission limit reached. Try again tomorrow.",
+        };
       }
-      
-      const body = await req.json();
+
+      return { ok: true as const };
+    }
+
+    const ip = getClientIp(req);
+    const limit = await incrementAndCheckSubmitLimit(ip);
+
+    if (!limit.ok) {
+      return NextResponse.json({ error: limit.reason }, { status: 429 });
+    }
+
+    const body = await req.json();
 
     const athlete_name =
-      typeof body?.athlete_name === "string" && body.athlete_name.trim().length >= 2
+      typeof body?.athlete_name === "string" &&
+      body.athlete_name.trim().length >= 2
         ? body.athlete_name.trim()
         : "Anonymous Athlete";
 
@@ -93,10 +103,14 @@ export async function POST(req: Request) {
         : Number(body.endurance_seconds);
 
     const bench =
-      body?.bench === null || body?.bench === undefined ? null : Number(body.bench);
+      body?.bench === null || body?.bench === undefined
+        ? null
+        : Number(body.bench);
 
     const squat =
-      body?.squat === null || body?.squat === undefined ? null : Number(body.squat);
+      body?.squat === null || body?.squat === undefined
+        ? null
+        : Number(body.squat);
 
     const deadlift =
       body?.deadlift === null || body?.deadlift === undefined
@@ -106,7 +120,8 @@ export async function POST(req: Request) {
     const hq_score = Number(body?.hq_score);
 
     const rank = typeof body?.rank === "string" ? body.rank : null;
-    const archetype = typeof body?.archetype === "string" ? body.archetype : null;
+    const archetype =
+      typeof body?.archetype === "string" ? body.archetype : null;
 
     const strength_index =
       body?.strength_index === null || body?.strength_index === undefined
@@ -129,12 +144,14 @@ export async function POST(req: Request) {
         : Number(body.strength_ratio);
 
     const strength_percentile =
-      body?.strength_percentile === null || body?.strength_percentile === undefined
+      body?.strength_percentile === null ||
+      body?.strength_percentile === undefined
         ? null
         : Number(body.strength_percentile);
 
     const endurance_percentile =
-      body?.endurance_percentile === null || body?.endurance_percentile === undefined
+      body?.endurance_percentile === null ||
+      body?.endurance_percentile === undefined
         ? null
         : Number(body.endurance_percentile);
 
@@ -171,11 +188,13 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[/api/submit] unexpected error:", error);
     return NextResponse.json(
-      { error: error?.message ?? "Submission failed." },
-      { status: 500 }
+      {
+        error: error instanceof Error ? error.message : "Submission failed.",
+      },
+      { status: 500 },
     );
   }
 }
