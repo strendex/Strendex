@@ -3,7 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SECRET_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  },
 );
 
 function clamp(n: number, min: number, max: number) {
@@ -64,6 +70,21 @@ async function incrementAndCheckRankLimit(ip: string) {
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function logSecurityEvent(event: string, details: Record<string, unknown>) {
+  console.warn(`[security][/api/rank] ${event}`, details);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyAllowedKeys(
+  obj: Record<string, unknown>,
+  allowedKeys: string[],
+) {
+  return Object.keys(obj).every((key) => allowedKeys.includes(key));
 }
 // ------------------ Canonical Score Definition ------------------
 // Canonical Score (0–100) = 0.5 * Strength Percentile + 0.5 * Endurance Percentile
@@ -130,7 +151,39 @@ export async function POST(req: Request) {
     if (!limit.ok) {
       return NextResponse.json({ error: limit.reason }, { status: 429 });
     }
-    const body = await req.json();
+    const contentType = req.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      logSecurityEvent("invalid_content_type", {
+        ip,
+        contentType,
+      });
+      return badRequest("Content-Type must be application/json.");
+    }
+
+    const bodyUnknown: unknown = await req.json();
+
+    if (!isPlainObject(bodyUnknown)) {
+      logSecurityEvent("invalid_json_shape", { ip });
+      return badRequest("Request body must be a JSON object.");
+    }
+
+    const allowedKeys = [
+      "bodyweight_kg",
+      "endurance_seconds",
+      "bench_kg",
+      "squat_kg",
+      "deadlift_kg",
+    ];
+
+    if (!hasOnlyAllowedKeys(bodyUnknown, allowedKeys)) {
+      logSecurityEvent("unexpected_keys", {
+        ip,
+        keys: Object.keys(bodyUnknown),
+      });
+      return badRequest("Request contains unexpected fields.");
+    }
+
+    const body = bodyUnknown;
 
     const bodyweightRaw = Number(body?.bodyweight_kg);
     const enduranceRaw =

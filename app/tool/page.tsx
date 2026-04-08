@@ -230,6 +230,7 @@ export default function ToolPage() {
   // UX flow
   const [step, setStep] = useState<Step>(1);
   const [showDetails, setShowDetails] = useState<boolean>(false);
+  const [showHQTooltip, setShowHQTooltip] = useState(false);
 
   // saving / scan moment
   const [isWorking, setIsWorking] = useState(false);
@@ -448,15 +449,6 @@ return {
         bench: bLb || null,
         squat: sLb || null,
         deadlift: dLb || null,
-        hq_score: hq,
-        rank: getTier(hq),
-        archetype: computedArchetype,
-        strength_index: apiStrengthIndex,
-        endurance_index: apiEnduranceIndex,
-        total_lift: totalLift,
-        strength_ratio: strengthRatio,
-        strength_percentile: strP,
-        endurance_percentile: endP,
       }),
     });
   
@@ -1021,12 +1013,41 @@ if (!error) {
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
               <div className="flex items-end justify-between gap-3">
-                <div>
-                <div className="text-sm text-white/55">Hybrid Score</div>
-                  <div className="mt-1 text-6xl font-semibold tracking-tight text-white">
-  {hasResults ? Math.round(hybridScore) : "—"}
+              <div>
+  <div className="text-sm text-white/55">Hybrid Score</div>
+
+  <div className="mt-1 flex items-start gap-2">
+    <div className="text-6xl font-semibold tracking-tight text-white">
+      {hasResults ? Math.round(hybridScore) : "—"}
+    </div>
+
+    {hasResults && (
+  <div
+    className="relative ml-2 -mt-1"
+    onMouseEnter={() => setShowHQTooltip(true)}
+    onMouseLeave={() => setShowHQTooltip(false)}
+  >
+    <button
+      type="button"
+      onClick={() => setShowHQTooltip((prev) => !prev)}
+      className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 text-[11px] font-medium leading-none text-white/55 transition hover:border-white/35 hover:text-white/80"
+      aria-label="What is Hybrid Score?"
+    >
+      ?
+    </button>
+
+    {showHQTooltip && (
+      <div className="absolute left-1/2 top-7 z-30 -translate-x-1/2">
+        <div className="relative whitespace-nowrap rounded-lg bg-[#0E1014] px-3 py-2 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+          <div className="absolute left-1/2 top-[-4px] h-2 w-2 -translate-x-1/2 rotate-45 bg-[#0E1014]" />
+          Hybrid Score is your overall rating out of 100, combining your strength and endurance performance equally. A higher score means you are more well-rounded across both.
+        </div>
+      </div>
+    )}
+  </div>
+)}
+  </div>
 </div>
-                </div>
 
                 <div className="text-right">
                 <div className="text-sm text-white/55">Tier</div>
