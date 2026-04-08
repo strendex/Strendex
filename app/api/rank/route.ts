@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  },
-);
+
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -29,6 +20,7 @@ function nowUnixSeconds() {
 }
 
 async function upsertAndGetRankCount(
+  supabase: any,
   ip: string,
   bucket: "minute" | "day",
   bucketId: number,
@@ -44,12 +36,20 @@ async function upsertAndGetRankCount(
   return Number(data) || 0;
 }
 
-async function incrementAndCheckRankLimit(ip: string) {
+async function incrementAndCheckRankLimit(
+  supabase: any,
+  ip: string,
+) {
   const t = nowUnixSeconds();
   const minuteBucketId = Math.floor(t / 60);
   const dayBucketId = Math.floor(t / 86400);
 
-  const minute = await upsertAndGetRankCount(ip, "minute", minuteBucketId);
+  const minute = await upsertAndGetRankCount(
+    supabase,
+    ip,
+    "minute",
+    minuteBucketId,
+  );
   if (minute > MAX_RANK_PER_MINUTE) {
     return {
       ok: false,
@@ -57,7 +57,12 @@ async function incrementAndCheckRankLimit(ip: string) {
     };
   }
 
-  const day = await upsertAndGetRankCount(ip, "day", dayBucketId);
+  const day = await upsertAndGetRankCount(
+    supabase,
+    ip,
+    "day",
+    dayBucketId,
+  );
   if (day > MAX_RANK_PER_DAY) {
     return {
       ok: false,
@@ -145,8 +150,26 @@ function strengthScoreFromRatio(
 
 export async function POST(req: Request) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        {
+          error: "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in env.",
+        },
+        { status: 500 },
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
     const ip = getClientIp(req);
-    const limit = await incrementAndCheckRankLimit(ip);
+    const limit = await incrementAndCheckRankLimit(supabase, ip);
 
     if (!limit.ok) {
       return NextResponse.json({ error: limit.reason }, { status: 429 });
