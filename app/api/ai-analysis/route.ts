@@ -19,13 +19,9 @@ const MAX_ANALYSIS_CHARS = 1400; // post-trim safety
 const MAX_PER_MINUTE = 5;
 const MAX_PER_DAY = 20;
 
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "missing" });
 
 // ===== Helpers =====
 function getClientIp(req: Request) {
@@ -51,23 +47,38 @@ function nowUnixSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
-async function incrementAndCheckLimit(ip: string) {
+async function incrementAndCheckLimit(supabaseAdmin: any, ip: string) {
   const t = nowUnixSeconds();
   const minuteBucketId = Math.floor(t / 60);
   const dayBucketId = Math.floor(t / 86400);
 
   // Minute bucket
-  const minute = await upsertAndGetCount(ip, "minute", minuteBucketId);
+  const minute = await upsertAndGetCount(
+    supabaseAdmin,
+    ip,
+    "minute",
+    minuteBucketId,
+  );
   if (minute > MAX_PER_MINUTE) return { ok: false, reason: "Too many requests (minute limit)." };
 
   // Day bucket
-  const day = await upsertAndGetCount(ip, "day", dayBucketId);
+  const day = await upsertAndGetCount(
+    supabaseAdmin,
+    ip,
+    "day",
+    dayBucketId,
+  );
   if (day > MAX_PER_DAY) return { ok: false, reason: "Too many requests (daily limit)." };
 
   return { ok: true as const };
 }
 
-async function upsertAndGetCount(ip: string, bucket: "minute" | "day", bucketId: number) {
+async function upsertAndGetCount(
+  supabaseAdmin: any,
+  ip: string,
+  bucket: "minute" | "day",
+  bucketId: number,
+) {
     const { data, error } = await supabaseAdmin.rpc("ai_rl_hit", {
       p_ip: ip,
       p_bucket: bucket,
@@ -153,16 +164,27 @@ function trimAnalysis(text: string) {
 // ===== Route =====
 export async function POST(req: Request) {
   try {
-    // Basic env guard
-    if (!process.env.OPENAI_API_KEY) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+
+    if (!openaiApiKey) {
       return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
     }
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: "Missing Supabase server env vars" }, { status: 500 });
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { error: "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
+        { status: 500 },
+      );
     }
 
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
     const ip = getClientIp(req);
-    const limit = await incrementAndCheckLimit(ip);
+    const limit = await incrementAndCheckLimit(supabaseAdmin, ip);
     if (!limit.ok) {
       return NextResponse.json({ error: limit.reason }, { status: 429 });
     }
