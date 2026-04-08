@@ -91,13 +91,20 @@ export default function RankingsPage() {
       setLoading(true);
       setErr("");
 
+      if (!supabase) {
+        setErr("Rankings are unavailable right now.");
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
-  .from("submissions")
-  .select("id,created_at,athlete_name,hq_score,rank,archetype,status")
-  .eq("status", "approved") // ONLY show verified rows
-  .not("hq_score", "is", null)
-  .order("hq_score", { ascending: false })
-  .limit(200);
+        .from("submissions")
+        .select("id,created_at,athlete_name,hq_score,rank,archetype,status")
+        .eq("status", "approved") // ONLY show verified rows
+        .not("hq_score", "is", null)
+        .order("hq_score", { ascending: false })
+        .limit(200);
 
       if (error) {
         console.error(error);
