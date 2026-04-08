@@ -91,12 +91,7 @@ export default function RankingsPage() {
       setLoading(true);
       setErr("");
 
-      if (!supabase) {
-        setErr("Rankings are unavailable right now.");
-        setRows([]);
-        setLoading(false);
-        return;
-      }
+      
 
       const { data, error } = await supabase
         .from("submissions")
