@@ -40,15 +40,15 @@ export default function Home() {
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-zinc-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                Hybrid benchmark • instant
+                Hybrid athlete benchmark • 30 seconds
               </div>
 
               <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl md:text-6xl">
-  The hybrid benchmark for real athletes.
+  Find out where you actually rank.
 </h1>
 
 <p className="mt-3 text-sm text-zinc-400 sm:text-base">
-  Calculate your Hybrid Score in under a minute.
+The benchmark for athletes who lift heavy and run far. Strength percentile, endurance percentile, one score — compared to everyone who's tested.
 </p>
 
               {/* CTA — make it the obvious next step */}
@@ -57,13 +57,13 @@ export default function Home() {
                   href="/tool"
                   className="group inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.06] px-8 py-4 text-sm font-semibold text-white backdrop-blur hover:bg-white/[0.10] transition sm:w-auto"
                 >
-                  Start the calculator
+                  See where I rank
                   <span className="ml-2 inline-block transition-transform group-hover:translate-x-0.5">→</span>
                 </Link>
 
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                   <div className="text-xs text-zinc-400">
-                    No sign-up • takes ~30–60 seconds • mobile-first
+                    No sign-up • 30 seconds • free
                   </div>
 
                   <Link
@@ -101,7 +101,7 @@ export default function Home() {
                     </div>
 
                     <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-  Better than 72%
+                    Top 28% of hybrid athletes
 </div>
                   </div>
 
@@ -171,9 +171,9 @@ export default function Home() {
       <section id="how" className="mx-auto max-w-6xl px-5 py-14 sm:px-6 sm:py-16">
         <div className="max-w-2xl">
           <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">How it works</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Fast, simple, shareable.</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Three inputs. One verdict.</h2>
           <p className="mt-2 text-sm text-zinc-400 sm:text-base">
-            Designed so someone new understands it instantly.
+          No fluff, no sign-up. Just where you stand.
           </p>
         </div>
 
@@ -190,14 +190,14 @@ export default function Home() {
         <div className="mt-7 rounded-3xl border border-white/10 bg-black/30 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold text-white">Ready to calculate?</div>
-              <div className="mt-1 text-sm text-zinc-400">Open the calculator and get your Hybrid Score.</div>
+              <div className="text-sm font-semibold text-white">Ready to find out?</div>
+              <div className="mt-1 text-sm text-zinc-400">Get your score, your percentiles, and your rank.</div>
             </div>
             <Link
               href="/tool"
               className="inline-flex items-center justify-center rounded-full bg-white px-7 py-4 text-sm font-semibold text-black hover:bg-zinc-200 transition"
             >
-              Open calculator <span className="ml-2">→</span>
+              Get my score → <span className="ml-2">→</span>
             </Link>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function Home() {
               href="/tool"
               className="inline-flex w-full items-center justify-center rounded-full bg-white px-8 py-4 text-sm font-semibold text-black hover:bg-zinc-200 transition sm:w-auto"
             >
-              Start the calculator
+              See where I rank
             </Link>
           </div>
         </div>

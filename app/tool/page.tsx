@@ -643,8 +643,8 @@ if (!error) {
     },
     4: {
       kicker: "Final step",
-      title: "Review and calculate",
-      sub: "Check your inputs, then generate your score.",
+      title: "You're ready",
+      sub: "Check your numbers, then get your result..",
     },
   };
 
@@ -670,9 +670,9 @@ if (!error) {
       {/* Top header */}
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">Hybrid Athlete Benchmark</div>
+          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">Hybrid Athlete Benchmark • Free • 30 Seconds</div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Calculate your <span className="text-[#DFFF00]">Hybrid Score</span>
+          Find out where you <span className="text-[#DFFF00]">actually rank.</span>
           </h1>
           <p className="mt-3 max-w-2xl text-base text-white/70">
   Enter your lifts and run time to see where you rank.
@@ -740,7 +740,7 @@ if (!error) {
                     placeholder="e.g., 195"
                     value={weight}
                     onChange={setWeight}
-                    hint="Used to normalize strength ratios."
+                    hint="Used to calculate your relative strength."
                   />
 
                   <div className="mt-2 flex gap-2">
@@ -930,14 +930,14 @@ if (!error) {
                     disabled={!canGenerate}
                     className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-40"
                   >
-                    {isWorking ? "Calculating…" : "Calculate Hybrid Score"}
+                    {isWorking ? "Calculating…" : "Get my score →"}
                   </button>
 
                   {statusText ? (
   <div className="text-xs text-white/60">{statusText}</div>
 ) : (
   <div className="text-sm text-white/60">
-    Your result will be submitted to the rankings automatically after calculating.
+    Your result goes straight to the leaderboard.
   </div>
 )}
 
@@ -979,9 +979,9 @@ if (!error) {
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/65">
-  <div className="font-semibold text-white">How scoring works</div>
+          <div className="font-semibold text-white">How your score is calculated</div>
   <div className="mt-1">
-    Your Hybrid Score combines your strength and endurance relative to the dataset.
+    Your Hybrid Score (0–100) is an equal blend of your Strength Percentile and Endurance Percentile — both measured against everyone who's tested. Higher means more well-rounded.
   </div>
 </div>
         </div>
@@ -993,15 +993,15 @@ if (!error) {
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
               <div className="text-sm font-medium text-white/60">
-  {isWorking ? "Computing" : hasResults ? "Your result" : "Ready when you are"}
+  {isWorking ? "Computing" : hasResults ? "Your result" : "Your score will appear here"}
 </div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
                   Hybrid Score <span className="text-white/60">(0–100)</span>
                 </h2>
                 <p className="mt-2 text-base text-white/70">
   {hasResults
-    ? "Here’s your Strendex result."
-    : "Enter your stats on the left to generate your score."}
+    ? "Here’s where you stand."
+    : "Fill in your stats on the left to see where you rank."}
 </p>
               </div>
 
@@ -1037,12 +1037,12 @@ if (!error) {
     </button>
 
     {showHQTooltip && (
-      <div className="absolute left-1/2 top-7 z-30 -translate-x-1/2">
-        <div className="relative whitespace-nowrap rounded-lg bg-[#0E1014] px-3 py-2 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
-          <div className="absolute left-1/2 top-[-4px] h-2 w-2 -translate-x-1/2 rotate-45 bg-[#0E1014]" />
-          Hybrid Score is your overall rating out of 100, combining your strength and endurance performance equally. A higher score means you are more well-rounded across both.
-        </div>
+      <div className="absolute left-0 top-8 z-30 w-56">
+      <div className="relative rounded-xl bg-[#0E1014] p-3 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)] leading-relaxed">
+        <div className="absolute left-3 top-[-4px] h-2 w-2 rotate-45 bg-[#0E1014]" />
+        Your Hybrid Score (0–100) is an equal blend of your Strength and Endurance percentiles — both measured against everyone who has tested. Higher means more well-rounded.
       </div>
+    </div>
     )}
   </div>
 )}
@@ -1138,9 +1138,8 @@ if (!error) {
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Share</div>
-                      <div className="mt-1 text-lg font-semibold text-white">Athlete Card</div>
-                      <div className="mt-1 text-sm text-white/60">Download it or copy a share link.</div>
+                    <div className="mt-1 text-lg font-semibold text-white">Your Athlete Card</div>
+                    <div className="mt-1 text-sm text-white/60">Download your card and post it. Challenge someone to beat your score.</div>
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -1160,84 +1159,458 @@ if (!error) {
                   </div>
                   
 
-                  <div className="mt-5 grid place-items-center">
-                    <div
-                      ref={cardRef}
-                      className="relative w-full max-w-[680px] overflow-hidden rounded-[32px] border border-white/10 bg-[#07070A] p-6"
-                    >
-                      <div aria-hidden className="pointer-events-none absolute inset-0">
-                        <div className="absolute -top-44 left-1/2 h-[560px] w-[980px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(223,255,0,0.22),_transparent_62%)] blur-3xl" />
-                        <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:56px_56px]" />
-                        <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_50%_0%,transparent_0%,rgba(7,7,10,0.55)_55%,rgba(7,7,10,0.98)_100%)]" />
-                      </div>
+                  <div
+  ref={cardRef}
+  className="relative w-full max-w-[420px] mx-auto overflow-hidden"
+  style={{
+    borderRadius: "32px",
+    background:
+      "linear-gradient(180deg, #0A0B0F 0%, #07070A 46%, #050507 100%)",
+    boxShadow:
+      "0 30px 80px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  }}
+>
+  <div
+    aria-hidden
+    style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}
+  >
+    <div
+      style={{
+        position: "absolute",
+        top: "-90px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "360px",
+        height: "260px",
+        borderRadius: "50%",
+        background:
+          "radial-gradient(circle at center, rgba(223,255,0,0.16), transparent 68%)",
+        filter: "blur(58px)",
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        top: "30%",
+        right: "-80px",
+        width: "180px",
+        height: "180px",
+        borderRadius: "50%",
+        background:
+          "radial-gradient(circle at center, rgba(90,110,255,0.12), transparent 70%)",
+        filter: "blur(42px)",
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        opacity: 0.07,
+        backgroundImage:
+          "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+        backgroundSize: "28px 28px",
+        maskImage:
+          "linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0.15) 55%, transparent 100%)",
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background:
+          "radial-gradient(90% 60% at 50% 0%, transparent 0%, rgba(7,7,10,0.42) 55%, rgba(7,7,10,0.96) 100%)",
+      }}
+    />
+  </div>
 
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold tracking-wide text-white">STRENDEX</div>
-                            <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-white/50">
-                              HYBRID ATHLETE CARD
-                            </div>
-                          </div>
+  <div
+    className="relative flex flex-col"
+    style={{ zIndex: 10, padding: "24px 24px 26px" }}
+  >
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div
+          style={{
+            fontSize: "11px",
+            fontWeight: 800,
+            letterSpacing: "0.34em",
+            color: "rgba(255,255,255,0.92)",
+            textTransform: "uppercase",
+          }}
+        >
+          STRENDEX
+        </div>
+        <div
+          style={{
+            fontSize: "9px",
+            letterSpacing: "0.24em",
+            color: "rgba(255,255,255,0.32)",
+            textTransform: "uppercase",
+            marginTop: "6px",
+          }}
+        >
+          Hybrid Athlete Card
+        </div>
+      </div>
 
-                          <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-widest text-white/40">Standing</div>
-                            <div className="mt-1 text-sm font-semibold text-white">
-                            {betterThanPercent === null ? "—" : `Better than ${betterThanPercent.toFixed(1)}%`}
-                            </div>
-                          </div>
-                        </div>
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.2em] ${tierMeta[tier].pill}`}
+        style={{ backdropFilter: "blur(8px)" }}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+        {tier}
+      </span>
+    </div>
 
-                        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-                          <div className="min-w-0">
-                            <div className="text-[10px] uppercase tracking-widest text-white/40">Athlete</div>
-                            <div className="mt-1 truncate text-[26px] font-semibold tracking-tight text-white">
-                              {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
-                            </div>
+    <div
+      style={{
+        marginTop: "18px",
+        border: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(255,255,255,0.025)",
+        borderRadius: "20px",
+        padding: "16px 16px 14px",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "9px",
+          letterSpacing: "0.24em",
+          color: "rgba(255,255,255,0.28)",
+          textTransform: "uppercase",
+          marginBottom: "8px",
+        }}
+      >
+        Athlete
+      </div>
 
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
-                                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-                                {tier}
-                              </span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div
+            style={{
+              fontSize: "24px",
+              fontWeight: 650,
+              color: "white",
+              letterSpacing: "-0.03em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              lineHeight: 1.05,
+            }}
+          >
+            {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
+          </div>
 
-                              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-white">
-                                <span className="grid h-5 w-5 place-items-center rounded-full bg-black/40 text-[#DFFF00]">
-                                  <ArchetypeIcon archetype={computedArchetype} className="h-3.5 w-3.5" />
-                                </span>
-                                {computedArchetype}
-                              </span>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.42)",
+              marginTop: "7px",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {computedArchetype}
+          </div>
+        </div>
 
-                              {globalRank !== null && totalAthletes !== null && (
-                                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold tracking-widest text-white">
-                                  #{globalRank} / {totalAthletes}
-                                </span>
-                              )}
-                            </div>
+        {globalRank !== null && totalAthletes !== null && (
+          <div
+            style={{
+              borderRadius: "999px",
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              padding: "7px 12px",
+              fontSize: "10px",
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.82)",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}
+          >
+            #{globalRank} / {totalAthletes}
+          </div>
+        )}
+      </div>
+    </div>
 
-                            <div className="mt-3 text-sm text-white/60">
-                              <span className="font-semibold text-white">{archetypeInfo.tagline}</span>
-                            </div>
-                          </div>
+    <div
+      style={{
+        marginTop: "18px",
+        position: "relative",
+        borderRadius: "24px",
+        border: "1px solid rgba(255,255,255,0.07)",
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)",
+        padding: "28px 18px 24px",
+        textAlign: "center",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: "auto 50% -70px 50%",
+          transform: "translateX(-50%)",
+          width: "220px",
+          height: "220px",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle at center, rgba(223,255,0,0.10), transparent 68%)",
+          filter: "blur(24px)",
+          pointerEvents: "none",
+        }}
+      />
 
-                          <div className="text-left sm:text-right">
-                            <div className="text-[10px] uppercase tracking-widest text-white/40">Hybrid Score</div>
-                            <div className="mt-1 text-[78px] font-semibold leading-none tracking-tight text-white drop-shadow-[0_0_30px_rgba(223,255,0,0.26)]">
-                            {hasResults ? Math.round(hybridScore) : 0}
-                            </div>
-                            <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-white/50">
-                              0–100
-                            </div>
-                          </div>
-                        </div>
+      <div
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.30em",
+          color: "rgba(255,255,255,0.26)",
+          textTransform: "uppercase",
+        }}
+      >
+        Hybrid Score
+      </div>
 
-                        <div className="mt-6 flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-white/40">
-                          <span>STRENDEX</span>
-                          <span className="text-white/30">TEST YOURSELF → {siteLabel}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      <div
+        style={{
+          marginTop: "14px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "178px",
+          height: "178px",
+          borderRadius: "50%",
+          border: "1px solid rgba(223,255,0,0.16)",
+          background:
+            "radial-gradient(circle at center, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 60%, transparent 100%)",
+          boxShadow:
+            "inset 0 0 50px rgba(255,255,255,0.02), 0 0 40px rgba(223,255,0,0.08)",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: "92px",
+              fontWeight: 650,
+              lineHeight: 0.95,
+              letterSpacing: "-0.05em",
+              color: "white",
+              textShadow: "0 0 90px rgba(223,255,0,0.16)",
+            }}
+          >
+            {hasResults ? Math.round(hybridScore) : "\u2014"}
+          </div>
+          <div
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.22em",
+              color: "rgba(255,255,255,0.22)",
+              textTransform: "uppercase",
+              marginTop: "6px",
+            }}
+          >
+            out of 100
+          </div>
+        </div>
+      </div>
+
+      {betterThanPercent !== null && (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            marginTop: "18px",
+            borderRadius: "999px",
+            border: "1px solid rgba(223,255,0,0.16)",
+            background: "rgba(223,255,0,0.08)",
+            padding: "8px 16px",
+            fontSize: "12px",
+            fontWeight: 650,
+            color: "rgba(240,255,170,0.96)",
+            letterSpacing: "0.02em",
+          }}
+        >
+          <span
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "999px",
+              background: "#DFFF00",
+              boxShadow: "0 0 12px rgba(223,255,0,0.65)",
+            }}
+          />
+          Better than {betterThanPercent.toFixed(1)}% of athletes
+        </div>
+      )}
+    </div>
+
+    <div
+      style={{
+        marginTop: "16px",
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "10px",
+      }}
+    >
+      {[
+        {
+          label: "Strength",
+          value:
+            strengthPercentile !== null ? Math.round(strengthPercentile) : null,
+        },
+        {
+          label: "Endurance",
+          value:
+            endurancePercentile !== null
+              ? Math.round(endurancePercentile)
+              : null,
+        },
+      ].map((item) => (
+        <div
+          key={item.label}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            borderRadius: "18px",
+            border: "1px solid rgba(255,255,255,0.07)",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)",
+            padding: "18px 12px 16px",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.22em",
+              color: "rgba(255,255,255,0.30)",
+              textTransform: "uppercase",
+            }}
+          >
+            {item.label}
+          </div>
+          <div
+            style={{
+              fontSize: "40px",
+              fontWeight: 650,
+              color: "white",
+              lineHeight: 1,
+              marginTop: "10px",
+              letterSpacing: "-0.03em",
+            }}
+          >
+            {item.value !== null ? item.value : "\u2014"}
+          </div>
+          <div
+            style={{
+              fontSize: "10px",
+              color: "rgba(255,255,255,0.24)",
+              marginTop: "6px",
+              letterSpacing: "0.11em",
+            }}
+          >
+            percentile
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div
+      style={{
+        marginTop: "10px",
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr 1fr",
+        gap: "8px",
+      }}
+    >
+      {[
+        { k: "BW", v: wLb > 0 ? `${Math.round(wLb)} lb` : "\u2014" },
+        {
+          k: "Total",
+          v: totalLift > 0 ? `${Math.round(totalLift)} lb` : "\u2014",
+        },
+        { k: runDistance.toUpperCase(), v: runTimeText || "\u2014" },
+      ].map((x) => (
+        <div
+          key={x.k}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(255,255,255,0.02)",
+            padding: "12px 8px 11px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "9px",
+              letterSpacing: "0.20em",
+              color: "rgba(255,255,255,0.24)",
+              textTransform: "uppercase",
+            }}
+          >
+            {x.k}
+          </div>
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 650,
+              color: "rgba(255,255,255,0.84)",
+              marginTop: "5px",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {x.v}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div
+      style={{
+        marginTop: "18px",
+        height: "1px",
+        background:
+          "linear-gradient(to right, transparent, rgba(223,255,0,0.28), transparent)",
+      }}
+    />
+
+    <div
+      className="flex items-center justify-between"
+      style={{ marginTop: "14px" }}
+    >
+      <div
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.24em",
+          color: "rgba(255,255,255,0.20)",
+          textTransform: "uppercase",
+        }}
+      >
+        {siteLabel}
+      </div>
+      <div
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.24em",
+          color: "rgba(255,255,255,0.20)",
+          textTransform: "uppercase",
+        }}
+      >
+        {globalRank !== null && totalAthletes !== null
+          ? `#${globalRank} / ${totalAthletes}`
+          : "CAN YOU BEAT THIS?"}
+      </div>
+    </div>
+  </div>
+</div>
                 </div>
 
                 {/* Ranking bands */}
@@ -1245,7 +1618,7 @@ if (!error) {
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Tiers</div>
-                      <div className="mt-1 text-base font-semibold text-white">Score bands</div>
+                      <div className="mt-1 text-base font-semibold text-white">Where do you land?</div>
                     </div>
                     <Link
                       href="/rankings"
@@ -1290,7 +1663,7 @@ if (!error) {
             {!showDetails && (
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
               <div className="text-base text-white/70">
-                Open details to view your archetype, chart, and share card.
+              Open details to see your full breakdown, archetype, and shareable athlete card.
               </div>
             </div>
             )}

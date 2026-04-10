@@ -466,17 +466,71 @@ export default function RankingsPage() {
                 </div>
               </div>
 
-              <table className="w-full text-left">
+              {/* MOBILE list — visible only below md */}
+              <div className="md:hidden divide-y divide-white/10">
+                {filtered.map((p) => {
+                  const meta = TIER_META[p.tier] ?? TIER_META["—"];
+                  const isTop3 = p.place <= 3;
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-4 px-4 py-4 hover:bg-white/[0.03] transition"
+                    >
+                      {/* Rank */}
+                      <div
+                        className="shrink-0 w-9 text-center"
+                      >
+                        <span
+                          className={`text-sm font-semibold ${
+                            isTop3 ? "text-white" : "text-zinc-500"
+                          }`}
+                        >
+                          #{p.place}
+                        </span>
+                      </div>
+
+                      {/* Name + badges */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white truncate">
+                          {p.name}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-widest ${meta.pill}`}
+                          >
+                            {meta.label}
+                          </span>
+                          <span className="inline-flex rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-semibold tracking-widest text-zinc-400">
+                            {p.archetype}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Score */}
+                      <div className="shrink-0 text-right">
+                        <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-0.5">
+                          Score
+                        </div>
+                        <div className="text-lg font-semibold text-emerald-300">
+                          {p.score}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* DESKTOP table — hidden below md */}
+              <table className="hidden md:table w-full text-left">
                 <thead className="bg-black/40 text-[10px] uppercase tracking-widest text-zinc-500">
                   <tr>
                     <th className="px-6 py-4">Rank</th>
                     <th className="px-6 py-4">Athlete</th>
-                    <th className="px-6 py-4 hidden md:table-cell">Tier</th>
-                    <th className="px-6 py-4 hidden md:table-cell">Archetype</th>
+                    <th className="px-6 py-4">Tier</th>
+                    <th className="px-6 py-4">Archetype</th>
                     <th className="px-6 py-4 text-right">Hybrid Score</th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-white/10">
                   {filtered.map((p) => {
                     const meta = TIER_META[p.tier] ?? TIER_META["—"];
@@ -485,33 +539,19 @@ export default function RankingsPage() {
                         <td className="px-6 py-4 font-semibold text-zinc-400">
                           #{p.place}
                         </td>
-
-                        <td className="px-6 py-4">
-                          <div className="text-white font-semibold">{p.name}</div>
-                          <div className="mt-1 md:hidden flex flex-wrap gap-2">
-                            <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-widest ${meta.pill}`}
-                            >
-                              {meta.label}
-                            </span>
-                            <span className="inline-flex rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] font-semibold tracking-widest text-zinc-400">
-                              {p.archetype}
-                            </span>
-                          </div>
+                        <td className="px-6 py-4 text-white font-semibold">
+                          {p.name}
                         </td>
-
-                        <td className="px-6 py-4 hidden md:table-cell">
+                        <td className="px-6 py-4">
                           <span
                             className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold tracking-widest ${meta.pill}`}
                           >
                             {meta.label}
                           </span>
                         </td>
-
-                        <td className="px-6 py-4 hidden md:table-cell text-zinc-400">
+                        <td className="px-6 py-4 text-zinc-400">
                           {p.archetype}
                         </td>
-
                         <td className="px-6 py-4 text-right font-mono text-emerald-300">
                           {p.score}
                         </td>
