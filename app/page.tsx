@@ -21,12 +21,15 @@ export default function Home() {
     },
   ];
 
+  // FIX #10 — social proof number (update this as your dataset grows)
+  const submissionCount = 47;
+
   return (
     <main
       className="min-h-screen font-sans antialiased selection:bg-[#DFFF00]/20"
       style={{ backgroundColor: "#020203", color: "#f4f4f5" }}
     >
-      {/* ── FIXED BACKGROUND ── */}
+      {/* BACKGROUND */}
       <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0" style={{ backgroundColor: "#020203" }} />
         <div
@@ -58,444 +61,384 @@ export default function Home() {
           paddingLeft: "20px",
           paddingRight: "20px",
           paddingTop: "72px",
-          paddingBottom: "0px",
+          paddingBottom: "0",
         }}
       >
-        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+        <div className="mx-auto" style={{ maxWidth: "1120px" }}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16">
 
-          {/* Pill */}
-          <div
-            className="inline-flex items-center gap-2"
-            style={{
-              borderRadius: "999px",
-              border: "0.5px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
-              padding: "6px 14px",
-              fontSize: "11px",
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.5)",
-            }}
-          >
-            <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                backgroundColor: "#DFFF00",
-                opacity: 0.9,
-                flexShrink: 0,
-              }}
-            />
-            Hybrid athlete benchmark
-          </div>
-
-          {/* Headline */}
-          <h1
-            style={{
-              marginTop: "24px",
-              fontSize: "clamp(42px, 10vw, 72px)",
-              fontWeight: 600,
-              lineHeight: 1.05,
-              letterSpacing: "-0.03em",
-              color: "white",
-            }}
-          >
-            Find out where you actually rank.
-          </h1>
-
-          {/* Subheading */}
-          <p
-            style={{
-              marginTop: "20px",
-              fontSize: "17px",
-              lineHeight: 1.65,
-              color: "rgba(255,255,255,0.45)",
-              maxWidth: "480px",
-            }}
-          >
-            The benchmark for athletes who lift heavy and run far. One score,
-            two percentiles, compared against everyone who has tested.
-          </p>
-
-          {/* Primary CTA */}
-          <div style={{ marginTop: "36px" }}>
-            <Link
-              href="/tool"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-                maxWidth: "320px",
-                borderRadius: "14px",
-                backgroundColor: "#DFFF00",
-                color: "#000",
-                fontSize: "15px",
-                fontWeight: 700,
-                letterSpacing: "0.01em",
-                padding: "18px 28px",
-                textDecoration: "none",
-                
-              }}
-              
-            >
-              Get my score →
-            </Link>
-
-            <div
-              style={{
-                marginTop: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "20px",
-              }}
-            >
-              <span
-                style={{ fontSize: "12px", color: "rgba(255,255,255,0.28)" }}
-              >
-                Free · no sign-up · 60 seconds
-              </span>
-              <Link
-                href="/rankings"
+            {/* LEFT */}
+            <div className="flex-1 lg:max-w-[520px]">
+              {/* Pill */}
+              <div
+                className="inline-flex items-center gap-2"
                 style={{
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "rgba(255,255,255,0.45)",
-                  textDecoration: "none",
+                  borderRadius: "999px",
+                  border: "0.5px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.04)",
+                  padding: "6px 14px",
+                  fontSize: "11px",
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.5)",
                 }}
               >
-                View Rankings →
-              </Link>
-            </div>
-          </div>
-        </div>
+                <span
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    backgroundColor: "#DFFF00",
+                    opacity: 0.9,
+                    flexShrink: 0,
+                  }}
+                />
+                Hybrid athlete benchmark
+              </div>
 
-        {/* ── ATHLETE CARD PREVIEW ── */}
-        <div
-          style={{
-            maxWidth: "680px",
-            margin: "52px auto 0",
-            borderRadius: "24px",
-            border: "0.5px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.025)",
-            overflow: "hidden",
-          }}
-        >
-          {/* Card header */}
-          <div
-            style={{
-              padding: "20px 24px 16px",
-              borderBottom: "0.5px solid rgba(255,255,255,0.06)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              {/* Headline */}
+              <h1
+                style={{
+                  marginTop: "24px",
+                  fontSize: "clamp(40px, 9vw, 66px)",
+                  fontWeight: 600,
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.03em",
+                  color: "white",
+                }}
+              >
+                Find out where you actually rank.
+              </h1>
+
+              {/* Subheading — desktop only */}
+              <p
+                className="hidden lg:block"
+                style={{
+                  marginTop: "20px",
+                  fontSize: "17px",
+                  lineHeight: 1.65,
+                  color: "rgba(255,255,255,0.45)",
+                  maxWidth: "460px",
+                }}
+              >
+                The benchmark for athletes who lift heavy and run far. One
+                score, two percentiles, compared against everyone who has
+                tested.
+              </p>
+
+              {/* FIX #10 — social proof */}
               <div
                 style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "10px",
-                  border: "0.5px solid rgba(255,255,255,0.1)",
-                  background: "rgba(0,0,0,0.3)",
-                  overflow: "hidden",
-                  position: "relative",
-                  flexShrink: 0,
+                  marginTop: "20px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                <Image
-                  src="/logo.png"
-                  alt="Strendex"
-                  fill
-                  className="object-contain p-1"
-                  priority
-                />
-              </div>
-              <div>
-                <div
+                <div style={{ display: "flex", gap: "2px" }}>
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        backgroundColor: "#DFFF00",
+                        opacity: 0.5 + i * 0.1,
+                      }}
+                    />
+                  ))}
+                </div>
+                <span
                   style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    color: "white",
-                    lineHeight: 1,
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.35)",
                   }}
                 >
-                  Athlete Card
-                </div>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "rgba(255,255,255,0.3)",
-                    marginTop: "3px",
-                  }}
-                >
-                  Preview
-                </div>
+                  {submissionCount} athletes have tested
+                </span>
               </div>
-            </div>
-            <div
-              style={{
-                borderRadius: "999px",
-                border: "0.5px solid rgba(52,211,153,0.25)",
-                background: "rgba(52,211,153,0.1)",
-                padding: "5px 12px",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "rgb(167,243,208)",
-              }}
-            >
-              Top 28% of hybrid athletes
-            </div>
-          </div>
 
-          {/* Card body */}
-          <div style={{ padding: "24px" }}>
-            {/* Athlete row */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: "16px",
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div
+              {/* CTA — FIX #2 full pill buttons */}
+              <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "12px", alignItems: "flex-start" }}>
+                <Link
+                  href="/tool"
                   style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.22em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.28)",
-                  }}
-                >
-                  Athlete
-                </div>
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "20px",
-                    fontWeight: 600,
-                    color: "white",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "999px",
+                    backgroundColor: "#DFFF00",
+                    color: "#000",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    letterSpacing: "0.01em",
+                    padding: "16px 32px",
+                    textDecoration: "none",
                     whiteSpace: "nowrap",
                   }}
                 >
-                  Anonymous
-                </div>
-                <div
+                  Get my score →
+                </Link>
+                <Link
+                  href="/rankings"
                   style={{
-                    marginTop: "10px",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "rgba(255,255,255,0.35)",
+                    textDecoration: "none",
+                    paddingLeft: "4px",
                   }}
                 >
-                  {["ADVANCED", "STRENGTH-LEANING"].map((tag) => (
-                    <span
-                      key={tag}
+                  View Rankings →
+                </Link>
+              </div>
+            </div>
+
+            {/* RIGHT — athlete card preview FIX #3 blends with bg */}
+            <div
+              className="flex-1 mt-12 lg:mt-0"
+              style={{ maxWidth: "480px", width: "100%" }}
+            >
+              <div
+                style={{
+                  borderRadius: "24px",
+                  border: "0.5px solid rgba(255,255,255,0.05)",
+                  background: "rgba(255,255,255,0.015)",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Card header */}
+                <div
+                  style={{
+                    padding: "20px 24px 16px",
+                    borderBottom: "0.5px solid rgba(255,255,255,0.05)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
                       style={{
-                        borderRadius: "999px",
-                        border: "0.5px solid rgba(255,255,255,0.1)",
-                        background: "rgba(255,255,255,0.03)",
-                        padding: "4px 10px",
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        letterSpacing: "0.15em",
-                        color: "rgba(255,255,255,0.6)",
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "10px",
+                        border: "0.5px solid rgba(255,255,255,0.08)",
+                        background: "rgba(0,0,0,0.4)",
+                        overflow: "hidden",
+                        position: "relative",
+                        flexShrink: 0,
                       }}
                     >
-                      {tag}
-                    </span>
-                  ))}
+                      <Image
+                        src="/logo.png"
+                        alt="Strendex"
+                        fill
+                        className="object-contain p-1"
+                        priority
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600, color: "white", lineHeight: 1 }}>
+                        Athlete Card
+                      </div>
+                      <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.28)", marginTop: "3px" }}>
+                        Preview
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      borderRadius: "999px",
+                      border: "0.5px solid rgba(52,211,153,0.22)",
+                      background: "rgba(52,211,153,0.08)",
+                      padding: "5px 12px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "rgb(167,243,208)",
+                    }}
+                  >
+                    Top 28% of hybrid athletes
+                  </div>
+                </div>
+
+                {/* Card body */}
+                <div style={{ padding: "24px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "10px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
+                        Athlete
+                      </div>
+                      <div style={{ marginTop: "4px", fontSize: "20px", fontWeight: 600, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        Anonymous
+                      </div>
+                      <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {["ADVANCED", "STRENGTH-LEANING"].map((tag) => (
+                          <span
+                            key={tag}
+                            style={{
+                              borderRadius: "999px",
+                              border: "0.5px solid rgba(255,255,255,0.08)",
+                              background: "rgba(255,255,255,0.02)",
+                              padding: "4px 10px",
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              letterSpacing: "0.15em",
+                              color: "rgba(255,255,255,0.5)",
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: "10px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
+                        Hybrid Score
+                      </div>
+                      <div style={{ marginTop: "4px", fontSize: "56px", fontWeight: 600, lineHeight: 1, letterSpacing: "-0.03em", color: "white" }}>
+                        68
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    {[{ label: "Strength", value: "72" }, { label: "Engine", value: "58" }].map((item) => (
+                      <div
+                        key={item.label}
+                        style={{
+                          borderRadius: "14px",
+                          border: "0.5px solid rgba(255,255,255,0.06)",
+                          background: "rgba(255,255,255,0.02)",
+                          padding: "16px",
+                        }}
+                      >
+                        <div style={{ fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
+                          {item.label}
+                        </div>
+                        <div style={{ marginTop: "6px", fontSize: "26px", fontWeight: 600, color: "white", lineHeight: 1 }}>
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                    {[{ k: "BW", v: "195 lb" }, { k: "5K", v: "22:30" }, { k: "Total", v: "1065 lb" }].map((x) => (
+                      <div
+                        key={x.k}
+                        style={{
+                          borderRadius: "12px",
+                          border: "0.5px solid rgba(255,255,255,0.05)",
+                          background: "rgba(255,255,255,0.012)",
+                          padding: "12px 10px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+                          {x.k}
+                        </div>
+                        <div style={{ marginTop: "4px", fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>
+                          {x.v}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "20px", textAlign: "center", fontSize: "11px", color: "rgba(255,255,255,0.15)", letterSpacing: "0.05em" }}>
+                    This is what you walk away with.
+                  </div>
                 </div>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div
-                  style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.22em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.28)",
-                  }}
-                >
-                  Hybrid Score
-                </div>
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontSize: "56px",
-                    fontWeight: 600,
-                    lineHeight: 1,
-                    letterSpacing: "-0.03em",
-                    color: "white",
-                  }}
-                >
-                  68
-                </div>
-              </div>
             </div>
 
-            {/* Percentile split */}
-            <div
-              style={{
-                marginTop: "20px",
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "10px",
-              }}
-            >
-              {[
-                { label: "Strength", value: "72" },
-                { label: "Engine", value: "58" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  style={{
-                    borderRadius: "14px",
-                    border: "0.5px solid rgba(255,255,255,0.07)",
-                    background: "rgba(255,255,255,0.025)",
-                    padding: "16px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "10px",
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.28)",
-                    }}
-                  >
-                    {item.label}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: "6px",
-                      fontSize: "26px",
-                      fontWeight: 600,
-                      color: "white",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {item.value}
-                  </div>
-                </div>
-              ))}
-            </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Stats row */}
-            <div
-              style={{
-                marginTop: "10px",
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: "8px",
-              }}
-            >
-              {[
-                { k: "BW", v: "195 lb" },
-                { k: "5K", v: "22:30" },
-                { k: "Total", v: "1065 lb" },
-              ].map((x) => (
-                <div
-                  key={x.k}
-                  style={{
-                    borderRadius: "12px",
-                    border: "0.5px solid rgba(255,255,255,0.06)",
-                    background: "rgba(255,255,255,0.015)",
-                    padding: "12px 10px",
-                    textAlign: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "9px",
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.24)",
-                    }}
-                  >
-                    {x.k}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: "4px",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.75)",
-                    }}
-                  >
-                    {x.v}
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* FIX #5 — hero to content transition */}
+      <div
+        style={{
+          maxWidth: "1120px",
+          margin: "80px auto 0",
+          padding: "0 20px",
+        }}
+      >
+        <div
+          style={{
+            height: "0.5px",
+            background: "linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent)",
+          }}
+        />
+      </div>
 
-            {/* Card footer caption */}
-            <div
+      {/* ══════════════════════════════
+          STATEMENT BREAK
+          FIX #1 wider, FIX #4 left accent, FIX #8 smaller type
+      ══════════════════════════════ */}
+      <section
+        style={{
+          maxWidth: "900px",
+          margin: "0 auto",
+          padding: "88px 20px 0",
+        }}
+      >
+        {/* FIX #4 — left accent line */}
+        <div style={{ display: "flex", gap: "28px", alignItems: "flex-start" }}>
+          <div
+            style={{
+              width: "2px",
+              minHeight: "100%",
+              alignSelf: "stretch",
+              background: "linear-gradient(to bottom, #DFFF00, transparent)",
+              borderRadius: "2px",
+              flexShrink: 0,
+              opacity: 0.5,
+            }}
+          />
+          <div>
+            <p
               style={{
-                marginTop: "20px",
-                textAlign: "center",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.2)",
-                letterSpacing: "0.05em",
+                fontSize: "clamp(26px, 5vw, 36px)",
+                fontWeight: 600,
+                lineHeight: 1.2,
+                letterSpacing: "-0.02em",
+                color: "white",
               }}
             >
-              This is what you walk away with.
-            </div>
+              Most athletes train both.{" "}
+              <span style={{ color: "rgba(255,255,255,0.28)" }}>
+                Almost none know where they actually stand.
+              </span>
+            </p>
+            <p
+              style={{
+                marginTop: "18px",
+                fontSize: "16px",
+                lineHeight: 1.7,
+                color: "rgba(255,255,255,0.38)",
+                maxWidth: "560px",
+              }}
+            >
+              Existing platforms score strength or endurance — never both
+              together. STRENDEX is the first benchmark built specifically for
+              hybrid athletes.
+            </p>
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════
-          STATEMENT BREAK
-      ══════════════════════════════ */}
-      <section
-        style={{
-          maxWidth: "680px",
-          margin: "0 auto",
-          padding: "96px 20px 0",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "clamp(28px, 6vw, 44px)",
-            fontWeight: 600,
-            lineHeight: 1.18,
-            letterSpacing: "-0.025em",
-            color: "white",
-          }}
-        >
-          Most athletes train both.{" "}
-          <span style={{ color: "rgba(255,255,255,0.3)" }}>
-            Almost none know where they actually stand.
-          </span>
-        </p>
-        <p
-          style={{
-            marginTop: "20px",
-            fontSize: "16px",
-            lineHeight: 1.7,
-            color: "rgba(255,255,255,0.38)",
-            maxWidth: "480px",
-          }}
-        >
-          Existing platforms score strength or endurance — never both together.
-          STRENDEX is the first benchmark built specifically for hybrid athletes.
-        </p>
-      </section>
-
-      {/* ══════════════════════════════
-          HOW IT WORKS — Linear style
+          HOW IT WORKS
+          FIX #1 wider, FIX #6 visible connector, FIX #9 auto button
       ══════════════════════════════ */}
       <section
         id="how"
         style={{
-          maxWidth: "680px",
+          maxWidth: "900px",
           margin: "0 auto",
-          padding: "96px 20px 0",
+          padding: "88px 20px 0",
         }}
       >
         <div
@@ -511,7 +454,7 @@ export default function Home() {
         <h2
           style={{
             marginTop: "12px",
-            fontSize: "clamp(28px, 6vw, 42px)",
+            fontSize: "clamp(26px, 5vw, 38px)",
             fontWeight: 600,
             lineHeight: 1.12,
             letterSpacing: "-0.025em",
@@ -522,7 +465,7 @@ export default function Home() {
         </h2>
         <p
           style={{
-            marginTop: "16px",
+            marginTop: "14px",
             fontSize: "16px",
             lineHeight: 1.65,
             color: "rgba(255,255,255,0.38)",
@@ -531,8 +474,7 @@ export default function Home() {
           No fluff, no sign-up. Just where you stand.
         </p>
 
-        {/* Steps — vertical, generous spacing */}
-        <div style={{ marginTop: "56px", display: "flex", flexDirection: "column", gap: "0" }}>
+        <div style={{ marginTop: "52px", display: "flex", flexDirection: "column" }}>
           {[
             {
               n: "01",
@@ -555,34 +497,25 @@ export default function Home() {
               style={{
                 display: "flex",
                 gap: "24px",
-                paddingBottom: i < 2 ? "48px" : "0",
-                position: "relative",
+                paddingBottom: i < 2 ? "44px" : "0",
               }}
             >
-              {/* Left: number + line */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  flexShrink: 0,
-                  width: "32px",
-                }}
-              >
+              {/* FIX #6 — visible connector line */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: "32px" }}>
                 <div
                   style={{
                     width: "32px",
                     height: "32px",
                     borderRadius: "8px",
-                    border: "0.5px solid rgba(255,255,255,0.1)",
-                    background: "rgba(255,255,255,0.04)",
+                    border: "0.5px solid rgba(255,255,255,0.14)",
+                    background: "rgba(255,255,255,0.05)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: "11px",
                     fontWeight: 700,
                     letterSpacing: "0.08em",
-                    color: "rgba(255,255,255,0.4)",
+                    color: "rgba(255,255,255,0.5)",
                     flexShrink: 0,
                   }}
                 >
@@ -591,36 +524,19 @@ export default function Home() {
                 {i < 2 && (
                   <div
                     style={{
-                      width: "0.5px",
+                      width: "1px",
                       flex: 1,
-                      background:
-                        "linear-gradient(to bottom, rgba(255,255,255,0.08), transparent)",
+                      background: "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.02))",
                       marginTop: "8px",
                     }}
                   />
                 )}
               </div>
-
-              {/* Right: content */}
               <div style={{ paddingTop: "4px", flex: 1 }}>
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 600,
-                    color: "white",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
+                <div style={{ fontSize: "17px", fontWeight: 600, color: "white", letterSpacing: "-0.01em" }}>
                   {s.t}
                 </div>
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontSize: "15px",
-                    lineHeight: 1.65,
-                    color: "rgba(255,255,255,0.38)",
-                  }}
-                >
+                <div style={{ marginTop: "8px", fontSize: "15px", lineHeight: 1.65, color: "rgba(255,255,255,0.38)" }}>
                   {s.d}
                 </div>
               </div>
@@ -628,23 +544,22 @@ export default function Home() {
           ))}
         </div>
 
-        {/* CTA after steps */}
-        <div style={{ marginTop: "52px" }}>
+        {/* FIX #9 — auto-width button */}
+        <div style={{ marginTop: "48px" }}>
           <Link
             href="/tool"
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "100%",
-              maxWidth: "320px",
-              borderRadius: "14px",
+              borderRadius: "999px",
               backgroundColor: "#DFFF00",
               color: "#000",
               fontSize: "15px",
               fontWeight: 700,
-              padding: "18px 28px",
+              padding: "16px 32px",
               textDecoration: "none",
+              whiteSpace: "nowrap",
             }}
           >
             Get my score →
@@ -654,51 +569,66 @@ export default function Home() {
 
       {/* ══════════════════════════════
           SECOND STATEMENT
+          FIX #1 wider, FIX #4 left accent, FIX #8 smaller type
       ══════════════════════════════ */}
       <section
         style={{
-          maxWidth: "680px",
+          maxWidth: "900px",
           margin: "0 auto",
-          padding: "96px 20px 0",
+          padding: "88px 20px 0",
         }}
       >
-        <p
-          style={{
-            fontSize: "clamp(28px, 6vw, 44px)",
-            fontWeight: 600,
-            lineHeight: 1.18,
-            letterSpacing: "-0.025em",
-            color: "white",
-          }}
-        >
-          The more athletes test,{" "}
-          <span style={{ color: "rgba(255,255,255,0.3)" }}>
-            the more accurate your percentile becomes.
-          </span>
-        </p>
-        <p
-          style={{
-            marginTop: "20px",
-            fontSize: "16px",
-            lineHeight: 1.7,
-            color: "rgba(255,255,255,0.38)",
-            maxWidth: "480px",
-          }}
-        >
-          Every submission improves the benchmark. Your score gets more
-          meaningful as the dataset grows — that's the point.
-        </p>
+        <div style={{ display: "flex", gap: "28px", alignItems: "flex-start" }}>
+          <div
+            style={{
+              width: "2px",
+              alignSelf: "stretch",
+              background: "linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)",
+              borderRadius: "2px",
+              flexShrink: 0,
+            }}
+          />
+          <div>
+            <p
+              style={{
+                fontSize: "clamp(26px, 5vw, 36px)",
+                fontWeight: 600,
+                lineHeight: 1.2,
+                letterSpacing: "-0.02em",
+                color: "white",
+              }}
+            >
+              The more athletes test,{" "}
+              <span style={{ color: "rgba(255,255,255,0.28)" }}>
+                the more accurate your percentile becomes.
+              </span>
+            </p>
+            <p
+              style={{
+                marginTop: "18px",
+                fontSize: "16px",
+                lineHeight: 1.7,
+                color: "rgba(255,255,255,0.38)",
+                maxWidth: "560px",
+              }}
+            >
+              Every submission improves the benchmark. Your score gets more
+              meaningful as the dataset grows — that&apos;s the point.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* ══════════════════════════════
           FAQ
+          FIX #1 wider
       ══════════════════════════════ */}
       <section
         id="faq"
         style={{
-          maxWidth: "680px",
+          maxWidth: "900px",
           margin: "0 auto",
-          padding: "96px 20px 0",
+          padding: "88px 20px 0",
         }}
       >
         <div
@@ -714,7 +644,7 @@ export default function Home() {
         <h2
           style={{
             marginTop: "12px",
-            fontSize: "clamp(28px, 6vw, 42px)",
+            fontSize: "clamp(26px, 5vw, 36px)",
             fontWeight: 600,
             lineHeight: 1.12,
             letterSpacing: "-0.025em",
@@ -726,10 +656,9 @@ export default function Home() {
 
         <div
           style={{
-            marginTop: "40px",
+            marginTop: "36px",
             display: "flex",
             flexDirection: "column",
-            gap: "0",
             borderTop: "0.5px solid rgba(255,255,255,0.07)",
           }}
         >
@@ -750,13 +679,7 @@ export default function Home() {
                   userSelect: "none",
                 }}
               >
-                <span
-                  style={{
-                    fontSize: "15px",
-                    fontWeight: 600,
-                    color: "white",
-                  }}
-                >
+                <span style={{ fontSize: "15px", fontWeight: 600, color: "white" }}>
                   {f.q}
                 </span>
                 <span
@@ -794,21 +717,32 @@ export default function Home() {
 
       {/* ══════════════════════════════
           FINAL CTA
+          FIX #1 wider, FIX #2 pill button, FIX #10 social proof
       ══════════════════════════════ */}
       <section
         style={{
-          maxWidth: "680px",
+          maxWidth: "900px",
           margin: "0 auto",
-          padding: "96px 20px 120px",
+          padding: "88px 20px 120px",
         }}
       >
+        {/* subtle top rule */}
+        <div
+          style={{
+            height: "0.5px",
+            background: "linear-gradient(to right, transparent, rgba(255,255,255,0.07), transparent)",
+            marginBottom: "72px",
+          }}
+        />
+
         <h2
           style={{
-            fontSize: "clamp(32px, 8vw, 56px)",
+            fontSize: "clamp(32px, 7vw, 52px)",
             fontWeight: 600,
             lineHeight: 1.08,
             letterSpacing: "-0.03em",
             color: "white",
+            maxWidth: "600px",
           }}
         >
           Are you actually a hybrid athlete?
@@ -824,30 +758,59 @@ export default function Home() {
         >
           Find out in 60 seconds. Free, no sign-up, instant result.
         </p>
+
+        {/* FIX #10 — social proof near final CTA */}
         <div
           style={{
-            marginTop: "36px",
+            marginTop: "16px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <div style={{ display: "flex", gap: "2px" }}>
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  backgroundColor: "#DFFF00",
+                  opacity: 0.4 + i * 0.12,
+                }}
+              />
+            ))}
+          </div>
+          <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
+            {submissionCount} athletes have tested so far
+          </span>
+        </div>
+
+        <div
+          style={{
+            marginTop: "32px",
             display: "flex",
             flexDirection: "column",
             gap: "12px",
             alignItems: "flex-start",
           }}
         >
+          {/* FIX #2 — pill button */}
           <Link
             href="/tool"
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "100%",
-              maxWidth: "320px",
-              borderRadius: "14px",
+              borderRadius: "999px",
               backgroundColor: "#DFFF00",
               color: "#000",
               fontSize: "15px",
               fontWeight: 700,
-              padding: "18px 28px",
+              padding: "16px 32px",
               textDecoration: "none",
+              whiteSpace: "nowrap",
             }}
           >
             Get my score →
@@ -857,8 +820,9 @@ export default function Home() {
             style={{
               fontSize: "13px",
               fontWeight: 600,
-              color: "rgba(255,255,255,0.35)",
+              color: "rgba(255,255,255,0.3)",
               textDecoration: "none",
+              paddingLeft: "4px",
             }}
           >
             View the leaderboard →
