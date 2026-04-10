@@ -261,9 +261,16 @@ const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
 
   // normalize to LB for local ratios / display
   const wLb = unitSystem === "kg" ? kgToLb(wInput) : wInput;
-  const bLb = unitSystem === "kg" ? kgToLb(bInput) : bInput;
-  const sLb = unitSystem === "kg" ? kgToLb(sInput) : sInput;
-  const dLb = unitSystem === "kg" ? kgToLb(dInput) : dInput;
+const bLb = unitSystem === "kg" ? kgToLb(bInput) : bInput;
+const sLb = unitSystem === "kg" ? kgToLb(sInput) : sInput;
+const dLb = unitSystem === "kg" ? kgToLb(dInput) : dInput;
+
+const displayWeight = unitSystem === "kg" ? wInput : wLb;
+const displayBench = unitSystem === "kg" ? bInput : bLb;
+const displaySquat = unitSystem === "kg" ? sInput : sLb;
+const displayDeadlift = unitSystem === "kg" ? dInput : dLb;
+const displayTotalLift = displayBench + displaySquat + displayDeadlift;
+const unitLabel = unitSystem.toUpperCase();
 
   // endurance -> half-equivalent seconds
   const runSeconds = parseTimeToSeconds(runTimeText) ?? 0;
@@ -525,8 +532,16 @@ setComputedArchetype(a);
 
       // Move user to results view
       // Move user to results view
-setStep(4);
-setShowDetails(false);
+      setStep(4);
+      setShowDetails(false);
+      setTimeout(() => {
+        if (window.innerWidth >= 1024) {
+          setShowDetails(true);
+        } else {
+          const btn = document.getElementById("details-toggle-btn");
+          if (btn) btn.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 800);
 
 if (!error) {
   setTimeout(() => setStatusText(""), 1800);
@@ -670,7 +685,7 @@ if (!error) {
       {/* Top header */}
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">Hybrid Athlete Benchmark • Free • 30 Seconds</div>
+          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">Hybrid Athlete Benchmark</div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           Find out where you <span className="text-[#DFFF00]">actually rank.</span>
           </h1>
@@ -699,11 +714,11 @@ if (!error) {
               </div>
 
               {/* Units toggle */}
-              <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-black/30">
+              <div className="grid w-[120px] grid-cols-2 overflow-hidden rounded-full border border-white/10 bg-black/30 sm:w-[128px]">
   <button
     type="button"
     onClick={() => setUnitSystem("lb")}
-    className={`px-4 py-2 text-sm font-semibold transition ${
+    className={`min-w-0 px-0 py-2 text-center text-sm font-semibold transition ${
       unitSystem === "lb" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
     }`}
   >
@@ -712,7 +727,7 @@ if (!error) {
   <button
     type="button"
     onClick={() => setUnitSystem("kg")}
-    className={`px-4 py-2 text-sm font-semibold transition ${
+    className={`min-w-0 px-0 py-2 text-center text-sm font-semibold transition ${
       unitSystem === "kg" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
     }`}
   >
@@ -736,7 +751,7 @@ if (!error) {
                   />
 
                   <Field
-                    label={`Bodyweight (${unitSystem.toUpperCase()})`}
+                    label={`Bodyweight (${unitLabel})`}
                     placeholder="e.g., 195"
                     value={weight}
                     onChange={setWeight}
@@ -763,14 +778,16 @@ if (!error) {
               {/* STEP 2 */}
               {step === 2 && (
                 <>
-                  <Field label={`Bench (${unitSystem.toUpperCase()})`} placeholder="e.g., 275" value={bench} onChange={setBench} />
-                  <Field label={`Squat (${unitSystem.toUpperCase()})`} placeholder="e.g., 365" value={squat} onChange={setSquat} />
-                  <Field label={`Deadlift (${unitSystem.toUpperCase()})`} placeholder="e.g., 425" value={deadlift} onChange={setDeadlift} />
+                  <Field label={`Bench (${unitLabel})`} placeholder="e.g., 275" value={bench} onChange={setBench} />
+                  <Field label={`Squat (${unitLabel})`} placeholder="e.g., 365" value={squat} onChange={setSquat} />
+                  <Field label={`Deadlift (${unitLabel})`} placeholder="e.g., 425" value={deadlift} onChange={setDeadlift} />
 
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
                   <div className="flex items-center justify-between text-sm">
   <span className="text-white/70">Total lift</span>
-  <span className="text-white font-semibold">{totalLift > 0 ? `${Math.round(totalLift)} lb` : "—"}</span>
+  <span className="text-white font-semibold">
+  {displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "—"}
+</span>
 </div>
 <div className="mt-2 flex items-center justify-between text-sm">
   <span className="text-white/70">Strength ratio</span>
@@ -916,8 +933,8 @@ if (!error) {
                   <div className="text-sm font-medium text-white/60">Review</div>
                   <div className="mt-3 grid grid-cols-1 gap-3 text-base">
                       <Row label="Name" value={displayName.trim() ? displayName.trim() : "Anonymous Athlete"} />
-                      <Row label="Bodyweight" value={wLb > 0 ? `${Math.round(wLb)} lb` : "—"} />
-                      <Row label="Strength" value={totalLift > 0 ? `${Math.round(totalLift)} lb total` : "—"} />
+                      <Row label="Bodyweight" value={displayWeight > 0 ? `${Math.round(displayWeight)} ${unitLabel}` : "—"} />
+<Row label="Strength" value={displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel} total` : "—"} />
                       <Row
                         label="Endurance"
                         value={runTimeText.trim() ? `${runDistance.toUpperCase()} • ${runTimeText.trim()}` : "—"}
@@ -1089,11 +1106,12 @@ if (!error) {
             </div>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-  <button
+            <button
+    id="details-toggle-btn"
     onClick={() => setShowDetails((v) => !v)}
     className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
   >
-    {showDetails ? "Hide details" : "Show details"}
+    {showDetails ? "Hide details" : "See full breakdown →"}
   </button>
 
   
@@ -1529,13 +1547,13 @@ if (!error) {
       }}
     >
       {[
-        { k: "BW", v: wLb > 0 ? `${Math.round(wLb)} lb` : "\u2014" },
-        {
-          k: "Total",
-          v: totalLift > 0 ? `${Math.round(totalLift)} lb` : "\u2014",
-        },
-        { k: runDistance.toUpperCase(), v: runTimeText || "\u2014" },
-      ].map((x) => (
+  { k: "BW", v: displayWeight > 0 ? `${Math.round(displayWeight)} ${unitLabel}` : "\u2014" },
+  {
+    k: "Total",
+    v: displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "\u2014",
+  },
+  { k: runDistance.toUpperCase(), v: runTimeText || "\u2014" },
+].map((x) => (
         <div
           key={x.k}
           style={{
