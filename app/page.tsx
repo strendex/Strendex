@@ -57,8 +57,7 @@ export default async function Home() {
         <div
           className="absolute inset-0 opacity-[0.018]"
           style={{
-            backgroundImage:
-              "radial-gradient(rgba(255,255,255,0.3) 1px, transparent 1px)",
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.3) 1px, transparent 1px)",
             backgroundSize: "56px 56px",
           }}
         />
@@ -68,8 +67,7 @@ export default async function Home() {
             width: "900px",
             height: "600px",
             borderRadius: "50%",
-            background:
-              "radial-gradient(circle at center, rgba(223,255,0,0.07), transparent 62%)",
+            background: "radial-gradient(circle at center, rgba(223,255,0,0.07), transparent 62%)",
             filter: "blur(60px)",
           }}
         />
@@ -82,7 +80,7 @@ export default async function Home() {
         style={{
           paddingLeft: "20px",
           paddingRight: "20px",
-          paddingTop: "72px",
+          paddingTop: "56px",
           paddingBottom: "0",
         }}
       >
@@ -91,6 +89,7 @@ export default async function Home() {
 
             {/* LEFT */}
             <div className="flex-1 lg:max-w-[520px]">
+
               {/* Pill */}
               <div
                 className="inline-flex items-center gap-2"
@@ -121,8 +120,8 @@ export default async function Home() {
               {/* Headline */}
               <h1
                 style={{
-                  marginTop: "24px",
-                  fontSize: "clamp(40px, 9vw, 66px)",
+                  marginTop: "20px",
+                  fontSize: "clamp(36px, 8.5vw, 66px)",
                   fontWeight: 600,
                   lineHeight: 1.05,
                   letterSpacing: "-0.03em",
@@ -154,7 +153,7 @@ export default async function Home() {
                   marginTop: "28px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0",
+                  gap: "12px",
                   alignItems: "flex-start",
                 }}
               >
@@ -177,76 +176,37 @@ export default async function Home() {
                 >
                   Get my score →
                 </Link>
-
-                {/* Live counter + rankings link on same row */}
-                <div
+                <Link
+                  href="/rankings"
                   style={{
-                    marginTop: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "16px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "rgba(255,255,255,0.34)",
+                    textDecoration: "none",
                     paddingLeft: "4px",
+                    lineHeight: 1,
                   }}
                 >
-                  {count > 0 && (
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "7px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: "6px",
-                          height: "6px",
-                          borderRadius: "50%",
-                          backgroundColor: "#DFFF00",
-                          opacity: 0.8,
-                          flexShrink: 0,
-                          boxShadow: "0 0 6px rgba(223,255,0,0.5)",
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          color: "rgba(255,255,255,0.3)",
-                        }}
-                      >
-                        {count.toLocaleString()} athletes ranked
-                      </span>
-                    </div>
-                  )}
-                  <Link
-                    href="/rankings"
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.35)",
-                      textDecoration: "none",
-                    }}
-                  >
-                    View Rankings →
-                  </Link>
-                </div>
+                  View Rankings →
+                </Link>
               </div>
             </div>
 
             {/* RIGHT — athlete card preview */}
             <div
-              className="flex-1 mt-12 lg:mt-0"
+              className="flex-1 mt-10 lg:mt-0"
               style={{ maxWidth: "480px", width: "100%" }}
             >
               <div
                 className="lg:border lg:border-white/[0.05] lg:bg-white/[0.015]"
                 style={{ borderRadius: "24px", overflow: "hidden" }}
               >
-                {/* Card header */}
+                {/* Card header — desktop only */}
                 <div
+                  className="hidden lg:flex"
                   style={{
                     padding: "20px 24px 16px",
                     borderBottom: "0.5px solid rgba(255,255,255,0.05)",
-                    display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                   }}
@@ -297,13 +257,30 @@ export default async function Home() {
                 </div>
 
                 {/* Card body */}
-                <div style={{ padding: "24px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                <div style={{ padding: "18px" }}>
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "10px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          letterSpacing: "0.22em",
+                          textTransform: "uppercase",
+                          color: "rgba(255,255,255,0.25)",
+                        }}
+                      >
                         Athlete
                       </div>
-                      <div style={{ marginTop: "4px", fontSize: "20px", fontWeight: 600, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          fontSize: "20px",
+                          fontWeight: 600,
+                          color: "white",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         Anonymous
                       </div>
                       <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -326,17 +303,40 @@ export default async function Home() {
                         ))}
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: "10px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
+                    <div style={{ flexShrink: 0 }}>
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          letterSpacing: "0.22em",
+                          textTransform: "uppercase",
+                          color: "rgba(255,255,255,0.25)",
+                        }}
+                      >
                         Hybrid Score
                       </div>
-                      <div style={{ marginTop: "4px", fontSize: "56px", fontWeight: 600, lineHeight: 1, letterSpacing: "-0.03em", color: "white" }}>
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          fontSize: "56px",
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          letterSpacing: "-0.03em",
+                          color: "white",
+                        }}
+                      >
                         68
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ marginTop: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div
+                    style={{
+                      marginTop: "20px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "10px",
+                    }}
+                  >
                     {[{ label: "Strength", value: "72" }, { label: "Engine", value: "58" }].map((item) => (
                       <div
                         key={item.label}
@@ -347,18 +347,44 @@ export default async function Home() {
                           padding: "16px",
                         }}
                       >
-                        <div style={{ fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                            color: "rgba(255,255,255,0.25)",
+                          }}
+                        >
                           {item.label}
                         </div>
-                        <div style={{ marginTop: "6px", fontSize: "26px", fontWeight: 600, color: "white", lineHeight: 1 }}>
+                        <div
+                          style={{
+                            marginTop: "6px",
+                            fontSize: "26px",
+                            fontWeight: 600,
+                            color: "white",
+                            lineHeight: 1,
+                          }}
+                        >
                           {item.value}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                    {[{ k: "BW", v: "195 lb" }, { k: "5K", v: "22:30" }, { k: "Total", v: "1065 lb" }].map((x) => (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: "8px",
+                    }}
+                  >
+                    {[
+                      { k: "BW", v: "195 lb" },
+                      { k: "5K", v: "22:30" },
+                      { k: "Total", v: "1065 lb" },
+                    ].map((x) => (
                       <div
                         key={x.k}
                         style={{
@@ -369,17 +395,39 @@ export default async function Home() {
                           textAlign: "center",
                         }}
                       >
-                        <div style={{ fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+                        <div
+                          style={{
+                            fontSize: "9px",
+                            letterSpacing: "0.18em",
+                            textTransform: "uppercase",
+                            color: "rgba(255,255,255,0.2)",
+                          }}
+                        >
                           {x.k}
                         </div>
-                        <div style={{ marginTop: "4px", fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>
+                        <div
+                          style={{
+                            marginTop: "4px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "rgba(255,255,255,0.65)",
+                          }}
+                        >
                           {x.v}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ marginTop: "20px", textAlign: "center", fontSize: "11px", color: "rgba(255,255,255,0.15)", letterSpacing: "0.05em" }}>
+                  <div
+                    style={{
+                      marginTop: "20px",
+                      textAlign: "center",
+                      fontSize: "11px",
+                      color: "rgba(255,255,255,0.15)",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
                     This is what you walk away with.
                   </div>
                 </div>
@@ -391,7 +439,7 @@ export default async function Home() {
       </section>
 
       {/* HERO SEPARATOR */}
-      <div style={{ maxWidth: "1120px", margin: "80px auto 0", padding: "0 20px" }}>
+      <div style={{ maxWidth: "1120px", margin: "56px auto 0", padding: "0 20px" }}>
         <div
           style={{
             height: "0.5px",
@@ -404,13 +452,7 @@ export default async function Home() {
           SCORE DISTRIBUTION
       ══════════════════════════════ */}
       {count >= 10 && (
-        <section
-          style={{
-            maxWidth: "900px",
-            margin: "0 auto",
-            padding: "52px 20px 0",
-          }}
-        >
+        <section style={{ maxWidth: "900px", margin: "0 auto", padding: "52px 20px 0" }}>
           <div
             style={{
               fontSize: "11px",
@@ -498,9 +540,7 @@ export default async function Home() {
       {/* ══════════════════════════════
           STATEMENT BREAK
       ══════════════════════════════ */}
-      <section
-        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
-      >
+      <section style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}>
         <div style={{ display: "flex", gap: "28px", alignItems: "flex-start" }}>
           <div
             style={{
@@ -547,10 +587,7 @@ export default async function Home() {
       {/* ══════════════════════════════
           HOW IT WORKS
       ══════════════════════════════ */}
-      <section
-        id="how"
-        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
-      >
+      <section id="how" style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}>
         <div
           style={{
             fontSize: "11px",
@@ -604,13 +641,17 @@ export default async function Home() {
           ].map((s, i) => (
             <div
               key={s.n}
-              style={{
-                display: "flex",
-                gap: "24px",
-                paddingBottom: i < 2 ? "44px" : "0",
-              }}
+              style={{ display: "flex", gap: "24px", paddingBottom: i < 2 ? "44px" : "0" }}
             >
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: "32px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flexShrink: 0,
+                  width: "32px",
+                }}
+              >
                 <div
                   style={{
                     width: "32px",
@@ -642,10 +683,24 @@ export default async function Home() {
                 )}
               </div>
               <div style={{ paddingTop: "4px", flex: 1 }}>
-                <div style={{ fontSize: "17px", fontWeight: 600, color: "white", letterSpacing: "-0.01em" }}>
+                <div
+                  style={{
+                    fontSize: "17px",
+                    fontWeight: 600,
+                    color: "white",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
                   {s.t}
                 </div>
-                <div style={{ marginTop: "8px", fontSize: "15px", lineHeight: 1.65, color: "rgba(255,255,255,0.38)" }}>
+                <div
+                  style={{
+                    marginTop: "8px",
+                    fontSize: "15px",
+                    lineHeight: 1.65,
+                    color: "rgba(255,255,255,0.38)",
+                  }}
+                >
                   {s.d}
                 </div>
               </div>
@@ -678,9 +733,7 @@ export default async function Home() {
       {/* ══════════════════════════════
           SECOND STATEMENT
       ══════════════════════════════ */}
-      <section
-        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
-      >
+      <section style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}>
         <div style={{ display: "flex", gap: "28px", alignItems: "flex-start" }}>
           <div
             style={{
@@ -725,10 +778,7 @@ export default async function Home() {
       {/* ══════════════════════════════
           FAQ
       ══════════════════════════════ */}
-      <section
-        id="faq"
-        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
-      >
+      <section id="faq" style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}>
         <div
           style={{
             fontSize: "11px",
@@ -816,9 +866,7 @@ export default async function Home() {
       {/* ══════════════════════════════
           FINAL CTA
       ══════════════════════════════ */}
-      <section
-        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 120px" }}
-      >
+      <section style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 120px" }}>
         <div
           style={{
             height: "0.5px",
@@ -826,7 +874,6 @@ export default async function Home() {
             marginBottom: "72px",
           }}
         />
-
         <h2
           style={{
             fontSize: "clamp(32px, 7vw, 52px)",
@@ -850,7 +897,6 @@ export default async function Home() {
         >
           Find out in 60 seconds. Free, no sign-up, instant result.
         </p>
-
         <div
           style={{
             marginTop: "32px",
