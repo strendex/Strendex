@@ -5,6 +5,10 @@ import Footer from "../components/Footer";
 export const metadata = {
   title: "STRENDEX",
   description: "Hybrid athlete benchmarking and scoring.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
