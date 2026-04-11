@@ -138,6 +138,18 @@ export default async function Home() {
                 tested.
               </p>
 
+              <p
+                className="lg:hidden"
+                style={{
+                  marginTop: "16px",
+                  fontSize: "16px",
+                  lineHeight: 1.6,
+                  color: "rgba(255,255,255,0.4)",
+                }}
+              >
+                Strength percentile. Endurance percentile. One score.
+              </p>
+
               <div
                 style={{
                   marginTop: "28px",
@@ -184,7 +196,7 @@ export default async function Home() {
 
             {/* RIGHT — athlete card preview */}
             <div
-              className="flex-1 mt-10 lg:mt-0"
+              className="hidden lg:block lg:flex-1"
               style={{ maxWidth: "480px", width: "100%" }}
             >
               <div
@@ -442,7 +454,7 @@ export default async function Home() {
       {/* ══════════════════════════
           PROBLEM STATEMENT
       ══════════════════════════ */}
-      <section style={{ marginTop: "100px" }}>
+      <section style={{ marginTop: "clamp(60px, 8vw, 100px)" }}>
         <p
           style={{
             fontSize: "clamp(26px, 6vw, 42px)",
@@ -477,7 +489,7 @@ export default async function Home() {
       {/* ══════════════════════════
           HOW IT WORKS
       ══════════════════════════ */}
-      <section style={{ marginTop: "100px" }}>
+      <section style={{ marginTop: "clamp(60px, 8vw, 100px)" }}>
         <p
           style={{
             fontSize: "11px",
@@ -597,12 +609,12 @@ export default async function Home() {
       {/* ══════════════════════════
           SECOND STATEMENT
       ══════════════════════════ */}
-      <section style={{ marginTop: "100px" }}>
+      <section style={{ marginTop: "clamp(60px, 8vw, 100px)" }}>
         <div
           style={{
             height: "0.5px",
             background: "rgba(255,255,255,0.07)",
-            marginBottom: "72px",
+            marginBottom: "56px",
           }}
         />
         <p
@@ -638,7 +650,7 @@ export default async function Home() {
       {/* ══════════════════════════
           FAQ
       ══════════════════════════ */}
-      <section style={{ marginTop: "100px" }}>
+      <section style={{ marginTop: "clamp(60px, 8vw, 100px)" }}>
         <p
           style={{
             fontSize: "11px",
@@ -720,7 +732,7 @@ export default async function Home() {
       {/* ══════════════════════════
           FINAL CTA
       ══════════════════════════ */}
-      <section style={{ marginTop: "100px", paddingBottom: "80px" }}>
+      <section style={{ marginTop: "clamp(60px, 8vw, 100px)", paddingBottom: "60px" }}>
         <div
           style={{
             height: "0.5px",
