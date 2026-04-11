@@ -1177,461 +1177,155 @@ if (!error) {
                   </div>
                   
 
+                  <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "16px" }}>
                   <div
-  ref={cardRef}
-  className="relative w-full max-w-[420px] mx-auto overflow-hidden"
-  style={{
-    borderRadius: "32px",
-    background:
-      "linear-gradient(180deg, #0A0B0F 0%, #07070A 46%, #050507 100%)",
-    boxShadow:
-      "0 30px 80px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.08)",
+ref={cardRef}
+className="relative overflow-hidden"
+style={{
+width: "min(360px, 100%)",
+aspectRatio: "9/16",
+borderRadius: "28px",
+background: "linear-gradient(160deg, #0D0F14 0%, #07070A 45%, #050507 100%)",
+border: "1px solid rgba(255,255,255,0.1)",
+flexShrink: 0,
   }}
 >
-  <div
-    aria-hidden
-    style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}
-  >
-    <div
-      style={{
-        position: "absolute",
-        top: "-90px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "360px",
-        height: "260px",
-        borderRadius: "50%",
-        background:
-          "radial-gradient(circle at center, rgba(223,255,0,0.16), transparent 68%)",
-        filter: "blur(58px)",
-      }}
-    />
-    <div
-      style={{
-        position: "absolute",
-        top: "30%",
-        right: "-80px",
-        width: "180px",
-        height: "180px",
-        borderRadius: "50%",
-        background:
-          "radial-gradient(circle at center, rgba(90,110,255,0.12), transparent 70%)",
-        filter: "blur(42px)",
-      }}
-    />
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        opacity: 0.07,
-        backgroundImage:
-          "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
-        backgroundSize: "28px 28px",
-        maskImage:
-          "linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0.15) 55%, transparent 100%)",
-      }}
-    />
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background:
-          "radial-gradient(90% 60% at 50% 0%, transparent 0%, rgba(7,7,10,0.42) 55%, rgba(7,7,10,0.96) 100%)",
-      }}
-    />
+  {/* Background effects */}
+  <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+    <div style={{
+      position: "absolute", top: "-60px", left: "50%", transform: "translateX(-50%)",
+      width: "300px", height: "220px", borderRadius: "50%",
+      background: "radial-gradient(circle at center, rgba(223,255,0,0.16), transparent 65%)",
+      filter: "blur(50px)",
+    }} />
+    <div style={{
+      position: "absolute", inset: 0, opacity: 0.06,
+      backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)",
+      backgroundSize: "28px 28px",
+      maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 65%)",
+    }} />
+    <div style={{
+      position: "absolute", inset: 0,
+      background: "radial-gradient(85% 55% at 50% 0%, transparent 0%, rgba(7,7,10,0.5) 55%, rgba(7,7,10,0.97) 100%)",
+    }} />
   </div>
 
-  <div
-    className="relative flex flex-col"
-    style={{ zIndex: 10, padding: "24px 24px 26px" }}
-  >
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <div
-          style={{
-            fontSize: "11px",
-            fontWeight: 800,
-            letterSpacing: "0.34em",
-            color: "rgba(255,255,255,0.92)",
-            textTransform: "uppercase",
-          }}
-        >
-          STRENDEX
-        </div>
-        <div
-          style={{
-            fontSize: "9px",
-            letterSpacing: "0.24em",
-            color: "rgba(255,255,255,0.32)",
-            textTransform: "uppercase",
-            marginTop: "6px",
-          }}
-        >
-          Hybrid Athlete Card
-        </div>
-      </div>
+  <div style={{ position: "relative", zIndex: 10, padding: "6% 7%", height: "100%", display: "flex", flexDirection: "column" }}>
 
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.2em] ${tierMeta[tier].pill}`}
-        style={{ backdropFilter: "blur(8px)" }}
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+    {/* Header */}
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div>
+      <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, letterSpacing: "0.3em", color: "rgba(255,255,255,0.92)", textTransform: "uppercase" }}>
+          STRENDEX
+</div>
+<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.2em", color: "rgba(255,255,255,0.28)", textTransform: "uppercase", marginTop: "4px" }}>
+          Hybrid Athlete Card
+</div>
+      </div>
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] ${tierMeta[tier].pill}`}
+        style={{ backdropFilter: "blur(8px)" }}>
+        <span className="h-2 w-2 rounded-full bg-current opacity-90" />
         {tier}
       </span>
     </div>
 
-    <div
-      style={{
-        marginTop: "18px",
-        border: "1px solid rgba(255,255,255,0.06)",
-        background: "rgba(255,255,255,0.025)",
-        borderRadius: "20px",
-        padding: "16px 16px 14px",
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "9px",
-          letterSpacing: "0.24em",
-          color: "rgba(255,255,255,0.28)",
-          textTransform: "uppercase",
-          marginBottom: "8px",
-        }}
-      >
+    {/* Divider accent */}
+    <div style={{ marginTop: "20px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent)" }} />
+
+    {/* Athlete name */}
+    <div style={{ marginTop: "16px" }}>
+      <div style={{ fontSize: "9px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: "6px" }}>
         Athlete
       </div>
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div
-            style={{
-              fontSize: "24px",
-              fontWeight: 650,
-              color: "white",
-              letterSpacing: "-0.03em",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              lineHeight: 1.05,
-            }}
-          >
-            {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
-          </div>
-
-          <div
-            style={{
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.42)",
-              marginTop: "7px",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {computedArchetype}
-          </div>
-        </div>
-
-        {globalRank !== null && totalAthletes !== null && (
-          <div
-            style={{
-              borderRadius: "999px",
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.03)",
-              padding: "7px 12px",
-              fontSize: "10px",
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.82)",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              whiteSpace: "nowrap",
-            }}
-          >
-            #{globalRank} / {totalAthletes}
-          </div>
-        )}
+      <div style={{ fontSize: "clamp(18px, 6vw, 26px)", fontWeight: 700, color: "white", letterSpacing: "-0.03em", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
+      </div>
+      <div style={{ fontSize: "clamp(8px, 2.5vw, 11px)", color: "rgba(255,255,255,0.38)", marginTop: "5px", letterSpacing: "0.06em" }}>
+        {computedArchetype}
       </div>
     </div>
 
-    <div
-      style={{
-        marginTop: "18px",
-        position: "relative",
-        borderRadius: "24px",
-        border: "1px solid rgba(255,255,255,0.07)",
-        background:
-          "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)",
-        padding: "28px 18px 24px",
-        textAlign: "center",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          inset: "auto 50% -70px 50%",
-          transform: "translateX(-50%)",
-          width: "220px",
-          height: "220px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle at center, rgba(223,255,0,0.10), transparent 68%)",
-          filter: "blur(24px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        style={{
-          fontSize: "10px",
-          letterSpacing: "0.30em",
-          color: "rgba(255,255,255,0.26)",
-          textTransform: "uppercase",
-        }}
-      >
+    {/* Score — hero */}
+    <div style={{
+      marginTop: "20px", flex: 1,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      borderRadius: "20px",
+      border: "0.5px solid rgba(223,255,0,0.12)",
+      background: "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)",
+      position: "relative", overflow: "hidden",
+      padding: "20px 0",
+    }}>
+      <div style={{
+        position: "absolute", bottom: "-40px", left: "50%", transform: "translateX(-50%)",
+        width: "200px", height: "200px", borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(223,255,0,0.1), transparent 68%)",
+        filter: "blur(20px)", pointerEvents: "none",
+      }} />
+      <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>
         Hybrid Score
       </div>
-
-      <div
-        style={{
-          marginTop: "14px",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "178px",
-          height: "178px",
-          borderRadius: "50%",
-          border: "1px solid rgba(223,255,0,0.16)",
-          background:
-            "radial-gradient(circle at center, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 60%, transparent 100%)",
-          boxShadow:
-            "inset 0 0 50px rgba(255,255,255,0.02), 0 0 40px rgba(223,255,0,0.08)",
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: "92px",
-              fontWeight: 650,
-              lineHeight: 0.95,
-              letterSpacing: "-0.05em",
-              color: "white",
-              textShadow: "0 0 90px rgba(223,255,0,0.16)",
-            }}
-          >
-            {hasResults ? Math.round(hybridScore) : "\u2014"}
-          </div>
-          <div
-            style={{
-              fontSize: "10px",
-              letterSpacing: "0.22em",
-              color: "rgba(255,255,255,0.22)",
-              textTransform: "uppercase",
-              marginTop: "6px",
-            }}
-          >
-            out of 100
-          </div>
-        </div>
+      <div style={{
+fontSize: "clamp(72px, 22vw, 100px)", fontWeight: 700, lineHeight: 0.9, letterSpacing: "-0.05em",
+color: "white", marginTop: "10px",
+WebkitTextFillColor: "white",
+textShadow: "0 0 60px rgba(223,255,0,0.22)",
+      }}>
+        {hasResults ? Math.round(hybridScore) : "—"}
       </div>
-
+      <div style={{ fontSize: "10px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", marginTop: "10px" }}>
+        out of 100
+      </div>
       {betterThanPercent !== null && (
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            marginTop: "18px",
-            borderRadius: "999px",
-            border: "1px solid rgba(223,255,0,0.16)",
-            background: "rgba(223,255,0,0.08)",
-            padding: "8px 16px",
-            fontSize: "12px",
-            fontWeight: 650,
-            color: "rgba(240,255,170,0.96)",
-            letterSpacing: "0.02em",
-          }}
-        >
-          <span
-            style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "999px",
-              background: "#DFFF00",
-              boxShadow: "0 0 12px rgba(223,255,0,0.65)",
-            }}
-          />
+        <div style={{
+          marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "7px",
+          borderRadius: "999px", border: "0.5px solid rgba(223,255,0,0.2)",
+          background: "rgba(223,255,0,0.08)", padding: "8px 18px",
+          fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 700, color: "rgba(240,255,170,0.95)", letterSpacing: "0.02em",
+        }}>
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#DFFF00", boxShadow: "0 0 10px rgba(223,255,0,0.6)" }} />
           Better than {betterThanPercent.toFixed(1)}% of athletes
         </div>
       )}
     </div>
 
-    <div
-      style={{
-        marginTop: "16px",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "10px",
-      }}
-    >
+    {/* Stats row */}
+    <div style={{ marginTop: "14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
       {[
-        {
-          label: "Strength",
-          value:
-            strengthPercentile !== null ? Math.round(strengthPercentile) : null,
-        },
-        {
-          label: "Endurance",
-          value:
-            endurancePercentile !== null
-              ? Math.round(endurancePercentile)
-              : null,
-        },
-      ].map((item) => (
-        <div
-          key={item.label}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            borderRadius: "18px",
-            border: "1px solid rgba(255,255,255,0.07)",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)",
-            padding: "18px 12px 16px",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "10px",
-              letterSpacing: "0.22em",
-              color: "rgba(255,255,255,0.30)",
-              textTransform: "uppercase",
-            }}
-          >
-            {item.label}
-          </div>
-          <div
-            style={{
-              fontSize: "40px",
-              fontWeight: 650,
-              color: "white",
-              lineHeight: 1,
-              marginTop: "10px",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            {item.value !== null ? item.value : "\u2014"}
-          </div>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "rgba(255,255,255,0.24)",
-              marginTop: "6px",
-              letterSpacing: "0.11em",
-            }}
-          >
-            percentile
-          </div>
-        </div>
-      ))}
-    </div>
-
-    <div
-      style={{
-        marginTop: "10px",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr",
-        gap: "8px",
-      }}
-    >
-      {[
-  { k: "BW", v: displayWeight > 0 ? `${Math.round(displayWeight)} ${unitLabel}` : "\u2014" },
-  {
-    k: "Total",
-    v: displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "\u2014",
-  },
-  { k: runDistance.toUpperCase(), v: runTimeText || "\u2014" },
-].map((x) => (
-        <div
-          key={x.k}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(255,255,255,0.02)",
-            padding: "12px 8px 11px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "9px",
-              letterSpacing: "0.20em",
-              color: "rgba(255,255,255,0.24)",
-              textTransform: "uppercase",
-            }}
-          >
+        { k: "BW", v: displayWeight > 0 ? `${Math.round(displayWeight)} ${unitLabel}` : "—" },
+        { k: "Total", v: displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "—" },
+        { k: runDistance.toUpperCase(), v: runTimeText || "—" },
+      ].map((x) => (
+        <div key={x.k} style={{
+          display: "flex", flexDirection: "column", alignItems: "center",
+          borderRadius: "12px", border: "0.5px solid rgba(255,255,255,0.06)",
+          background: "rgba(255,255,255,0.02)", padding: "11px 8px",
+        }}>
+          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>
             {x.k}
           </div>
-          <div
-            style={{
-              fontSize: "13px",
-              fontWeight: 650,
-              color: "rgba(255,255,255,0.84)",
-              marginTop: "5px",
-              letterSpacing: "-0.01em",
-            }}
-          >
+          <div style={{ fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.78)", marginTop: "4px" }}>
             {x.v}
           </div>
         </div>
       ))}
     </div>
 
-    <div
-      style={{
-        marginTop: "18px",
-        height: "1px",
-        background:
-          "linear-gradient(to right, transparent, rgba(223,255,0,0.28), transparent)",
-      }}
-    />
-
-    <div
-      className="flex items-center justify-between"
-      style={{ marginTop: "14px" }}
-    >
-      <div
-        style={{
-          fontSize: "10px",
-          letterSpacing: "0.24em",
-          color: "rgba(255,255,255,0.20)",
-          textTransform: "uppercase",
-        }}
-      >
-        {siteLabel}
-      </div>
-      <div
-        style={{
-          fontSize: "10px",
-          letterSpacing: "0.24em",
-          color: "rgba(255,255,255,0.20)",
-          textTransform: "uppercase",
-        }}
-      >
-        {globalRank !== null && totalAthletes !== null
-          ? `#${globalRank} / ${totalAthletes}`
-          : "CAN YOU BEAT THIS?"}
+    {/* Footer */}
+    <div style={{ marginTop: "16px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(223,255,0,0.2), transparent)" }} />
+    <div style={{ marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
+{siteLabel}
+</div>
+<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
+        {globalRank !== null && totalAthletes !== null ? `#${globalRank} / ${totalAthletes}` : "CAN YOU BEAT THIS?"}
       </div>
     </div>
+
+  </div>
   </div>
 </div>
-                </div>
-
-                {/* Ranking bands */}
+</div>
+{/* Ranking bands */}
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
