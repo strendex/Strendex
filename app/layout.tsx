@@ -23,7 +23,7 @@ export default function RootLayout({
         <div className="pointer-events-none fixed inset-0 -z-10">
           <div className="absolute inset-0 bg-[#020203]" />
           {/* subtle vignette */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(223,255,0,0.07),transparent_55%)]" />
+          
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.04),transparent_60%)]" />
         </div>
 
