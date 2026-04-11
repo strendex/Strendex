@@ -55,10 +55,10 @@ export default async function Home() {
       {/* ══════════════════════════
           HERO
       ══════════════════════════ */}
-      <section className="flex flex-col lg:flex-row lg:items-center lg:gap-16">
+      <section className="flex flex-col lg:flex-row lg:items-center lg:gap-16" style={{ paddingBottom: "40px" }}>
 
         {/* LEFT */}
-        <div className="flex-1 lg:max-w-[520px]">
+        <div className="flex-1 lg:max-w-[520px] lg:pt-0" style={{ paddingTop: "80px" }}>
 
           {/* Label */}
           <div
@@ -146,7 +146,7 @@ export default async function Home() {
             </Link>
 
             {count > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: "14px", paddingLeft: "2px" }}>
+              <div className="hidden lg:flex" style={{ alignItems: "center", gap: "14px", paddingLeft: "2px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "#DFFF00", opacity: 0.7, boxShadow: "0 0 6px rgba(223,255,0,0.5)" }} />
                   <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.28)" }}>
@@ -159,7 +159,7 @@ export default async function Home() {
               </div>
             )}
             {count === 0 && (
-              <Link href="/rankings" style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.28)", textDecoration: "none", paddingLeft: "2px" }}>
+              <Link href="/rankings" className="hidden lg:block" style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.28)", textDecoration: "none", paddingLeft: "2px" }}>
                 View Rankings →
               </Link>
             )}
@@ -258,7 +258,7 @@ export default async function Home() {
       {/* ══════════════════════════
           PROBLEM
       ══════════════════════════ */}
-      <section style={{ marginTop: "clamp(64px, 10vw, 104px)" }}>
+      <section style={{ marginTop: "clamp(96px, 22vw, 104px)" }}>
         <div style={{ height: "0.5px", background: "linear-gradient(to right, transparent, rgba(255,255,255,0.07), transparent)", marginBottom: "clamp(48px, 7vw, 80px)" }} />
         <p style={{ fontSize: "clamp(24px, 5vw, 38px)", fontWeight: 600, lineHeight: 1.2, letterSpacing: "-0.02em", color: "white", maxWidth: "640px", margin: "0 0 18px" }}>
           Strength platforms ignore your endurance.
