@@ -92,6 +92,19 @@ export default async function Home() {
             Find out where you actually rank.
           </h1>
 
+          {/* Subheading mobile */}
+          <p
+            className="lg:hidden"
+            style={{
+              marginTop: "14px",
+              fontSize: "16px",
+              lineHeight: 1.6,
+              color: "rgba(255,255,255,0.38)",
+            }}
+          >
+            Strength percentile. Endurance percentile. One score — compared against every hybrid athlete who has tested.
+          </p>
+
           {/* Subheading desktop only */}
           <p
             className="hidden lg:block"
@@ -155,7 +168,7 @@ export default async function Home() {
 
         {/* RIGHT — Athlete card */}
         <div
-          className="flex-1 mt-12 lg:mt-0"
+          className="hidden lg:block lg:flex-1"
           style={{ maxWidth: "460px", width: "100%" }}
         >
           {/* Card — inspired by tool page */}
