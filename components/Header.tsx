@@ -1,44 +1,111 @@
+"use client";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#020203]/70 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-
-        {/* LEFT — Logo */}
-        <Link href="/" className="flex items-center gap-3">
-          <Image
-            src="/logo.png"
-            alt="Strendex"
-            width={44}
-            height={44}
-            priority
-            className="h-10 w-10 object-contain"
-          />
-        </Link>
-
-        {/* CENTER — Main navigation */}
-        <nav className="flex items-center gap-6">
-          <Link
-            href="/rankings"
-            className="text-sm font-semibold tracking-wide text-white/70 transition hover:text-white"
-          >
-            Rankings
+    <header
+      className="sticky top-0 z-50 w-full"
+      style={{
+        borderBottom: "0.5px solid rgba(255,255,255,0.07)",
+        background: "rgba(2,2,3,0.75)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      }}
+    >
+      <div
+        className="mx-auto flex items-center justify-between"
+        style={{
+          maxWidth: "1120px",
+          padding: "0 20px",
+          height: "58px",
+        }}
+      >
+        {/* LEFT — Logo + nav together */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image
+              src="/logo.png"
+              alt="Strendex"
+              width={32}
+              height={32}
+              priority
+              className="object-contain"
+              style={{ width: "32px", height: "32px" }}
+            />
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                color: "white",
+                textTransform: "uppercase",
+              }}
+            >
+              Strendex
+            </span>
           </Link>
 
-          <Link
-            href="/"
-            className="text-sm font-semibold tracking-wide text-white/70 transition hover:text-white"
-          >
-            About
-          </Link>
-        </nav>
+          {/* Nav links — hidden on mobile */}
+          <nav className="hidden md:flex items-center gap-6">
+            <Link
+              href="/rankings"
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.5)",
+                textDecoration: "none",
+                letterSpacing: "0.01em",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.88)")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)")
+              }
+            >
+              Rankings
+            </Link>
+            <Link
+              href="/about"
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.5)",
+                textDecoration: "none",
+                letterSpacing: "0.01em",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.88)")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)")
+              }
+            >
+              About
+            </Link>
+          </nav>
+        </div>
 
-        {/* RIGHT — Primary action */}
+        {/* RIGHT — CTA */}
         <Link
           href="/tool"
-          className="rounded-xl bg-[#DFFF00] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "999px",
+            backgroundColor: "#DFFF00",
+            color: "#000",
+            fontSize: "13px",
+            fontWeight: 700,
+            letterSpacing: "0.01em",
+            padding: "10px 20px",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
         >
           Calculate Score
         </Link>

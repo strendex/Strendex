@@ -1,7 +1,32 @@
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@supabase/supabase-js";
 
-export default function Home() {
+async function getStats() {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("rank")
+      .eq("status", "approved");
+    if (error || !data) return { count: 0, tiers: {} };
+    const tiers: Record<string, number> = {};
+    data.forEach((r) => {
+      const t = r.rank ?? "NOVICE";
+      tiers[t] = (tiers[t] ?? 0) + 1;
+    });
+    return { count: data.length, tiers };
+  } catch {
+    return { count: 0, tiers: {} };
+  }
+}
+
+export default async function Home() {
+  const { count, tiers } = await getStats();
+
   const faqs = [
     {
       q: "Do I need to sign up?",
@@ -20,9 +45,6 @@ export default function Home() {
       a: "Yes — share your card and use Rankings to see where you land.",
     },
   ];
-
-  // FIX #10 — social proof number (update this as your dataset grows)
-  const submissionCount = 47;
 
   return (
     <main
@@ -126,41 +148,16 @@ export default function Home() {
                 tested.
               </p>
 
-              {/* FIX #10 — social proof */}
+              {/* CTA */}
               <div
                 style={{
-                  marginTop: "20px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
+                  marginTop: "28px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0",
+                  alignItems: "flex-start",
                 }}
               >
-                <div style={{ display: "flex", gap: "2px" }}>
-                  {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "50%",
-                        backgroundColor: "#DFFF00",
-                        opacity: 0.5 + i * 0.1,
-                      }}
-                    />
-                  ))}
-                </div>
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.35)",
-                  }}
-                >
-                  {submissionCount} athletes have tested
-                </span>
-              </div>
-
-              {/* CTA — FIX #2 full pill buttons */}
-              <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "12px", alignItems: "flex-start" }}>
                 <Link
                   href="/tool"
                   style={{
@@ -180,33 +177,69 @@ export default function Home() {
                 >
                   Get my score →
                 </Link>
-                <Link
-                  href="/rankings"
+
+                {/* Live counter + rankings link on same row */}
+                <div
                   style={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: "rgba(255,255,255,0.35)",
-                    textDecoration: "none",
+                    marginTop: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px",
                     paddingLeft: "4px",
                   }}
                 >
-                  View Rankings →
-                </Link>
+                  {count > 0 && (
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "7px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          backgroundColor: "#DFFF00",
+                          opacity: 0.8,
+                          flexShrink: 0,
+                          boxShadow: "0 0 6px rgba(223,255,0,0.5)",
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "rgba(255,255,255,0.3)",
+                        }}
+                      >
+                        {count.toLocaleString()} athletes ranked
+                      </span>
+                    </div>
+                  )}
+                  <Link
+                    href="/rankings"
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.35)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    View Rankings →
+                  </Link>
+                </div>
               </div>
             </div>
 
-            {/* RIGHT — athlete card preview FIX #3 blends with bg */}
+            {/* RIGHT — athlete card preview */}
             <div
               className="flex-1 mt-12 lg:mt-0"
               style={{ maxWidth: "480px", width: "100%" }}
             >
               <div
-                style={{
-                  borderRadius: "24px",
-                  border: "0.5px solid rgba(255,255,255,0.05)",
-                  background: "rgba(255,255,255,0.015)",
-                  overflow: "hidden",
-                }}
+                className="lg:border lg:border-white/[0.05] lg:bg-white/[0.015]"
+                style={{ borderRadius: "24px", overflow: "hidden" }}
               >
                 {/* Card header */}
                 <div
@@ -357,14 +390,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FIX #5 — hero to content transition */}
-      <div
-        style={{
-          maxWidth: "1120px",
-          margin: "80px auto 0",
-          padding: "0 20px",
-        }}
-      >
+      {/* HERO SEPARATOR */}
+      <div style={{ maxWidth: "1120px", margin: "80px auto 0", padding: "0 20px" }}>
         <div
           style={{
             height: "0.5px",
@@ -374,22 +401,110 @@ export default function Home() {
       </div>
 
       {/* ══════════════════════════════
+          SCORE DISTRIBUTION
+      ══════════════════════════════ */}
+      {count >= 10 && (
+        <section
+          style={{
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "52px 20px 0",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "11px",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.22)",
+              marginBottom: "14px",
+            }}
+          >
+            Score distribution — {count.toLocaleString()} athletes
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              height: "6px",
+              borderRadius: "999px",
+              overflow: "hidden",
+              gap: "2px",
+            }}
+          >
+            {[
+              { key: "NOVICE", color: "rgba(255,255,255,0.15)" },
+              { key: "INTERMEDIATE", color: "rgba(251,191,36,0.5)" },
+              { key: "ADVANCED", color: "rgba(167,139,250,0.6)" },
+              { key: "ELITE", color: "rgba(56,189,248,0.65)" },
+              { key: "WORLD CLASS", color: "#DFFF00" },
+            ].map((tier) => {
+              const n = tiers[tier.key] ?? 0;
+              const pct = count > 0 ? (n / count) * 100 : 0;
+              if (pct === 0) return null;
+              return (
+                <div
+                  key={tier.key}
+                  style={{
+                    height: "100%",
+                    width: `${pct}%`,
+                    backgroundColor: tier.color,
+                    borderRadius: "999px",
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              marginTop: "10px",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "12px 20px",
+            }}
+          >
+            {[
+              { key: "NOVICE", color: "rgba(255,255,255,0.3)", label: "Novice" },
+              { key: "INTERMEDIATE", color: "rgba(251,191,36,0.7)", label: "Intermediate" },
+              { key: "ADVANCED", color: "rgba(167,139,250,0.8)", label: "Advanced" },
+              { key: "ELITE", color: "rgba(56,189,248,0.8)", label: "Elite" },
+              { key: "WORLD CLASS", color: "#DFFF00", label: "World Class" },
+            ].map((tier) => {
+              const n = tiers[tier.key] ?? 0;
+              const pct = count > 0 ? Math.round((n / count) * 100) : 0;
+              if (pct === 0) return null;
+              return (
+                <div key={tier.key} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div
+                    style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      backgroundColor: tier.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.28)" }}>
+                    {tier.label} {pct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ══════════════════════════════
           STATEMENT BREAK
-          FIX #1 wider, FIX #4 left accent, FIX #8 smaller type
       ══════════════════════════════ */}
       <section
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          padding: "88px 20px 0",
-        }}
+        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
       >
-        {/* FIX #4 — left accent line */}
         <div style={{ display: "flex", gap: "28px", alignItems: "flex-start" }}>
           <div
             style={{
               width: "2px",
-              minHeight: "100%",
               alignSelf: "stretch",
               background: "linear-gradient(to bottom, #DFFF00, transparent)",
               borderRadius: "2px",
@@ -431,15 +546,10 @@ export default function Home() {
 
       {/* ══════════════════════════════
           HOW IT WORKS
-          FIX #1 wider, FIX #6 visible connector, FIX #9 auto button
       ══════════════════════════════ */}
       <section
         id="how"
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          padding: "88px 20px 0",
-        }}
+        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
       >
         <div
           style={{
@@ -500,7 +610,6 @@ export default function Home() {
                 paddingBottom: i < 2 ? "44px" : "0",
               }}
             >
-              {/* FIX #6 — visible connector line */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: "32px" }}>
                 <div
                   style={{
@@ -544,7 +653,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* FIX #9 — auto-width button */}
         <div style={{ marginTop: "48px" }}>
           <Link
             href="/tool"
@@ -569,14 +677,9 @@ export default function Home() {
 
       {/* ══════════════════════════════
           SECOND STATEMENT
-          FIX #1 wider, FIX #4 left accent, FIX #8 smaller type
       ══════════════════════════════ */}
       <section
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          padding: "88px 20px 0",
-        }}
+        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
       >
         <div style={{ display: "flex", gap: "28px", alignItems: "flex-start" }}>
           <div
@@ -621,15 +724,10 @@ export default function Home() {
 
       {/* ══════════════════════════════
           FAQ
-          FIX #1 wider
       ══════════════════════════════ */}
       <section
         id="faq"
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          padding: "88px 20px 0",
-        }}
+        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 0" }}
       >
         <div
           style={{
@@ -717,16 +815,10 @@ export default function Home() {
 
       {/* ══════════════════════════════
           FINAL CTA
-          FIX #1 wider, FIX #2 pill button, FIX #10 social proof
       ══════════════════════════════ */}
       <section
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          padding: "88px 20px 120px",
-        }}
+        style={{ maxWidth: "900px", margin: "0 auto", padding: "88px 20px 120px" }}
       >
-        {/* subtle top rule */}
         <div
           style={{
             height: "0.5px",
@@ -759,34 +851,6 @@ export default function Home() {
           Find out in 60 seconds. Free, no sign-up, instant result.
         </p>
 
-        {/* FIX #10 — social proof near final CTA */}
-        <div
-          style={{
-            marginTop: "16px",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <div style={{ display: "flex", gap: "2px" }}>
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  backgroundColor: "#DFFF00",
-                  opacity: 0.4 + i * 0.12,
-                }}
-              />
-            ))}
-          </div>
-          <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-            {submissionCount} athletes have tested so far
-          </span>
-        </div>
-
         <div
           style={{
             marginTop: "32px",
@@ -796,7 +860,6 @@ export default function Home() {
             alignItems: "flex-start",
           }}
         >
-          {/* FIX #2 — pill button */}
           <Link
             href="/tool"
             style={{
