@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildScoringDataset, computeScore } from "@/lib/scoring";
+import { getClientIp } from "@/lib/clientIp";
 
 const MAX_SUBMIT_PER_MINUTE = 5;
 const MAX_SUBMIT_PER_DAY = 25;
 
 export const runtime = "nodejs";
-
-function getClientIp(req: Request) {
-  const xfwd = req.headers.get("x-forwarded-for");
-  if (xfwd) return xfwd.split(",")[0].trim();
-  return "unknown";
-}
 
 function nowUnixSeconds() {
   return Math.floor(Date.now() / 1000);
