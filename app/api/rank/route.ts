@@ -5,15 +5,10 @@ import {
   clamp,
   computeScore,
 } from "@/lib/scoring";
+import { getClientIp } from "@/lib/clientIp";
 
 const MAX_RANK_PER_MINUTE = 20;
 const MAX_RANK_PER_DAY = 200;
-
-function getClientIp(req: Request) {
-  const xfwd = req.headers.get("x-forwarded-for");
-  if (xfwd) return xfwd.split(",")[0].trim();
-  return "unknown";
-}
 
 function nowUnixSeconds() {
   return Math.floor(Date.now() / 1000);
