@@ -150,7 +150,7 @@ export default async function Home() {
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "#DFFF00", opacity: 0.7, boxShadow: "0 0 6px rgba(223,255,0,0.5)" }} />
                   <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.28)" }}>
-                    {count.toLocaleString()} athletes ranked
+                    Live benchmark
                   </span>
                 </div>
                 <Link href="/rankings" style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>
