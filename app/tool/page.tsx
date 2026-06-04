@@ -433,17 +433,13 @@ return {
     apiEnduranceIndex: number | null;
     computedArchetype: Archetype;
   }) {
-    const {
-      finalName,
-      hq,
-      strP,
-      endP,
-      endurance_seconds_for_db,
-      apiStrengthIndex,
-      apiEnduranceIndex,
-      computedArchetype,
-    } = args;
-  
+    const { finalName, endurance_seconds_for_db } = args;
+
+    const bodyweight_kg = unitSystem === "lb" ? lbToKg(wLb) : wInput;
+    const bench_kg = bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null;
+    const squat_kg = sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null;
+    const deadlift_kg = dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null;
+
     const res = await fetch("/api/submit", {
       method: "POST",
       headers: {
@@ -451,11 +447,11 @@ return {
       },
       body: JSON.stringify({
         athlete_name: finalName,
-        bodyweight: wLb,
+        bodyweight_kg,
         endurance_seconds: endurance_seconds_for_db,
-        bench: bLb || null,
-        squat: sLb || null,
-        deadlift: dLb || null,
+        bench_kg,
+        squat_kg,
+        deadlift_kg,
       }),
     });
   
