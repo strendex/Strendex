@@ -1,196 +1,332 @@
+/**
+ * Seed the submissions table with synthetic athletes scored via lib/scoring.ts.
+ *
+ * ⚠️  STEP 0 — WIPES ALL EXISTING SUBMISSIONS before inserting new rows.
+ * Run only when you intend to replace the full benchmark population.
+ *
+ * Usage: npx tsx scripts/seedSubmissions.ts
+ * Optional: SEED_COUNT=500 npx tsx scripts/seedSubmissions.ts
+ */
+
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 import { createClient } from "@supabase/supabase-js";
+import {
+  buildScoringDataset,
+  canonicalScoreFromPercentiles,
+  computeEnduranceIndex,
+  computeStrengthIndex,
+  getArchetype,
+  getTier,
+  percentileMidrank,
+} from "../lib/scoring";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const DEFAULT_SEED_COUNT = 500;
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error(
+    "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local",
+  );
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 function rand(min: number, max: number) {
   return Math.random() * (max - min) + min;
+}
+
+function randNormal(mean: number, std: number) {
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return mean + z * std;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Bigger lists (fewer repeats)
+function roundKg(n: number, step = 2.5) {
+  return Math.round(n / step) * step;
+}
+
 const firstNames = [
-  "Ryan","Jake","Ethan","Noah","Liam","Aiden","Cole","Mason","Lucas","Owen","Ben","Max","Sam","Ty","Alex","Nate",
-  "Dylan","Carter","Logan","Reid","Caleb","Jordan","Tanner","Hunter","Cameron","Brandon","Isaac","Avery","Connor","Gavin",
-  "Spencer","Julian","Dominic","Zach","Trevor","Mitchell","Tristan","Austin","Blake","Eli","Miles","Finn","Jack","Leo",
-  "Kai","Jasper","Theo","Hudson","Asher","Nolan","Cooper","Parker","Brody","Colton","Sawyer","Beckett","Silas","Rowan",
-  "Micah","Kieran","Declan","Kobe","Grayson","Xavier","Calvin","Emmett","Holden","Wesley","Jude","Rhett","Knox",
-  "Landon","Beau","Chase","Maddox","Bennett","Harrison","Seth","Brady","Shawn","Evan","Nathan","Adam","Luke","James"
+  "Ryan", "Jake", "Ethan", "Noah", "Liam", "Aiden", "Cole", "Mason", "Lucas", "Owen",
+  "Ben", "Max", "Sam", "Ty", "Alex", "Nate", "Dylan", "Carter", "Logan", "Reid",
+  "Caleb", "Jordan", "Tanner", "Hunter", "Cameron", "Brandon", "Isaac", "Avery",
+  "Connor", "Gavin", "Spencer", "Julian", "Dominic", "Zach", "Trevor", "Mitchell",
+  "Tristan", "Austin", "Blake", "Eli", "Miles", "Finn", "Jack", "Leo", "Kai",
+  "Jasper", "Theo", "Hudson", "Asher", "Nolan", "Cooper", "Parker", "Brody",
+  "Colton", "Sawyer", "Beckett", "Silas", "Rowan", "Micah", "Kieran", "Declan",
+  "Grayson", "Xavier", "Calvin", "Emmett", "Holden", "Wesley", "Jude", "Rhett",
+  "Landon", "Beau", "Chase", "Maddox", "Bennett", "Harrison", "Seth", "Brady",
+  "Evan", "Nathan", "Adam", "Luke", "James", "Maria", "Sofia", "Elena", "Priya",
+  "Mei", "Aisha", "Chloe", "Hannah", "Zoe", "Nina", "Rosa", "Tara", "Jade",
 ];
 
 const lastNames = [
-  "Woods","Carter","Miller","Clark","Reed","Bennett","Foster","Hayes","Brooks","Ward","Parker","Rogers","Price","Turner","Morgan",
-  "King","Russell","Collins","Bailey","Murphy","Reynolds","Anderson","Thompson","Campbell","Mitchell","Baker","Cooper","Evans",
-  "Bell","Young","Hill","Green","Scott","Adams","Nelson","Hall","Moore","Lewis","Walker","Roberts","Phillips","Howard",
-  "Fisher","Graham","Hughes","Murray","Watson","Stewart","Morrison","Gibson","Hamilton","Robertson","Stone","Fox","Henderson",
-  "Sullivan","Bryant","Holland","Barrett","McDonald","MacKenzie","Carroll","Fraser","Lawson","Bishop","Johnston","Gardner","Peters",
-  "Chapman","Harper","Spencer","Simmons","Crawford","Pearson","Fleming","Barnes","Wagner","Hawkins","Holt","Boyd","Jennings","Burke"
+  "Woods", "Carter", "Miller", "Clark", "Reed", "Bennett", "Foster", "Hayes",
+  "Brooks", "Ward", "Parker", "Rogers", "Price", "Turner", "Morgan", "King",
+  "Russell", "Collins", "Bailey", "Murphy", "Reynolds", "Anderson", "Thompson",
+  "Campbell", "Mitchell", "Baker", "Cooper", "Evans", "Bell", "Young", "Hill",
+  "Green", "Scott", "Adams", "Nelson", "Hall", "Moore", "Lewis", "Walker",
+  "Roberts", "Phillips", "Howard", "Fisher", "Graham", "Hughes", "Murray",
+  "Watson", "Stewart", "Morrison", "Gibson", "Hamilton", "Robertson", "Stone",
+  "Fox", "Henderson", "Sullivan", "Bryant", "Holland", "Barrett", "McDonald",
+  "Fraser", "Lawson", "Bishop", "Johnston", "Gardner", "Peters", "Chapman",
+  "Harper", "Spencer", "Simmons", "Crawford", "Pearson", "Fleming", "Barnes",
+  "Wagner", "Hawkins", "Holt", "Boyd", "Jennings", "Burke", "Chen", "Patel",
+  "Kim", "Nguyen", "Singh", "Diaz", "Torres", "Flores", "Rossi", "Khan",
 ];
 
 function makeName() {
   return `${pick(firstNames)} ${pick(lastNames)}`;
 }
 
-type Athlete = {
+type RawAthlete = {
   athlete_name: string;
   bodyweight: number;
-  fivek_seconds: number | null;
-  bench: number | null;
-  squat: number | null;
-  deadlift: number | null;
+  bench: number;
+  squat: number;
+  deadlift: number;
+  endurance_seconds: number;
   strength_index: number;
   endurance_index: number;
   total_lift: number;
   strength_ratio: number;
+};
 
-  // NEW
+type SeededAthlete = RawAthlete & {
   strength_percentile: number;
   endurance_percentile: number;
   hq_score: number;
   rank: string;
   archetype: string;
+  status: "approved" | "pending";
 };
 
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
+/**
+ * Sample bodyweight (kg): trained adults, ~55–115, centered ~80.
+ */
+function sampleBodyweightKg(): number {
+  const kg = randNormal(80, 11);
+  return roundKg(clamp(kg, 55, 115), 1);
 }
 
-// Percentile: higher is better
-function percentileHigher(values: number[], x: number) {
-  const sorted = [...values].sort((a, b) => a - b);
-  let count = 0;
-  for (const v of sorted) if (v <= x) count++;
-  return (count / sorted.length) * 100;
+/**
+ * Draw lift ratios (lift/bodyweight) with profile bias and noise.
+ * Spreads novice → advanced across the population.
+ */
+function sampleLiftRatios(profile: {
+  strengthBias: number;
+  level: number;
+}) {
+  const { strengthBias, level } = profile;
+  const jitter = () => rand(-0.08, 0.08) * (1 - level * 0.35);
+
+  const benchMid = 0.55 + level * 0.55 + strengthBias * 0.25;
+  const squatMid = 0.85 + level * 0.75 + strengthBias * 0.35;
+  const deadMid = 1.05 + level * 0.95 + strengthBias * 0.4;
+
+  const benchRatio = clamp(
+    benchMid + jitter() + rand(-0.12, 0.12),
+    0.45,
+    1.95,
+  );
+  const squatRatio = clamp(
+    squatMid + jitter() + rand(-0.15, 0.15),
+    0.7,
+    2.85,
+  );
+  const deadliftRatio = clamp(
+    deadMid + jitter() + rand(-0.15, 0.15),
+    0.9,
+    3.15,
+  );
+
+  return { benchRatio, squatRatio, deadliftRatio };
 }
 
-// Percentile: lower is better
-function percentileLower(values: number[], x: number) {
-  return 100 - percentileHigher(values, x);
+/**
+ * Half-marathon-equivalent seconds for trained hybrid athletes.
+ *
+ * Target population spread (before clamp):
+ *   ~4500s fastest (~1:15 half), ~6300s median (~1:45), ~9000s slowest (~2:30).
+ * Fitter overall profiles (level) tend to run faster; endurance-biased outliers
+ * pull toward the fast end, strength-biased toward the slow end.
+ */
+function sampleEnduranceSeconds(profile: {
+  enduranceBias: number;
+  strengthBias: number;
+  level: number;
+}): number {
+  const FAST_SEC = 4500;
+  const SLOW_SEC = 9000;
+  const span = SLOW_SEC - FAST_SEC;
+
+  const runFitness = clamp(
+    0.35 +
+      profile.level * 0.45 +
+      profile.enduranceBias * 0.35 -
+      profile.strengthBias * 0.25 +
+      randNormal(0, 0.07),
+    0,
+    1,
+  );
+
+  const meanSeconds = SLOW_SEC - runFitness * span;
+  const seconds = meanSeconds + randNormal(0, 400);
+  return Math.round(clamp(seconds, FAST_SEC, SLOW_SEC));
 }
 
-function rankFromHQ(hq: number) {
-  if (hq >= 90) return "WORLD CLASS";
-  if (hq >= 75) return "ELITE";
-  if (hq >= 60) return "ADVANCED";
-  if (hq >= 40) return "INTERMEDIATE";
-  return "NOVICE";
-}
+function genRawAthlete(): RawAthlete {
+  const bodyweight = sampleBodyweightKg();
 
-function archetypeFromIndexes(str: number, end: number) {
-  if (str < 10 && end < 10) return "BASE BUILDER";
-  const diff = str - end;
-  if (str >= 70 && end >= 70) return "POWER HYBRID";
-  if (diff >= 25) return "STRENGTH BEAST";
-  if (diff <= -25) return "ENGINE MACHINE";
-  if (Math.abs(diff) <= 10) return "BALANCED HYBRID";
-  if (diff > 10) return "STRENGTH-LEANING HYBRID";
-  return "ENDURANCE-LEANING HYBRID";
-}
+  const archetypeRoll = Math.random();
+  const strengthBias =
+    archetypeRoll < 0.22 ? rand(0.35, 0.75) : archetypeRoll > 0.78 ? rand(-0.35, 0.1) : rand(-0.1, 0.25);
+  const enduranceBias =
+    archetypeRoll > 0.78 ? rand(0.35, 0.75) : archetypeRoll < 0.22 ? rand(-0.35, 0.1) : rand(-0.1, 0.25);
 
-function genRawAthlete(): Omit<
-  Athlete,
-  "strength_percentile" | "endurance_percentile" | "hq_score" | "rank" | "archetype"
-> {
-  const bodyweight = Math.round(rand(145, 245));
+  const level = clamp(randNormal(0.48, 0.22), 0.08, 0.95);
 
-  // Make heavy people *tend* to lift more and run slightly slower
-  const bwFactor = (bodyweight - 145) / (245 - 145); // 0..1
-  const strengthMult = 1 + bwFactor * 0.25; // up to +25% strength
-  const runPenalty = 1 + bwFactor * 0.15;   // up to +15% slower
+  const { benchRatio, squatRatio, deadliftRatio } = sampleLiftRatios({
+    strengthBias,
+    level,
+  });
 
-  const bench = Math.round((bodyweight * rand(1.05, 1.75) * strengthMult) / 5) * 5;
-  const squat = Math.round((bodyweight * rand(1.55, 2.45) * strengthMult) / 5) * 5;
-  const deadlift = Math.round((bodyweight * rand(1.95, 2.85) * strengthMult) / 5) * 5;
+  const bench = roundKg(bodyweight * benchRatio, 2.5);
+  const squat = roundKg(bodyweight * squatRatio, 2.5);
+  const deadlift = roundKg(bodyweight * deadliftRatio, 2.5);
 
-  // 5k minutes (faster is lower)
-  const base5k = rand(18, 34) * runPenalty;
-  const fivek_seconds = Math.round(base5k * 60);
+  const endurance_seconds = sampleEnduranceSeconds({
+    enduranceBias,
+    strengthBias,
+    level,
+  });
 
-  const totalLift = bench + squat + deadlift;
-  const strength_ratio = totalLift / bodyweight;
+  const strength_index = computeStrengthIndex({
+    bodyweightKg: bodyweight,
+    benchKg: bench,
+    squatKg: squat,
+    deadliftKg: deadlift,
+  });
 
-  // Keep your existing indexes (0–100)
-  const benchIndex = clamp((bench / (bodyweight * 1.5)) * 100, 0, 100);
-  const squatIndex = clamp((squat / (bodyweight * 2.0)) * 100, 0, 100);
-  const deadIndex = clamp((deadlift / (bodyweight * 2.5)) * 100, 0, 100);
+  const endurance_index = computeEnduranceIndex(endurance_seconds);
 
-  const strength_index = Number(((benchIndex + squatIndex + deadIndex) / 3).toFixed(1));
-  const endurance_index = Number(clamp(100 - (base5k * 2), 0, 100).toFixed(1));
+  const total_lift = bench + squat + deadlift;
+  const strength_ratio = Number((total_lift / bodyweight).toFixed(2));
 
   return {
     athlete_name: makeName(),
     bodyweight,
-    fivek_seconds,
     bench,
     squat,
     deadlift,
+    endurance_seconds,
     strength_index,
     endurance_index,
-    total_lift: totalLift,
+    total_lift,
     strength_ratio,
   };
 }
 
-async function run() {
-  const count = Number(process.env.SEED_COUNT) || 300;
+function scorePopulation(raw: RawAthlete[]): SeededAthlete[] {
+  const dataset = buildScoringDataset(
+    raw.map((r) => ({
+      strength_index: r.strength_index,
+      endurance_index: r.endurance_index,
+      endurance_seconds: r.endurance_seconds,
+    })),
+  );
 
-  // PASS A: generate raw athletes
-  const raw = Array.from({ length: count }, () => genRawAthlete());
+  return raw.map((r) => {
+    const strength_percentile = percentileMidrank(
+      dataset.strengthScores,
+      r.strength_index,
+    );
 
-  // Build arrays for percentiles (ratios and 5k)
-  const benchRatios = raw.map((a) => (a.bench! / a.bodyweight));
-  const squatRatios = raw.map((a) => (a.squat! / a.bodyweight));
-  const deadRatios = raw.map((a) => (a.deadlift! / a.bodyweight));
-  const fiveks = raw.map((a) => a.fivek_seconds!);
+    const endurance_percentile = percentileMidrank(
+      dataset.enduranceScores,
+      r.endurance_index,
+    );
 
-  // PASS B: compute percentiles + HQ
-  const athletes: Athlete[] = raw.map((a) => {
-    const br = a.bench! / a.bodyweight;
-    const sr = a.squat! / a.bodyweight;
-    const dr = a.deadlift! / a.bodyweight;
-
-    const strength_percentile =
-      (percentileHigher(benchRatios, br) +
-        percentileHigher(squatRatios, sr) +
-        percentileHigher(deadRatios, dr)) / 3;
-
-    const endurance_percentile = percentileLower(fiveks, a.fivek_seconds!);
-
-    const hq_score = 0.5 * strength_percentile + 0.5 * endurance_percentile;
-
-    const rank = rankFromHQ(hq_score);
-    const archetype = archetypeFromIndexes(a.strength_index, a.endurance_index);
+    const hq_score = canonicalScoreFromPercentiles(
+      strength_percentile,
+      endurance_percentile,
+    );
 
     return {
-      ...a,
-      strength_percentile: Number(strength_percentile.toFixed(1)),
-      endurance_percentile: Number(endurance_percentile.toFixed(1)),
-      hq_score: Number(hq_score.toFixed(1)),
-      rank,
-      archetype,
+      ...r,
+      strength_percentile,
+      endurance_percentile,
+      hq_score,
+      rank: getTier(hq_score),
+      archetype: getArchetype(strength_percentile, endurance_percentile),
+      status: hq_score >= 90 ? ("pending" as const) : ("approved" as const),
     };
   });
+}
 
-  // Insert in chunks (safer)
+async function deleteAllSubmissions() {
+  console.warn("");
+  console.warn("══════════════════════════════════════════════════════════════");
+  console.warn("  DELETE ALL ROWS in `submissions` (full table wipe)");
+  console.warn("══════════════════════════════════════════════════════════════");
+  console.warn("");
+
+  const { error } = await supabase
+    .from("submissions")
+    .delete()
+    .not("id", "is", null);
+
+  if (error) {
+    throw new Error(`Failed to delete existing submissions: ${error.message}`);
+  }
+}
+
+async function run() {
+  const count = Number(process.env.SEED_COUNT) || DEFAULT_SEED_COUNT;
+
+  await deleteAllSubmissions();
+
+  console.log(`Generating ${count} synthetic athletes (kg + half-marathon-equiv seconds)…`);
+
+  const raw = Array.from({ length: count }, () => genRawAthlete());
+  const athletes = scorePopulation(raw);
+
   const chunkSize = 200;
   for (let i = 0; i < athletes.length; i += chunkSize) {
     const chunk = athletes.slice(i, i + chunkSize);
     const { error } = await supabase.from("submissions").insert(chunk);
     if (error) {
-      console.error("Insert error:", error);
-      process.exit(1);
+      throw new Error(`Insert error at offset ${i}: ${error.message}`);
     }
+    console.log(`  inserted ${Math.min(i + chunk.length, athletes.length)} / ${athletes.length}`);
   }
 
-  console.log(`SUCCESS: Seeded ${athletes.length} athletes with HQ (0–100).`);
+  const hqValues = athletes.map((a) => a.hq_score);
+  const minHq = Math.min(...hqValues);
+  const maxHq = Math.max(...hqValues);
+
+  console.log("");
+  const approvedCount = athletes.filter((a) => a.status === "approved").length;
+  const pendingCount = athletes.length - approvedCount;
+  console.log(`SUCCESS: Seeded ${athletes.length} submissions.`);
+  console.log(`  approved: ${approvedCount}, pending (HQ ≥ 90): ${pendingCount}`);
+  console.log(`  HQ range: ${minHq} – ${maxHq}`);
+  console.log(`  Weights stored in kg; endurance in half-marathon-equivalent seconds.`);
 }
 
 run().catch((e) => {
