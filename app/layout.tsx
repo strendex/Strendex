@@ -18,10 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-[#020203] text-white antialiased">
+      <body className="min-h-screen bg-base text-ink antialiased">
         {/* Background polish */}
         <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-[#020203]" />
+          <div className="absolute inset-0 bg-base" />
           {/* subtle vignette */}
           
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.04),transparent_60%)]" />

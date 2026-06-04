@@ -1,32 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@supabase/supabase-js";
 
-async function getStats() {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const { data, error } = await supabase
-      .from("submissions")
-      .select("rank")
-      .eq("status", "approved");
-    if (error || !data) return { count: 0, tiers: {} };
-    const tiers: Record<string, number> = {};
-    data.forEach((r) => {
-      const t = r.rank ?? "NOVICE";
-      tiers[t] = (tiers[t] ?? 0) + 1;
-    });
-    return { count: data.length, tiers };
-  } catch {
-    return { count: 0, tiers: {} };
-  }
-}
-
-export default async function Home() {
-  const { count } = await getStats();
-
+export default function Home() {
   const faqs = [
     {
       q: "Do I need to sign up?",
@@ -49,94 +24,87 @@ export default async function Home() {
   return (
     <main
       className="font-sans antialiased selection:bg-[#DFFF00]/20"
-      style={{ backgroundColor: "#020203", color: "#f4f4f5" }}
+      style={{ backgroundColor: "var(--base)", color: "var(--ink)" }}
     >
 
       {/* ══════════════════════════
           HERO
       ══════════════════════════ */}
-      <section className="flex flex-col lg:flex-row lg:items-center lg:gap-16" style={{ paddingBottom: "40px" }}>
+      <section
+        className="flex flex-col gap-12 sm:gap-16 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-20"
+        style={{
+          paddingTop: "clamp(40px, 9vw, 88px)",
+          paddingBottom: "var(--section-gap)",
+        }}
+      >
 
-        {/* LEFT */}
-        <div className="flex-1 lg:max-w-[520px] lg:pt-0" style={{ paddingTop: "80px" }}>
+        {/* LEFT — copy + CTA, anchored left */}
+        <div className="flex flex-col items-start">
 
-          {/* Label */}
-          <div
-            className="inline-flex items-center gap-2"
+          {/* Eyebrow */}
+          <span
             style={{
-              borderRadius: "999px",
-              border: "0.5px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.04)",
-              padding: "5px 13px",
-              fontSize: "10px",
-              letterSpacing: "0.22em",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.24em",
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.4)",
+              color: "var(--muted)",
             }}
           >
-            <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "#DFFF00", flexShrink: 0 }} />
             Hybrid Athlete Benchmark
-          </div>
+          </span>
 
           {/* Headline */}
           <h1
             style={{
-              marginTop: "18px",
-              fontSize: "clamp(42px, 10vw, 72px)",
-              fontWeight: 700,
-              lineHeight: 1.02,
+              marginTop: "var(--space-3)",
+              fontSize: "var(--text-h1)",
+              fontWeight: 800,
+              lineHeight: 1.04,
               letterSpacing: "-0.035em",
-              color: "white",
+              color: "var(--ink)",
+              maxWidth: "15ch",
             }}
           >
-            Find out where you actually rank.
+            One score for how strong and how fit you really are.
           </h1>
 
-          {/* Subheading mobile */}
+          {/* Subheadline */}
           <p
-            className="lg:hidden"
             style={{
-              marginTop: "14px",
-              fontSize: "16px",
-              lineHeight: 1.6,
-              color: "rgba(255,255,255,0.38)",
+              marginTop: "var(--space-3)",
+              fontSize: "clamp(16px, 1.5vw, 19px)",
+              lineHeight: "var(--leading-body)",
+              color: "var(--muted)",
+              maxWidth: "var(--measure)",
             }}
           >
-            Strength percentile. Endurance percentile. One score — compared against every hybrid athlete who has tested.
+            Enter your lifts and your run time. Get a single hybrid score, ranked against everyone who&apos;s tested.
           </p>
 
-          {/* Subheading desktop only */}
-          <p
-            className="hidden lg:block"
-            style={{
-              marginTop: "18px",
-              fontSize: "17px",
-              lineHeight: 1.65,
-              color: "rgba(255,255,255,0.42)",
-              maxWidth: "420px",
-            }}
+          {/* CTAs — one primary, one quiet ghost link */}
+          <div
+            className="flex w-full flex-col items-stretch sm:w-auto sm:flex-row sm:items-center"
+            style={{ marginTop: "var(--space-5)", gap: "var(--space-2)" }}
           >
-            The benchmark for athletes who lift heavy and run far.
-            One score, two percentiles, compared against everyone who has tested.
-          </p>
-
-          {/* CTAs */}
-          <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
             <Link
               href="/tool"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: "8px",
                 borderRadius: "999px",
-                backgroundColor: "#DFFF00",
-                color: "#000",
-                fontSize: "15px",
+                backgroundColor: "var(--accent)",
+                color: "var(--base)",
+                fontSize: "16px",
                 fontWeight: 700,
-                padding: "15px 30px",
+                padding: "16px 32px",
+                minHeight: "54px",
                 textDecoration: "none",
                 letterSpacing: "0.01em",
                 whiteSpace: "nowrap",
+                boxShadow: "0 10px 34px -8px rgba(223,255,0,0.35)",
               }}
             >
               Get my score
@@ -145,107 +113,76 @@ export default async function Home() {
               </svg>
             </Link>
 
-            {count > 0 && (
-              <div className="hidden lg:flex" style={{ alignItems: "center", gap: "14px", paddingLeft: "2px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "#DFFF00", opacity: 0.7, boxShadow: "0 0 6px rgba(223,255,0,0.5)" }} />
-                  <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.28)" }}>
-                    Live benchmark
-                  </span>
-                </div>
-                <Link href="/rankings" style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.28)", textDecoration: "none" }}>
-                  View Rankings →
-                </Link>
-              </div>
-            )}
-            {count === 0 && (
-              <Link href="/rankings" className="hidden lg:block" style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.28)", textDecoration: "none", paddingLeft: "2px" }}>
-                View Rankings →
-              </Link>
-            )}
+            <Link
+              href="/rankings"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "var(--muted)",
+                textDecoration: "none",
+                padding: "12px 12px",
+                minHeight: "44px",
+              }}
+            >
+              View rankings →
+            </Link>
           </div>
         </div>
 
-        {/* RIGHT — Athlete card */}
-        <div
-          className="hidden lg:block lg:flex-1"
-          style={{ maxWidth: "460px", width: "100%" }}
-        >
-          {/* Card — inspired by tool page */}
+        {/* RIGHT — athlete score card, anchored right (shown on all sizes) */}
+        <div className="mx-auto w-full lg:mx-0 lg:justify-self-end" style={{ maxWidth: "440px" }}>
+          {/* Card — layered solid surfaces, hairline border, soft depth */}
           <div
             style={{
               position: "relative",
-              borderRadius: "28px",
-              background: "linear-gradient(180deg, #0A0B0F 0%, #07070A 50%, #050507 100%)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "24px",
+              background: "var(--surface)",
+              border: "1px solid var(--hairline)",
+              boxShadow:
+                "0 30px 70px -24px rgba(0,0,0,0.75), 0 2px 6px rgba(0,0,0,0.4)",
               overflow: "hidden",
             }}
           >
-            {/* Background glow */}
-            <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-              <div style={{
-                position: "absolute",
-                top: "-80px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "320px",
-                height: "240px",
-                borderRadius: "50%",
-                background: "radial-gradient(circle at center, rgba(223,255,0,0.14), transparent 65%)",
-                filter: "blur(50px)",
-              }} />
-              <div style={{
-                position: "absolute",
-                inset: 0,
-                opacity: 0.06,
-                backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)",
-                backgroundSize: "28px 28px",
-                maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 70%)",
-              }} />
-              <div style={{
-                position: "absolute",
-                inset: 0,
-                background: "radial-gradient(85% 55% at 50% 0%, transparent 0%, rgba(7,7,10,0.5) 55%, rgba(7,7,10,0.97) 100%)",
-              }} />
-            </div>
-
-            <div style={{ position: "relative", zIndex: 10, padding: "24px" }}>
+            <div style={{ position: "relative", zIndex: 10, padding: "var(--space-3)" }}>
 
               {/* Header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ width: "30px", height: "30px", borderRadius: "8px", border: "0.5px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.4)", overflow: "hidden", position: "relative", flexShrink: 0 }}>
+                  <div style={{ width: "30px", height: "30px", borderRadius: "8px", border: "1px solid var(--hairline)", background: "var(--elevated)", overflow: "hidden", position: "relative", flexShrink: 0 }}>
                     <Image src="/logo.png" alt="Strendex" fill className="object-contain p-1" priority />
                   </div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>STRENDEX</span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", color: "var(--ink)", textTransform: "uppercase" }}>STRENDEX</span>
                 </div>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", borderRadius: "999px", border: "0.5px solid rgba(167,139,250,0.22)", background: "rgba(167,139,250,0.08)", padding: "4px 10px", fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em", color: "rgb(196,181,253)" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", borderRadius: "999px", border: "1px solid var(--hairline)", background: "var(--elevated)", padding: "4px 10px", fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em", color: "var(--muted)" }}>
                   ADVANCED
                 </span>
               </div>
 
               {/* Score */}
-              <div style={{ marginTop: "24px", textAlign: "center", padding: "28px 0 24px", borderRadius: "18px", border: "0.5px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", bottom: "-50px", left: "50%", transform: "translateX(-50%)", width: "180px", height: "180px", borderRadius: "50%", background: "radial-gradient(circle, rgba(223,255,0,0.1), transparent 68%)", filter: "blur(18px)", pointerEvents: "none" }} />
-                <div style={{ fontSize: "10px", letterSpacing: "0.28em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>Hybrid Score</div>
-                <div style={{ fontSize: "88px", fontWeight: 700, lineHeight: 0.95, letterSpacing: "-0.05em", color: "white", marginTop: "10px", textShadow: "0 0 60px rgba(223,255,0,0.15)" }}>68</div>
-                <div style={{ fontSize: "10px", letterSpacing: "0.2em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", marginTop: "8px" }}>out of 100</div>
+              <div style={{ marginTop: "var(--space-3)", textAlign: "center", padding: "28px 0 24px", borderRadius: "18px", border: "1px solid var(--hairline)", background: "var(--elevated)" }}>
+                <div style={{ fontSize: "10px", letterSpacing: "0.28em", color: "var(--muted)", textTransform: "uppercase" }}>Hybrid Score</div>
+                <div style={{ fontSize: "88px", fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.05em", color: "var(--accent)", marginTop: "10px" }}>68</div>
+                <div style={{ fontSize: "10px", letterSpacing: "0.2em", color: "var(--muted)", textTransform: "uppercase", marginTop: "8px" }}>out of 100</div>
               </div>
 
               {/* Percentiles */}
-              <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              <div style={{ marginTop: "var(--space-1)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-1)" }}>
                 {[{ label: "Strength", value: "72" }, { label: "Engine", value: "58" }].map((item) => (
-                  <div key={item.label} style={{ borderRadius: "14px", border: "0.5px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", padding: "14px", textAlign: "center" }}>
-                    <div style={{ fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>{item.label}</div>
-                    <div style={{ marginTop: "5px", fontSize: "26px", fontWeight: 700, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>{item.value}</div>
-                    <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.18)", marginTop: "3px", letterSpacing: "0.1em" }}>percentile</div>
+                  <div key={item.label} style={{ borderRadius: "14px", border: "1px solid var(--hairline)", background: "var(--elevated)", padding: "14px", textAlign: "center" }}>
+                    <div style={{ fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--muted)" }}>{item.label}</div>
+                    <div style={{ marginTop: "5px", fontSize: "26px", fontWeight: 700, color: "var(--ink)", lineHeight: 1, letterSpacing: "-0.02em" }}>{item.value}</div>
+                    <div style={{ fontSize: "9px", color: "var(--muted)", marginTop: "3px", letterSpacing: "0.1em" }}>percentile</div>
                   </div>
                 ))}
               </div>
 
               {/* Footer */}
-              <div style={{ marginTop: "14px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(223,255,0,0.18), transparent)" }} />
-              <div style={{ marginTop: "10px", textAlign: "center", fontSize: "10px", color: "rgba(255,255,255,0.15)", letterSpacing: "0.06em" }}>
+              <div style={{ marginTop: "var(--space-2)", height: "1px", background: "var(--hairline)" }} />
+              <div style={{ marginTop: "10px", textAlign: "center", fontSize: "10px", color: "var(--muted)", letterSpacing: "0.06em" }}>
                 This is what you walk away with.
               </div>
 

@@ -1,27 +1,66 @@
 @import "tailwindcss";
 
+/* ============================================================
+   DESIGN TOKENS — single source of truth for the redesign.
+   Solid tonal dark palette (deliberately NOT low-opacity white
+   overlays on black, which go muddy on cheaper laptop panels),
+   an 8px spacing scale, and fluid type.
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Dark palette — solid tonal steps */
+  --base: #0e1014;        /* background base */
+  --surface: #16191f;     /* cards */
+  --elevated: #21252d;    /* elevated surface */
+  --hairline: rgba(255, 255, 255, 0.09); /* hairline borders */
+  --ink: #f5f7fa;         /* text primary */
+  --muted: #a0a6b0;       /* text secondary */
+  --accent: #dfff00;      /* brand accent — primary CTA + score number ONLY */
+
+  /* Spacing — 8px base scale */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+  --space-10: 80px;
+  --space-15: 120px;
+  --space-20: 160px;
+
+  /* Vertical rhythm between major sections
+     (~64–80px mobile → ~120–160px desktop) */
+  --section-gap: clamp(64px, 12vw, 160px);
+
+  /* Type */
+  --text-h1: clamp(40px, 8vw, 80px);
+  --leading-body: 1.6;
+  --measure: 65ch; /* max body line length */
+
+  /* Legacy aliases consumed by the Tailwind theme mapping below */
+  --background: var(--base);
+  --foreground: var(--ink);
 }
 
+/* Expose palette as Tailwind color utilities: bg-base, bg-surface,
+   bg-elevated, border-hairline, text-ink, text-muted, text-accent … */
 @theme inline {
+  --color-base: var(--base);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-hairline: var(--hairline);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--base);
+  color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }
 input, select, textarea {
