@@ -272,7 +272,7 @@ export async function POST(req: Request) {
     const strength_ratio =
       bodyweight > 0 ? Number((total_lift / bodyweight).toFixed(2)) : null;
 
-    const status = scored.hq >= 90 ? "pending" : "approved";
+    const status = scored.hq >= 95 ? "pending" : "approved";
 
     const { error: insertError } = await supabaseAdmin.from("submissions").insert([
       {
