@@ -199,6 +199,9 @@ export default function RankingsPage() {
             <h1 className="mt-2 text-4xl sm:text-5xl font-semibold tracking-tight text-white">
               Global leaderboard
             </h1>
+            <p className="mt-2 text-sm text-zinc-400">
+              Rankings include simulated data during early access.
+            </p>
             <p className="mt-3 max-w-2xl text-sm sm:text-base text-zinc-400">
               Sorted by <span className="text-zinc-200 font-semibold">Hybrid Score</span> (0–100).
               Search names, filter tiers, and compare archetypes.

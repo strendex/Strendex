@@ -439,7 +439,7 @@ export default function Home() {
             {
               n: "02",
               t: "Get your verdict",
-              d: "Hybrid Score (0–100), Strength Percentile, Endurance Percentile, tier, and archetype — all calculated against the real dataset.",
+              d: "Hybrid Score (0–100), Strength Percentile, Endurance Percentile, tier, and archetype — all calculated against the Strendex dataset.",
             },
             {
               n: "03",
