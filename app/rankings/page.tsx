@@ -84,14 +84,14 @@ export default function RankingsPage() {
   const [minScore, setMinScore] = useState<string>(""); // empty = no limit
   const [maxScore, setMaxScore] = useState<string>(""); // empty = no limit
   const [timeFilter, setTimeFilter] = useState<"ALL" | "30D" | "7D">("ALL");
-  const [sortBy, setSortBy] = useState<"SCORE_DESC" | "NEWEST" | "NAME_ASC">("SCORE_DESC");
+  const [sortBy, setSortBy] = useState<"SCORE_DESC" | "NEWEST" | "NAME_ASC">(
+    "SCORE_DESC",
+  );
 
   useEffect(() => {
     async function fetchRankings() {
       setLoading(true);
       setErr("");
-
-      
 
       const { data, error } = await supabase
         .from("submissions")
@@ -141,8 +141,8 @@ export default function RankingsPage() {
       timeFilter === "7D"
         ? now - 7 * 24 * 60 * 60 * 1000
         : timeFilter === "30D"
-        ? now - 30 * 24 * 60 * 60 * 1000
-        : -Infinity;
+          ? now - 30 * 24 * 60 * 60 * 1000
+          : -Infinity;
 
     let out = rows.filter((p) => {
       // Search should feel normal: NAME ONLY
@@ -155,7 +155,9 @@ export default function RankingsPage() {
       // time filter uses created_at from Row; we didn't store it on Player,
       // so either (A) add created_at to Player, OR (B) skip this filter.
       // We'll do (A) below in Step 3.
-      const createdMs = (p as any).created_at ? Date.parse((p as any).created_at) : 0;
+      const createdMs = (p as any).created_at
+        ? Date.parse((p as any).created_at)
+        : 0;
       const matchesTime = cutoff === -Infinity ? true : createdMs >= cutoff;
 
       return matchesQuery && matchesTier && matchesScore && matchesTime;
@@ -164,8 +166,12 @@ export default function RankingsPage() {
     // Sort
     out.sort((a, b) => {
       if (sortBy === "NEWEST") {
-        const am = (a as any).created_at ? Date.parse((a as any).created_at) : 0;
-        const bm = (b as any).created_at ? Date.parse((b as any).created_at) : 0;
+        const am = (a as any).created_at
+          ? Date.parse((a as any).created_at)
+          : 0;
+        const bm = (b as any).created_at
+          ? Date.parse((b as any).created_at)
+          : 0;
         return bm - am;
       }
       if (sortBy === "NAME_ASC") return a.name.localeCompare(b.name);
@@ -202,10 +208,6 @@ export default function RankingsPage() {
             <p className="mt-2 text-sm text-zinc-400">
               Rankings include simulated data during early access.
             </p>
-            <p className="mt-3 max-w-2xl text-sm sm:text-base text-zinc-400">
-              Sorted by <span className="text-zinc-200 font-semibold">Hybrid Score</span> (0–100).
-              Search names, filter tiers, and compare archetypes.
-            </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -224,7 +226,7 @@ export default function RankingsPage() {
           </div>
         </div>
 
-                        {/* Controls */}
+        {/* Controls */}
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
           {/* Search (always visible) */}
           <div>
@@ -239,7 +241,9 @@ export default function RankingsPage() {
             />
             <div className="mt-1 text-[11px] text-zinc-500">
               Showing{" "}
-              <span className="text-zinc-200 font-semibold">{filtered.length}</span>{" "}
+              <span className="text-zinc-200 font-semibold">
+                {filtered.length}
+              </span>{" "}
               of{" "}
               <span className="text-zinc-200 font-semibold">{totalCount}</span>
             </div>
@@ -249,7 +253,9 @@ export default function RankingsPage() {
           <details className="mt-4 rounded-2xl border border-white/10 bg-black/30 open:bg-black/40">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-white">Filters</span>
+                <span className="text-sm font-semibold text-white">
+                  Filters
+                </span>
                 <span className="text-[11px] text-zinc-500">
                   {tierFilter !== "ALL" ||
                   minScore ||
@@ -262,7 +268,11 @@ export default function RankingsPage() {
               </div>
 
               <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.03]">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 text-zinc-300" fill="none">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 text-zinc-300"
+                  fill="none"
+                >
                   <path
                     d="M7 10l5 5 5-5"
                     stroke="currentColor"
@@ -348,7 +358,9 @@ export default function RankingsPage() {
                       className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/10"
                     />
                   </div>
-                  <div className="mt-1 text-[11px] text-zinc-500">Leave blank to ignore.</div>
+                  <div className="mt-1 text-[11px] text-zinc-500">
+                    Leave blank to ignore.
+                  </div>
                 </div>
 
                 {/* Reset */}
@@ -367,10 +379,12 @@ export default function RankingsPage() {
                       setSortBy("SCORE_DESC");
                     }}
                     className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white hover:bg-white/[0.06] transition"
-                  > 
+                  >
                     Clear filters
                   </button>
-                  <div className="mt-1 text-[11px] text-zinc-500">Back to defaults.</div>
+                  <div className="mt-1 text-[11px] text-zinc-500">
+                    Back to defaults.
+                  </div>
                 </div>
               </div>
             </div>
@@ -383,7 +397,9 @@ export default function RankingsPage() {
           </div>
         ) : err ? (
           <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <div className="text-sm text-zinc-300 font-semibold">Couldn’t load rankings</div>
+            <div className="text-sm text-zinc-300 font-semibold">
+              Couldn’t load rankings
+            </div>
             <div className="mt-2 text-sm text-zinc-400">{err}</div>
             <div className="mt-4">
               <Link
@@ -406,7 +422,7 @@ export default function RankingsPage() {
                   <div
                     key={p.id}
                     className={`relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-7 text-center ${
-                      isFirst ? meta.glow ?? "" : ""
+                      isFirst ? (meta.glow ?? "") : ""
                     }`}
                   >
                     <div aria-hidden className="absolute inset-0">
@@ -421,10 +437,16 @@ export default function RankingsPage() {
                     )}
 
                     <div className="relative z-10">
-                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">Rank</div>
-                      <div className="mt-1 text-4xl font-semibold text-white">#{p.place}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+                        Rank
+                      </div>
+                      <div className="mt-1 text-4xl font-semibold text-white">
+                        #{p.place}
+                      </div>
 
-                      <div className="mt-4 text-xl font-semibold text-white">{p.name}</div>
+                      <div className="mt-4 text-xl font-semibold text-white">
+                        {p.name}
+                      </div>
 
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                         <span
@@ -459,7 +481,10 @@ export default function RankingsPage() {
                     Leaderboard
                   </div>
                   <div className="mt-1 text-sm text-zinc-400">
-                    Showing <span className="text-zinc-200 font-semibold">{filtered.length}</span>{" "}
+                    Showing{" "}
+                    <span className="text-zinc-200 font-semibold">
+                      {filtered.length}
+                    </span>{" "}
                     athletes
                   </div>
                 </div>
@@ -480,9 +505,7 @@ export default function RankingsPage() {
                       className="flex items-center gap-4 px-4 py-4 hover:bg-white/[0.03] transition"
                     >
                       {/* Rank */}
-                      <div
-                        className="shrink-0 w-9 text-center"
-                      >
+                      <div className="shrink-0 w-9 text-center">
                         <span
                           className={`text-sm font-semibold ${
                             isTop3 ? "text-white" : "text-zinc-500"
@@ -538,7 +561,10 @@ export default function RankingsPage() {
                   {filtered.map((p) => {
                     const meta = TIER_META[p.tier] ?? TIER_META["—"];
                     return (
-                      <tr key={p.id} className="hover:bg-white/[0.04] transition">
+                      <tr
+                        key={p.id}
+                        className="hover:bg-white/[0.04] transition"
+                      >
                         <td className="px-6 py-4 font-semibold text-zinc-400">
                           #{p.place}
                         </td>
