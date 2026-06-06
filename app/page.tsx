@@ -63,7 +63,7 @@ export default function Home() {
               maxWidth: "15ch",
             }}
           >
-            One score for how strong and fit you really are.
+            One score for how strong and fit you actually are.
           </h1>
 
           {/* Subheadline */}
