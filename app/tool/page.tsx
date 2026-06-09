@@ -655,7 +655,7 @@ if (!error) {
     4: {
       kicker: "Final step",
       title: "You're ready",
-      sub: "Check your numbers, then get your result..",
+      sub: "Check your numbers, then get your result.",
     },
   };
 
@@ -994,7 +994,7 @@ if (!error) {
           <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/65">
           <div className="font-semibold text-white">How your score is calculated</div>
   <div className="mt-1">
-    Your Hybrid Score (0–100) is an equal blend of your Strength Percentile and Endurance Percentile — both measured against everyone who's tested. Higher means more well-rounded.
+    Your Hybrid Score (0–100) is an equal blend of your Strength Percentile and Endurance Percentile — both measured against the Strendex dataset. Higher means more well-rounded.
   </div>
 </div>
         </div>
@@ -1053,7 +1053,7 @@ if (!error) {
       <div className="absolute left-0 top-8 z-30 w-56">
       <div className="relative rounded-xl bg-[#0E1014] p-3 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)] leading-relaxed">
         <div className="absolute left-3 top-[-4px] h-2 w-2 rotate-45 bg-[#0E1014]" />
-        Your Hybrid Score (0–100) is an equal blend of your Strength and Endurance percentiles — both measured against everyone who has tested. Higher means more well-rounded.
+        Your Hybrid Score (0–100) is an equal blend of your Strength and Endurance percentiles — both measured against the Strendex dataset. Higher means more well-rounded.
       </div>
     </div>
     )}
@@ -1159,7 +1159,7 @@ if (!error) {
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <button
                         onClick={downloadScorecard}
-                        className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                        className="rounded-2xl bg-[#DFFF00] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#c9e600]"
                       >
                         Download
                       </button>
