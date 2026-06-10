@@ -190,16 +190,16 @@ const tierMeta: Record<Tier, { pill: string; glow: string }> = {
     glow: "shadow-[0_0_50px_rgba(223,255,0,0.12)]",
   },
   ELITE: {
-    pill: "border-sky-400/20 bg-sky-400/10 text-sky-200",
-    glow: "shadow-[0_0_40px_rgba(56,189,248,0.12)]",
+    pill: "border-white/15 bg-white/[0.04] text-white/80",
+    glow: "",
   },
   ADVANCED: {
-    pill: "border-violet-400/20 bg-violet-400/10 text-violet-200",
-    glow: "shadow-[0_0_40px_rgba(167,139,250,0.12)]",
+    pill: "border-white/15 bg-white/[0.04] text-white/80",
+    glow: "",
   },
   INTERMEDIATE: {
-    pill: "border-amber-400/20 bg-amber-400/10 text-amber-200",
-    glow: "shadow-[0_0_40px_rgba(251,191,36,0.10)]",
+    pill: "border-white/15 bg-white/[0.04] text-white/80",
+    glow: "",
   },
   NOVICE: {
     pill: "border-white/10 bg-white/[0.03] text-zinc-300",
@@ -1030,7 +1030,7 @@ if (!error) {
   <div className="text-sm text-white/55">Hybrid Score</div>
 
   <div className="mt-1 flex items-start gap-2">
-    <div className="text-6xl font-semibold tracking-tight text-white">
+    <div className="text-6xl font-semibold tracking-tight text-[#DFFF00]">
       {hasResults ? Math.round(hybridScore) : "—"}
     </div>
 
@@ -1065,7 +1065,7 @@ if (!error) {
                 <div className="text-right">
                 <div className="text-sm text-white/55">Tier</div>
                   <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+                    {hasResults && <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />}
                     {tier}
                   </div>
                 </div>
@@ -1078,7 +1078,7 @@ if (!error) {
     <div className="mt-1 text-2xl font-semibold text-white">
       {betterThanPercent === null ? "—" : `${betterThanPercent.toFixed(1)}%`}
     </div>
-    <div className="mt-1 text-[11px] text-white/55">of athletes</div>
+    <div className="mt-1 text-[11px] text-white/55">of athletes (early access)</div>
   </div>
 
   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -1087,7 +1087,7 @@ if (!error) {
       {globalRank === null || totalAthletes === null ? "—" : `#${globalRank}`}
     </div>
     <div className="mt-1 text-[11px] text-white/55">
-      {totalAthletes === null ? "—" : `out of ${totalAthletes}`}
+      {totalAthletes === null ? "—" : `out of ${totalAthletes} (early access)`}
     </div>
   </div>
 
@@ -1220,7 +1220,7 @@ flexShrink: 0,
       </div>
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] ${tierMeta[tier].pill}`}
         style={{ backdropFilter: "blur(8px)" }}>
-        <span className="h-2 w-2 rounded-full bg-current opacity-90" />
+        <span className="h-2 w-2 rounded-full bg-[#DFFF00]" />
         {tier}
       </span>
     </div>
@@ -1262,8 +1262,8 @@ flexShrink: 0,
       </div>
       <div style={{
 fontSize: "clamp(72px, 22vw, 100px)", fontWeight: 700, lineHeight: 0.9, letterSpacing: "-0.05em",
-color: "white", marginTop: "10px",
-WebkitTextFillColor: "white",
+color: "#DFFF00", marginTop: "10px",
+WebkitTextFillColor: "#DFFF00",
 textShadow: "0 0 60px rgba(223,255,0,0.22)",
       }}>
         {hasResults ? Math.round(hybridScore) : "—"}
@@ -1275,8 +1275,8 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
         <div style={{
           marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "7px",
           borderRadius: "999px", border: "0.5px solid rgba(223,255,0,0.2)",
-          background: "rgba(223,255,0,0.08)", padding: "8px 18px",
-          fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 700, color: "rgba(240,255,170,0.95)", letterSpacing: "0.02em",
+          background: "rgba(223,255,0,0.08)", padding: "11px 20px",
+          fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 700, color: "rgba(240,255,170,0.95)", letterSpacing: "0.02em", lineHeight: 1,
         }}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#DFFF00", boxShadow: "0 0 10px rgba(223,255,0,0.6)" }} />
           Better than {betterThanPercent.toFixed(1)}% of athletes
@@ -1292,14 +1292,14 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
         { k: runDistance.toUpperCase(), v: runTimeText || "—" },
       ].map((x) => (
         <div key={x.k} style={{
-          display: "flex", flexDirection: "column", alignItems: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           borderRadius: "12px", border: "0.5px solid rgba(255,255,255,0.06)",
           background: "rgba(255,255,255,0.02)", padding: "11px 8px",
         }}>
-          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>
+          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", lineHeight: 1, whiteSpace: "nowrap" }}>
             {x.k}
           </div>
-          <div style={{ fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.78)", marginTop: "4px" }}>
+          <div style={{ fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.78)", marginTop: "5px", lineHeight: 1, whiteSpace: "nowrap" }}>
             {x.v}
           </div>
         </div>
@@ -1387,7 +1387,7 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
               <div className="flex items-center gap-2">
                 <div className="text-xs font-semibold text-white">Hybrid {Math.round(hybridScore)}</div>
                 <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />
                   {tier}
                 </span>
               </div>
@@ -1575,8 +1575,8 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
     },
     "ENDURANCE MACHINE": {
       label: "Endurance Machine",
-      ring: "border-sky-400/20",
-      bg: "bg-sky-400/10 text-sky-200",
+      ring: "border-white/15",
+      bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M13 2 4 14h7l-1 8 10-14h-7l0-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
@@ -1585,8 +1585,8 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
     },
     "BALANCED HYBRID": {
       label: "Balanced Hybrid",
-      ring: "border-violet-400/20",
-      bg: "bg-violet-400/10 text-violet-200",
+      ring: "border-white/15",
+      bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M12 3v18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -1596,8 +1596,8 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
     },
     "POWER HYBRID": {
       label: "Power Hybrid",
-      ring: "border-amber-400/20",
-      bg: "bg-amber-400/10 text-amber-200",
+      ring: "border-white/15",
+      bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M12 2 5 9l7 13 7-13-7-7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
@@ -1606,8 +1606,8 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
     },
     "ENDURANCE-LEANING HYBRID": {
       label: "Endurance Leaning",
-      ring: "border-sky-400/20",
-      bg: "bg-sky-400/10 text-sky-200",
+      ring: "border-white/15",
+      bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
           <path d="M7 14c2-6 4-9 5-9s3 3 5 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
