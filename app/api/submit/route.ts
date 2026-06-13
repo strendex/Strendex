@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildScoringDataset, computeScore } from "@/lib/scoring";
+import { findBannedWord } from "@/lib/nameFilter";
 import { getClientIp } from "@/lib/clientIp";
 
 const MAX_SUBMIT_PER_MINUTE = 5;
@@ -148,6 +149,11 @@ export async function POST(req: Request) {
       body.athlete_name.trim().length >= 2
         ? body.athlete_name.trim().slice(0, 60)
         : "Anonymous Athlete";
+
+    if (findBannedWord(athlete_name)) {
+      logSecurityEvent("banned_name", { ip });
+      return badRequest("Please choose a different display name.");
+    }
 
     const bodyweightRaw = Number(body?.bodyweight_kg);
     const endurance_seconds =

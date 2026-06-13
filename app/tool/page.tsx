@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import StrendexChart from "./StrendexChart";
+import { findBannedWord } from "@/lib/nameFilter";
 import { toPng } from "html-to-image";
 
 type Tier = "WORLD CLASS" | "ELITE" | "ADVANCED" | "INTERMEDIATE" | "NOVICE";
@@ -313,11 +314,18 @@ const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
     ];
   }, [benchIndex, squatIndex, deadIndex, enduranceIndex]);
 
-  const canContinueStep1 = wLb > 0;
+  const nameError = findBannedWord(displayName)
+    ? "Please choose a different display name."
+    : null;
+
+  const canContinueStep1 = wLb > 0 && !nameError;
   const canContinueStep2 = wLb > 0 && (bLb > 0 || sLb > 0 || dLb > 0);
   const canContinueStep3 = wLb > 0 && (runSeconds > 0);
   const canGenerate =
-    wLb > 0 && (bLb > 0 || sLb > 0 || dLb > 0 || runSeconds > 0) && !isWorking;
+    wLb > 0 &&
+    (bLb > 0 || sLb > 0 || dLb > 0 || runSeconds > 0) &&
+    !isWorking &&
+    !nameError;
 
   function cleanedName() {
     const clean = displayName
@@ -744,6 +752,7 @@ if (!error) {
                       setDisplayName(value);
                       localStorage.setItem("strendex_name", value);
                     }}
+                    error={nameError}
                   />
 
                   <Field
@@ -1432,11 +1441,13 @@ function TextField({
   placeholder,
   value,
   onChange,
+  error,
 }: {
   label: string;
   placeholder?: string;
   value: string;
   onChange: (v: string) => void;
+  error?: string | null;
 }) {
   return (
     <div>
@@ -1447,8 +1458,13 @@ function TextField({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         maxLength={24}
-        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3.5 text-base text-white placeholder:text-white/30 outline-none transition focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
+        className={`w-full rounded-2xl border bg-black/30 px-4 py-3.5 text-base text-white placeholder:text-white/30 outline-none transition focus:ring-2 ${
+          error
+            ? "border-white/40 focus:border-white/60 focus:ring-white/10"
+            : "border-white/10 focus:border-[#DFFF00]/50 focus:ring-[#DFFF00]/10"
+        }`}
       />
+      {error ? <div className="mt-1 text-sm text-white/70">{error}</div> : null}
     </div>
   );
 }
