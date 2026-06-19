@@ -1,6 +1,20 @@
 import "./globals.css";
+import { Anton, Inter } from "next/font/google";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-anton",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata = {
   title: "STRENDEX",
@@ -17,15 +31,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${anton.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-base text-ink antialiased">
-        {/* Background polish */}
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-base" />
-          {/* subtle vignette */}
-          
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(255,255,255,0.04),transparent_60%)]" />
-        </div>
+        {/* Flat base — no vignette or glow */}
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-base" />
 
         <div className="flex min-h-screen flex-col">
           <Header />
