@@ -23,27 +23,27 @@ export default function Header() {
       >
         {/* LEFT — Logo + nav together */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center">
+            {/* Desktop: full wordmark */}
             <Image
-              src="/logo.png"
+              src="/logo-wordmark.png"
               alt="Strendex"
-              width={32}
-              height={32}
+              width={2551}
+              height={404}
               priority
-              className="object-contain"
-              style={{ width: "32px", height: "32px" }}
+              className="hidden md:block"
+              style={{ height: "22px", width: "auto" }}
             />
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: 700,
-                letterSpacing: "0.04em",
-                color: "white",
-                textTransform: "uppercase",
-              }}
-            >
-              Strendex
-            </span>
+            {/* Mobile: S mark only */}
+            <Image
+              src="/logo-mark.png"
+              alt="Strendex"
+              width={620}
+              height={583}
+              priority
+              className="block md:hidden"
+              style={{ height: "30px", width: "auto" }}
+            />
           </Link>
 
           {/* Nav links — hidden on mobile */}
@@ -59,10 +59,12 @@ export default function Header() {
                 transition: "color 0.15s",
               }}
               onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.88)")
+                ((e.currentTarget as HTMLAnchorElement).style.color =
+                  "rgba(255,255,255,0.88)")
               }
               onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)")
+                ((e.currentTarget as HTMLAnchorElement).style.color =
+                  "rgba(255,255,255,0.5)")
               }
             >
               Rankings
@@ -78,10 +80,12 @@ export default function Header() {
                 transition: "color 0.15s",
               }}
               onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.88)")
+                ((e.currentTarget as HTMLAnchorElement).style.color =
+                  "rgba(255,255,255,0.88)")
               }
               onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)")
+                ((e.currentTarget as HTMLAnchorElement).style.color =
+                  "rgba(255,255,255,0.5)")
               }
             >
               About
