@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 // ── Hero ring sample (illustrative only — not real user data) ──
-const SAMPLE = { score: 68, strength: 72, endurance: 58 };
+const SAMPLE = { score: 68, strength: 72, endurance: 64 };
 const RING_R = 130;
 const RING_C = 2 * Math.PI * RING_R;
 
@@ -52,10 +52,10 @@ export default function Home() {
           HERO
       ══════════════════════════ */}
       <section
-        className="flex flex-col gap-6 sm:gap-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16"
+        className="flex flex-col gap-10 sm:gap-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16"
         style={{
           paddingTop: "clamp(36px, 7vw, 72px)",
-          paddingBottom: "clamp(40px, 9vw, 96px)",
+          paddingBottom: "clamp(52px, 9vw, 96px)",
         }}
       >
         {/* LEFT — copy + CTA */}
@@ -78,7 +78,7 @@ export default function Home() {
             style={{
               fontFamily: "var(--font-display)",
               marginTop: "var(--space-2)",
-              fontSize: "clamp(48px, 9vw, 96px)",
+              fontSize: "clamp(58px, 15vw, 96px)",
               fontWeight: 400,
               lineHeight: 0.92,
               letterSpacing: "0.005em",
@@ -307,19 +307,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
-            {/* Quiet caption — illustrative, never real user data */}
-            <p
-              style={{
-                marginTop: "var(--space-2)",
-                fontSize: "12px",
-                fontWeight: 400,
-                letterSpacing: "0.01em",
-                color: "var(--muted)",
-              }}
-            >
-              Example score
-            </p>
           </div>
         </div>
       </section>
@@ -329,11 +316,11 @@ export default function Home() {
       ══════════════════════════ */}
       <section
         style={{
-          paddingTop: "clamp(36px, 7vw, 80px)",
+          paddingTop: "clamp(48px, 7vw, 80px)",
           borderTop: "1px solid var(--hairline)",
         }}
       >
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-8">
           {steps.map((s) => (
             <div key={s.n} className="flex flex-col items-start">
               <span
@@ -378,8 +365,8 @@ export default function Home() {
       ══════════════════════════ */}
       <section
         style={{
-          marginTop: "clamp(44px, 10vw, 112px)",
-          paddingTop: "clamp(36px, 7vw, 80px)",
+          marginTop: "clamp(60px, 10vw, 112px)",
+          paddingTop: "clamp(48px, 7vw, 80px)",
           borderTop: "1px solid var(--hairline)",
         }}
       >
@@ -463,8 +450,8 @@ export default function Home() {
       <section
         className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between"
         style={{
-          marginTop: "clamp(44px, 10vw, 112px)",
-          paddingTop: "clamp(36px, 7vw, 80px)",
+          marginTop: "clamp(60px, 10vw, 112px)",
+          paddingTop: "clamp(48px, 7vw, 80px)",
           paddingBottom: "clamp(56px, 9vw, 96px)",
           borderTop: "1px solid var(--hairline)",
         }}
