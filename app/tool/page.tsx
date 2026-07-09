@@ -126,7 +126,8 @@ function formatDigitsToTime(digitsRaw: string): string {
   const sec = Number(digits.slice(-2));
   const min = Number(digits.slice(-4, -2));
   const hr = Number(digits.slice(0, -4));
-  if (!Number.isFinite(hr) || !Number.isFinite(min) || !Number.isFinite(sec)) return "";
+  if (!Number.isFinite(hr) || !Number.isFinite(min) || !Number.isFinite(sec))
+    return "";
 
   const secClamped = Math.max(0, Math.min(59, sec));
   const minClamped = Math.max(0, Math.min(59, min));
@@ -149,7 +150,10 @@ function distanceMeters(d: RunDistance): number {
   }
 }
 
-function toHalfMarathonEquivalentSeconds(inputSeconds: number, dist: RunDistance): number {
+function toHalfMarathonEquivalentSeconds(
+  inputSeconds: number,
+  dist: RunDistance,
+): number {
   const D1 = distanceMeters(dist);
   const D2 = distanceMeters("half");
   const exponent = 1.06;
@@ -235,22 +239,30 @@ export default function ToolPage() {
 
   // saving / scan moment
   const [isWorking, setIsWorking] = useState(false);
-const [scanStage, setScanStage] = useState<"CALIBRATING" | "SCORING" | "COMPILING">("CALIBRATING");
-const [statusText, setStatusText] = useState<string>("");
+  const [scanStage, setScanStage] = useState<
+    "CALIBRATING" | "SCORING" | "COMPILING"
+  >("CALIBRATING");
+  const [statusText, setStatusText] = useState<string>("");
 
   // results
   const [hasResults, setHasResults] = useState(false);
   const [hybridScore, setHybridScore] = useState<number>(0);
-  const [strengthPercentile, setStrengthPercentile] = useState<number | null>(null);
-  const [endurancePercentile, setEndurancePercentile] = useState<number | null>(null);
+  const [strengthPercentile, setStrengthPercentile] = useState<number | null>(
+    null,
+  );
+  const [endurancePercentile, setEndurancePercentile] = useState<number | null>(
+    null,
+  );
   const [globalRank, setGlobalRank] = useState<number | null>(null);
   const [totalAthletes, setTotalAthletes] = useState<number | null>(null);
-  const [betterThanPercent, setBetterThanPercent] = useState<number | null>(null);
+  const [betterThanPercent, setBetterThanPercent] = useState<number | null>(
+    null,
+  );
   const [apiStrengthIndex, setApiStrengthIndex] = useState<number | null>(null);
-const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
- 
+  const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(
+    null,
+  );
 
-  
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -262,21 +274,23 @@ const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
 
   // normalize to LB for local ratios / display
   const wLb = unitSystem === "kg" ? kgToLb(wInput) : wInput;
-const bLb = unitSystem === "kg" ? kgToLb(bInput) : bInput;
-const sLb = unitSystem === "kg" ? kgToLb(sInput) : sInput;
-const dLb = unitSystem === "kg" ? kgToLb(dInput) : dInput;
+  const bLb = unitSystem === "kg" ? kgToLb(bInput) : bInput;
+  const sLb = unitSystem === "kg" ? kgToLb(sInput) : sInput;
+  const dLb = unitSystem === "kg" ? kgToLb(dInput) : dInput;
 
-const displayWeight = unitSystem === "kg" ? wInput : wLb;
-const displayBench = unitSystem === "kg" ? bInput : bLb;
-const displaySquat = unitSystem === "kg" ? sInput : sLb;
-const displayDeadlift = unitSystem === "kg" ? dInput : dLb;
-const displayTotalLift = displayBench + displaySquat + displayDeadlift;
-const unitLabel = unitSystem.toUpperCase();
+  const displayWeight = unitSystem === "kg" ? wInput : wLb;
+  const displayBench = unitSystem === "kg" ? bInput : bLb;
+  const displaySquat = unitSystem === "kg" ? sInput : sLb;
+  const displayDeadlift = unitSystem === "kg" ? dInput : dLb;
+  const displayTotalLift = displayBench + displaySquat + displayDeadlift;
+  const unitLabel = unitSystem.toUpperCase();
 
   // endurance -> half-equivalent seconds
   const runSeconds = parseTimeToSeconds(runTimeText) ?? 0;
   const enduranceEqSeconds =
-    runSeconds > 0 ? toHalfMarathonEquivalentSeconds(runSeconds, runDistance) : 0;
+    runSeconds > 0
+      ? toHalfMarathonEquivalentSeconds(runSeconds, runDistance)
+      : 0;
 
   // local indices (for archetype + chart only; canonical score comes from API)
   const totalLift = bLb + sLb + dLb;
@@ -285,23 +299,31 @@ const unitLabel = unitSystem.toUpperCase();
   const benchIndex = wLb > 0 ? clamp((bLb / (wLb * 1.5)) * 100, 0, 100) : 0;
   const squatIndex = wLb > 0 ? clamp((sLb / (wLb * 2.0)) * 100, 0, 100) : 0;
   const deadIndex = wLb > 0 ? clamp((dLb / (wLb * 2.5)) * 100, 0, 100) : 0;
-  const strengthIndex = Number(((benchIndex + squatIndex + deadIndex) / 3).toFixed(1));
+  const strengthIndex = Number(
+    ((benchIndex + squatIndex + deadIndex) / 3).toFixed(1),
+  );
 
   const END_MIN_SEC = 4200;
   const END_MAX_SEC = 10800;
   const enduranceIndex = Number(
     (enduranceEqSeconds > 0
-      ? clamp(((END_MAX_SEC - enduranceEqSeconds) / (END_MAX_SEC - END_MIN_SEC)) * 100, 0, 100)
+      ? clamp(
+          ((END_MAX_SEC - enduranceEqSeconds) / (END_MAX_SEC - END_MIN_SEC)) *
+            100,
+          0,
+          100,
+        )
       : 0
-    ).toFixed(1)
+    ).toFixed(1),
   );
 
   // Default before API returns
   const firstArchetype = Object.keys(ARCHETYPE_COPY)[0] as Archetype;
-  const [computedArchetype, setComputedArchetype] = useState<Archetype>(firstArchetype);
+  const [computedArchetype, setComputedArchetype] =
+    useState<Archetype>(firstArchetype);
 
-// Use computedArchetype for UI copy
-const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
+  // Use computedArchetype for UI copy
+  const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
 
   const tier = useMemo(() => getTier(hybridScore), [hybridScore]);
 
@@ -320,7 +342,7 @@ const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
 
   const canContinueStep1 = wLb > 0 && !nameError;
   const canContinueStep2 = wLb > 0 && (bLb > 0 || sLb > 0 || dLb > 0);
-  const canContinueStep3 = wLb > 0 && (runSeconds > 0);
+  const canContinueStep3 = wLb > 0 && runSeconds > 0;
   const canGenerate =
     wLb > 0 &&
     (bLb > 0 || sLb > 0 || dLb > 0 || runSeconds > 0) &&
@@ -337,7 +359,9 @@ const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
 
   function validateInputsOrThrow() {
     if (!wLb || wLb < 80 || wLb > 400) {
-      throw new Error("Bodyweight must be between 80 and 400 lb (or equivalent).");
+      throw new Error(
+        "Bodyweight must be between 80 and 400 lb (or equivalent).",
+      );
     }
 
     if (bLb > 0 && (bLb < 45 || bLb > 700)) {
@@ -347,29 +371,41 @@ const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
       throw new Error("Squat must be between 45 and 900 lb (or equivalent).");
     }
     if (dLb > 0 && (dLb < 45 || dLb > 1000)) {
-      throw new Error("Deadlift must be between 45 and 1000 lb (or equivalent).");
+      throw new Error(
+        "Deadlift must be between 45 and 1000 lb (or equivalent).",
+      );
     }
 
-    if (bLb > 0 && bLb / wLb > 3.2) throw new Error("Bench/bodyweight ratio looks unrealistic.");
-    if (sLb > 0 && sLb / wLb > 4.0) throw new Error("Squat/bodyweight ratio looks unrealistic.");
-    if (dLb > 0 && dLb / wLb > 4.5) throw new Error("Deadlift/bodyweight ratio looks unrealistic.");
+    if (bLb > 0 && bLb / wLb > 3.2)
+      throw new Error("Bench/bodyweight ratio looks unrealistic.");
+    if (sLb > 0 && sLb / wLb > 4.0)
+      throw new Error("Squat/bodyweight ratio looks unrealistic.");
+    if (dLb > 0 && dLb / wLb > 4.5)
+      throw new Error("Deadlift/bodyweight ratio looks unrealistic.");
 
     if (runTimeText.trim()) {
       const parsed = parseTimeToSeconds(runTimeText);
-      if (parsed === null) throw new Error("Time must be mm:ss or hh:mm:ss (e.g., 22:30 or 1:32:10).");
+      if (parsed === null)
+        throw new Error(
+          "Time must be mm:ss or hh:mm:ss (e.g., 22:30 or 1:32:10).",
+        );
       if (parsed < 4 * 60 || parsed > 8 * 3600) {
-        throw new Error("Time looks out of range. Please double-check your entry.");
+        throw new Error(
+          "Time looks out of range. Please double-check your entry.",
+        );
       }
     }
   }
 
   async function computeScoreFromAPI() {
-    
     // Canonical inputs to API: KG + endurance seconds (half-equivalent)
     const bodyweight_kg = unitSystem === "lb" ? lbToKg(wLb) : wInput;
-    const bench_kg = bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null;
-    const squat_kg = sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null;
-    const deadlift_kg = dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null;
+    const bench_kg =
+      bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null;
+    const squat_kg =
+      sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null;
+    const deadlift_kg =
+      dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null;
 
     const endurance_seconds = runSeconds > 0 ? enduranceEqSeconds : null;
 
@@ -393,42 +429,57 @@ const archetypeInfo = ARCHETYPE_COPY[computedArchetype];
     }
 
     const hq = typeof data.hq === "number" ? Math.round(data.hq) : 0;
-    const strP = typeof data.strengthPercentile === "number" ? data.strengthPercentile : null;
-    const endP = typeof data.endurancePercentile === "number" ? data.endurancePercentile : null;
-    const apiStrengthIndex = typeof data.strengthIndex === "number" ? data.strengthIndex : null;
-const apiEnduranceIndex = typeof data.enduranceIndex === "number" ? data.enduranceIndex : null;
+    const strP =
+      typeof data.strengthPercentile === "number"
+        ? data.strengthPercentile
+        : null;
+    const endP =
+      typeof data.endurancePercentile === "number"
+        ? data.endurancePercentile
+        : null;
+    const apiStrengthIndex =
+      typeof data.strengthIndex === "number" ? data.strengthIndex : null;
+    const apiEnduranceIndex =
+      typeof data.enduranceIndex === "number" ? data.enduranceIndex : null;
 
-const rankRaw = typeof data.rank === "number" ? data.rank : null;
-const totalRaw = typeof data.total === "number" ? data.total : null;
-const betterThanFromApi =
-  typeof data.betterThanPercent === "number" ? data.betterThanPercent : null;
+    const rankRaw = typeof data.rank === "number" ? data.rank : null;
+    const totalRaw = typeof data.total === "number" ? data.total : null;
+    const betterThanFromApi =
+      typeof data.betterThanPercent === "number"
+        ? data.betterThanPercent
+        : null;
 
-// normalize rank to 1-based (defensive)
-let rankPos: number | null = rankRaw;
-if (rankRaw !== null) {
-  let cleanRank = rankRaw;
-  if (cleanRank === 0) cleanRank = 1;
-  cleanRank = Math.max(1, Math.floor(cleanRank));
-  rankPos = cleanRank;
-}
+    // normalize rank to 1-based (defensive)
+    let rankPos: number | null = rankRaw;
+    if (rankRaw !== null) {
+      let cleanRank = rankRaw;
+      if (cleanRank === 0) cleanRank = 1;
+      cleanRank = Math.max(1, Math.floor(cleanRank));
+      rankPos = cleanRank;
+    }
 
-// fallback if API field is missing for any reason
-let betterThan: number | null = betterThanFromApi;
-if (betterThan === null && rankPos !== null && totalRaw !== null && totalRaw > 0) {
-  betterThan = clamp(((totalRaw - rankPos) / totalRaw) * 100, 0, 100);
-}
+    // fallback if API field is missing for any reason
+    let betterThan: number | null = betterThanFromApi;
+    if (
+      betterThan === null &&
+      rankPos !== null &&
+      totalRaw !== null &&
+      totalRaw > 0
+    ) {
+      betterThan = clamp(((totalRaw - rankPos) / totalRaw) * 100, 0, 100);
+    }
 
-return {
-  hq,
-  strP,
-  endP,
-  rankPos,
-  totalRaw,
-  betterThan,
-  endurance_seconds,
-  apiStrengthIndex,
-  apiEnduranceIndex,
-};
+    return {
+      hq,
+      strP,
+      endP,
+      rankPos,
+      totalRaw,
+      betterThan,
+      endurance_seconds,
+      apiStrengthIndex,
+      apiEnduranceIndex,
+    };
   }
 
   async function saveSubmissionToServer(args: {
@@ -444,9 +495,12 @@ return {
     const { finalName, endurance_seconds_for_db } = args;
 
     const bodyweight_kg = unitSystem === "lb" ? lbToKg(wLb) : wInput;
-    const bench_kg = bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null;
-    const squat_kg = sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null;
-    const deadlift_kg = dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null;
+    const bench_kg =
+      bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null;
+    const squat_kg =
+      sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null;
+    const deadlift_kg =
+      dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null;
 
     const res = await fetch("/api/submit", {
       method: "POST",
@@ -462,13 +516,15 @@ return {
         deadlift_kg,
       }),
     });
-  
+
     const data = await res.json();
-  
+
     if (!res.ok) {
-      return { error: { message: data?.error ?? "Failed to save submission." } };
+      return {
+        error: { message: data?.error ?? "Failed to save submission." },
+      };
     }
-  
+
     return { error: null };
   }
 
@@ -484,7 +540,8 @@ return {
       setHasResults(true);
 
       const resultsEl = document.getElementById("results");
-      if (resultsEl) resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (resultsEl)
+        resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
 
       await new Promise((r) => setTimeout(r, 250));
       setScanStage("SCORING");
@@ -495,7 +552,7 @@ return {
       const finalName = cleanedName();
       const computed = await computeScoreFromAPI();
       const a = getArchetype(computed.strP ?? 0, computed.endP ?? 0);
-setComputedArchetype(a);
+      setComputedArchetype(a);
 
       // Apply UI states immediately (do NOT rely on async setState for DB values)
       setHybridScore(computed.hq);
@@ -507,9 +564,7 @@ setComputedArchetype(a);
       setApiStrengthIndex(computed.apiStrengthIndex);
       setApiEnduranceIndex(computed.apiEnduranceIndex);
 
-      
-
-                  // Save to Supabase with canonical computed values
+      // Save to Supabase with canonical computed values
       setStatusText("Saving to rankings…");
       const { error } = await saveSubmissionToServer({
         finalName,
@@ -530,7 +585,7 @@ setComputedArchetype(a);
         setStatusText(
           computed.hq >= 90
             ? "Submitted — pending verification (won’t appear on leaderboard yet)."
-            : "Saved to rankings."
+            : "Saved to rankings.",
         );
       }
 
@@ -547,9 +602,9 @@ setComputedArchetype(a);
         }
       }, 800);
 
-if (!error) {
-  setTimeout(() => setStatusText(""), 1800);
-}
+      if (!error) {
+        setTimeout(() => setStatusText(""), 1800);
+      }
     } catch (e: any) {
       console.error(e);
       alert(e?.message ?? "Something went wrong.");
@@ -558,7 +613,7 @@ if (!error) {
       setIsWorking(false);
     }
   }
-  
+
   async function downloadScorecard() {
     if (!cardRef.current) return;
     try {
@@ -616,7 +671,9 @@ if (!error) {
     const sharedDist = params.get("dist") as RunDistance | null;
     const sharedT = params.get("t");
 
-    const hasSharedStats = Boolean(sharedBw || sharedB || sharedS || sharedD || sharedT);
+    const hasSharedStats = Boolean(
+      sharedBw || sharedB || sharedS || sharedD || sharedT,
+    );
 
     if (sharedName) {
       setDisplayName(sharedName);
@@ -627,7 +684,10 @@ if (!error) {
     }
 
     if (sharedU === "lb" || sharedU === "kg") setUnitSystem(sharedU);
-    if (sharedDist && ["3mi", "5k", "10k", "half", "marathon"].includes(sharedDist)) {
+    if (
+      sharedDist &&
+      ["3mi", "5k", "10k", "half", "marathon"].includes(sharedDist)
+    ) {
       setRunDistance(sharedDist);
     }
     if (sharedT) setRunTimeDigits(sharedT.replace(/\D/g, "").slice(0, 6));
@@ -644,7 +704,10 @@ if (!error) {
   }, []);
 
   // UI helpers
-  const stepTitle: Record<Step, { kicker: string; title: string; sub: string }> = {
+  const stepTitle: Record<
+    Step,
+    { kicker: string; title: string; sub: string }
+  > = {
     1: {
       kicker: "Step 1 of 4",
       title: "Your basics",
@@ -689,19 +752,24 @@ if (!error) {
       {/* Top header */}
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">Hybrid Athlete Benchmark</div>
+          <div className="text-[11px] uppercase tracking-[0.25em] text-white/50">
+            Hybrid Athlete Benchmark
+          </div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          Find out where you <span className="text-[#DFFF00]">actually rank.</span>
+            Find out where you{" "}
+            <span className="text-[#DFFF00]">actually rank.</span>
           </h1>
           <p className="mt-3 max-w-2xl text-base text-white/70">
-  Enter your lifts and run time to see where you rank.
-</p>
+            Enter your lifts and run time to see where you rank.
+          </p>
         </div>
 
         <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-  <Progress />
-  <div className="hidden sm:block text-sm text-white/70">Takes about a minute</div>
-</div>
+          <Progress />
+          <div className="hidden sm:block text-sm text-white/70">
+            Takes about a minute
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -710,34 +778,42 @@ if (!error) {
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-              <div className="text-sm font-medium text-white/60">
-  {stepTitle[step].kicker}
-</div>
-<div className="mt-2 text-2xl font-semibold text-white">{stepTitle[step].title}</div>
-<div className="mt-1 text-base text-white/70">{stepTitle[step].sub}</div>
+                <div className="text-sm font-medium text-white/60">
+                  {stepTitle[step].kicker}
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {stepTitle[step].title}
+                </div>
+                <div className="mt-1 text-base text-white/70">
+                  {stepTitle[step].sub}
+                </div>
               </div>
 
               {/* Units toggle */}
               <div className="grid w-[120px] grid-cols-2 overflow-hidden rounded-full border border-white/10 bg-black/30 sm:w-[128px]">
-  <button
-    type="button"
-    onClick={() => setUnitSystem("lb")}
-    className={`min-w-0 px-0 py-2 text-center text-sm font-semibold transition ${
-      unitSystem === "lb" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
-    }`}
-  >
-    LB
-  </button>
-  <button
-    type="button"
-    onClick={() => setUnitSystem("kg")}
-    className={`min-w-0 px-0 py-2 text-center text-sm font-semibold transition ${
-      unitSystem === "kg" ? "bg-white text-black" : "text-white/70 hover:bg-white/[0.06]"
-    }`}
-  >
-    KG
-  </button>
-</div>
+                <button
+                  type="button"
+                  onClick={() => setUnitSystem("lb")}
+                  className={`min-w-0 px-0 py-2 text-center text-sm font-semibold transition ${
+                    unitSystem === "lb"
+                      ? "bg-white text-black"
+                      : "text-white/70 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  LB
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUnitSystem("kg")}
+                  className={`min-w-0 px-0 py-2 text-center text-sm font-semibold transition ${
+                    unitSystem === "kg"
+                      ? "bg-white text-black"
+                      : "text-white/70 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  KG
+                </button>
+              </div>
             </div>
 
             <div className="mt-6 space-y-4">
@@ -757,7 +833,7 @@ if (!error) {
 
                   <Field
                     label={`Bodyweight (${unitLabel})`}
-                    placeholder="e.g., 195"
+                    placeholder="e.g., 205"
                     value={weight}
                     onChange={setWeight}
                     hint="Used to calculate your relative strength."
@@ -774,30 +850,47 @@ if (!error) {
                     </button>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60">
-                    
-                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60"></div>
                 </>
               )}
 
               {/* STEP 2 */}
               {step === 2 && (
                 <>
-                  <Field label={`Bench (${unitLabel})`} placeholder="e.g., 275" value={bench} onChange={setBench} />
-                  <Field label={`Squat (${unitLabel})`} placeholder="e.g., 365" value={squat} onChange={setSquat} />
-                  <Field label={`Deadlift (${unitLabel})`} placeholder="e.g., 425" value={deadlift} onChange={setDeadlift} />
+                  <Field
+                    label={`Bench (${unitLabel})`}
+                    placeholder="e.g., 295"
+                    value={bench}
+                    onChange={setBench}
+                  />
+                  <Field
+                    label={`Squat (${unitLabel})`}
+                    placeholder="e.g., 385"
+                    value={squat}
+                    onChange={setSquat}
+                  />
+                  <Field
+                    label={`Deadlift (${unitLabel})`}
+                    placeholder="e.g., 455"
+                    value={deadlift}
+                    onChange={setDeadlift}
+                  />
 
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                  <div className="flex items-center justify-between text-sm">
-  <span className="text-white/70">Total lift</span>
-  <span className="text-white font-semibold">
-  {displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "—"}
-</span>
-</div>
-<div className="mt-2 flex items-center justify-between text-sm">
-  <span className="text-white/70">Strength ratio</span>
-  <span className="text-white font-semibold">{strengthRatio > 0 ? strengthRatio.toFixed(2) : "—"}</span>
-</div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-white/70">Total lift</span>
+                      <span className="text-white font-semibold">
+                        {displayTotalLift > 0
+                          ? `${Math.round(displayTotalLift)} ${unitLabel}`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <span className="text-white/70">Strength ratio</span>
+                      <span className="text-white font-semibold">
+                        {strengthRatio > 0 ? strengthRatio.toFixed(2) : "—"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-2 flex gap-2">
@@ -819,8 +912,8 @@ if (!error) {
                   </div>
 
                   <div className="text-sm text-white/60">
-  You can still continue if you don’t have a run time yet.
-</div>
+                    You can still continue if you don’t have a run time yet.
+                  </div>
                 </>
               )}
 
@@ -834,7 +927,9 @@ if (!error) {
                       </label>
                       <select
                         value={runDistance}
-                        onChange={(e) => setRunDistance(e.target.value as RunDistance)}
+                        onChange={(e) =>
+                          setRunDistance(e.target.value as RunDistance)
+                        }
                         className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 pr-10 text-sm text-white outline-none transition hover:bg-white/[0.04] focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
                       >
                         <option value="3mi">3 miles</option>
@@ -843,7 +938,9 @@ if (!error) {
                         <option value="half">Half Marathon</option>
                         <option value="marathon">Marathon</option>
                       </select>
-                      <div className="mt-1 text-sm text-white/55">All distances are adjusted to the same standard.</div>
+                      <div className="mt-1 text-sm text-white/55">
+                        All distances are adjusted to the same standard.
+                      </div>
                     </div>
 
                     <div>
@@ -858,7 +955,9 @@ if (!error) {
                         value={runTimeText}
                         placeholder="Type digits (2230 → 22:30)"
                         onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          const digits = e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 6);
                           setRunTimeDigits(digits);
                         }}
                         className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition hover:bg-white/[0.04] focus:border-[#DFFF00]/50 focus:ring-2 focus:ring-[#DFFF00]/10"
@@ -876,12 +975,16 @@ if (!error) {
                             return;
                           }
                           const el = e.currentTarget;
-                          const allSelected = el.selectionStart === 0 && el.selectionEnd === el.value.length;
+                          const allSelected =
+                            el.selectionStart === 0 &&
+                            el.selectionEnd === el.value.length;
 
                           if (key === "Backspace") {
                             e.preventDefault();
                             if (allSelected) return setRunTimeDigits("");
-                            return setRunTimeDigits((prev) => prev.slice(0, -1));
+                            return setRunTimeDigits((prev) =>
+                              prev.slice(0, -1),
+                            );
                           }
                           if (key === "Delete") {
                             e.preventDefault();
@@ -889,7 +992,9 @@ if (!error) {
                           }
                           if (/^\d$/.test(key)) {
                             e.preventDefault();
-                            return setRunTimeDigits((prev) => (prev + key).slice(0, 6));
+                            return setRunTimeDigits((prev) =>
+                              (prev + key).slice(0, 6),
+                            );
                           }
                           e.preventDefault();
                         }}
@@ -901,9 +1006,11 @@ if (!error) {
                         }}
                       />
 
-<div className="mt-1 text-sm text-white/55">
-  {runTimeText ? `Formatted: ${runTimeText}` : "Enter digits only"}
-</div>
+                      <div className="mt-1 text-sm text-white/55">
+                        {runTimeText
+                          ? `Formatted: ${runTimeText}`
+                          : "Enter digits only"}
+                      </div>
                     </div>
                   </div>
 
@@ -926,8 +1033,8 @@ if (!error) {
                   </div>
 
                   <div className="text-sm text-white/60">
-  For the best result, include both lifting and endurance.
-</div>
+                    For the best result, include both lifting and endurance.
+                  </div>
                 </>
               )}
 
@@ -935,14 +1042,41 @@ if (!error) {
               {step === 4 && (
                 <>
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                  <div className="text-sm font-medium text-white/60">Review</div>
-                  <div className="mt-3 grid grid-cols-1 gap-3 text-base">
-                      <Row label="Name" value={displayName.trim() ? displayName.trim() : "Anonymous Athlete"} />
-                      <Row label="Bodyweight" value={displayWeight > 0 ? `${Math.round(displayWeight)} ${unitLabel}` : "—"} />
-<Row label="Strength" value={displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel} total` : "—"} />
+                    <div className="text-sm font-medium text-white/60">
+                      Review
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-3 text-base">
+                      <Row
+                        label="Name"
+                        value={
+                          displayName.trim()
+                            ? displayName.trim()
+                            : "Anonymous Athlete"
+                        }
+                      />
+                      <Row
+                        label="Bodyweight"
+                        value={
+                          displayWeight > 0
+                            ? `${Math.round(displayWeight)} ${unitLabel}`
+                            : "—"
+                        }
+                      />
+                      <Row
+                        label="Strength"
+                        value={
+                          displayTotalLift > 0
+                            ? `${Math.round(displayTotalLift)} ${unitLabel} total`
+                            : "—"
+                        }
+                      />
                       <Row
                         label="Endurance"
-                        value={runTimeText.trim() ? `${runDistance.toUpperCase()} • ${runTimeText.trim()}` : "—"}
+                        value={
+                          runTimeText.trim()
+                            ? `${runDistance.toUpperCase()} • ${runTimeText.trim()}`
+                            : "—"
+                        }
                       />
                     </div>
                   </div>
@@ -956,12 +1090,12 @@ if (!error) {
                   </button>
 
                   {statusText ? (
-  <div className="text-xs text-white/60">{statusText}</div>
-) : (
-  <div className="text-sm text-white/60">
-    Your result goes straight to the leaderboard.
-  </div>
-)}
+                    <div className="text-xs text-white/60">{statusText}</div>
+                  ) : (
+                    <div className="text-sm text-white/60">
+                      Your result goes straight to the leaderboard.
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     <button
@@ -1001,149 +1135,178 @@ if (!error) {
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/65">
-          <div className="font-semibold text-white">How your score is calculated</div>
-  <div className="mt-1">
-    Your Hybrid Score (0–100) is an equal blend of your Strength Percentile and Endurance Percentile — both measured against the Strendex dataset. Higher means more well-rounded.
-  </div>
-</div>
+            <div className="font-semibold text-white">
+              How your score is calculated
+            </div>
+            <div className="mt-1">
+              Your Hybrid Score (0–100) is an equal blend of your Strength
+              Percentile and Endurance Percentile — both measured against the
+              Strendex dataset. Higher means more well-rounded.
+            </div>
+          </div>
         </div>
 
         {/* RIGHT — Results / Reveal */}
         <div className="lg:col-span-7">
           <div id="results" />
-          <div className={`rounded-3xl border border-white/10 bg-white/[0.03] p-6 ${tierMeta[tier].glow}`}>
+          <div
+            className={`rounded-3xl border border-white/10 bg-white/[0.03] p-6 ${tierMeta[tier].glow}`}
+          >
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
-              <div className="text-sm font-medium text-white/60">
-  {isWorking ? "Computing" : hasResults ? "Your result" : "Your score will appear here"}
-</div>
+                <div className="text-sm font-medium text-white/60">
+                  {isWorking
+                    ? "Computing"
+                    : hasResults
+                      ? "Your result"
+                      : "Your score will appear here"}
+                </div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
                   Hybrid Score <span className="text-white/60">(0–100)</span>
                 </h2>
                 <p className="mt-2 text-base text-white/70">
-  {hasResults
-    ? "Here’s where you stand."
-    : "Fill in your stats on the left to see where you rank."}
-</p>
+                  {hasResults
+                    ? "Here’s where you stand."
+                    : "Fill in your stats on the left to see where you rank."}
+                </p>
               </div>
 
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-white/70">
-                <span className={`h-1.5 w-1.5 rounded-full ${isWorking ? "bg-[#DFFF00] animate-pulse" : "bg-white/30"}`} />
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isWorking ? "bg-[#DFFF00] animate-pulse" : "bg-white/30"}`}
+                />
                 {isWorking ? scanStage : "READY"}
               </div>
             </div>
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
               <div className="flex items-end justify-between gap-3">
-              <div>
-  <div className="text-sm text-white/55">Hybrid Score</div>
+                <div>
+                  <div className="text-sm text-white/55">Hybrid Score</div>
 
-  <div className="mt-1 flex items-start gap-2">
-    <div className="text-6xl font-semibold tracking-tight text-[#DFFF00]">
-      {hasResults ? Math.round(hybridScore) : "—"}
-    </div>
+                  <div className="mt-1 flex items-start gap-2">
+                    <div className="text-6xl font-semibold tracking-tight text-[#DFFF00]">
+                      {hasResults ? Math.round(hybridScore) : "—"}
+                    </div>
 
-    {hasResults && (
-  <div
-    className="relative ml-2 -mt-1"
-    onMouseEnter={() => setShowHQTooltip(true)}
-    onMouseLeave={() => setShowHQTooltip(false)}
-  >
-    <button
-      type="button"
-      onClick={() => setShowHQTooltip((prev) => !prev)}
-      className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 text-[11px] font-medium leading-none text-white/55 transition hover:border-white/35 hover:text-white/80"
-      aria-label="What is Hybrid Score?"
-    >
-      ?
-    </button>
+                    {hasResults && (
+                      <div
+                        className="relative ml-2 -mt-1"
+                        onMouseEnter={() => setShowHQTooltip(true)}
+                        onMouseLeave={() => setShowHQTooltip(false)}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setShowHQTooltip((prev) => !prev)}
+                          className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 text-[11px] font-medium leading-none text-white/55 transition hover:border-white/35 hover:text-white/80"
+                          aria-label="What is Hybrid Score?"
+                        >
+                          ?
+                        </button>
 
-    {showHQTooltip && (
-      <div className="absolute left-0 top-8 z-30 w-56">
-      <div className="relative rounded-xl bg-[#0E1014] p-3 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)] leading-relaxed">
-        <div className="absolute left-3 top-[-4px] h-2 w-2 rotate-45 bg-[#0E1014]" />
-        Your Hybrid Score (0–100) is an equal blend of your Strength and Endurance percentiles — both measured against the Strendex dataset. Higher means more well-rounded.
-      </div>
-    </div>
-    )}
-  </div>
-)}
-  </div>
-</div>
+                        {showHQTooltip && (
+                          <div className="absolute left-0 top-8 z-30 w-56">
+                            <div className="relative rounded-xl bg-[#0E1014] p-3 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)] leading-relaxed">
+                              <div className="absolute left-3 top-[-4px] h-2 w-2 rotate-45 bg-[#0E1014]" />
+                              Your Hybrid Score (0–100) is an equal blend of
+                              your Strength and Endurance percentiles — both
+                              measured against the Strendex dataset. Higher
+                              means more well-rounded.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="text-right">
-                <div className="text-sm text-white/55">Tier</div>
-                  <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
-                    {hasResults && <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />}
+                  <div className="text-sm text-white/55">Tier</div>
+                  <div
+                    className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierMeta[tier].pill}`}
+                  >
+                    {hasResults && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />
+                    )}
                     {tier}
                   </div>
                 </div>
               </div>
 
               {/* Dopamine-first stats */}
-<div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-  <div className="text-sm text-white/55">You beat</div>
-    <div className="mt-1 text-2xl font-semibold text-white">
-      {betterThanPercent === null ? "—" : `${betterThanPercent.toFixed(1)}%`}
-    </div>
-    <div className="mt-1 text-[11px] text-white/55">of athletes (early access)</div>
-  </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-sm text-white/55">You beat</div>
+                  <div className="mt-1 text-2xl font-semibold text-white">
+                    {betterThanPercent === null
+                      ? "—"
+                      : `${betterThanPercent.toFixed(1)}%`}
+                  </div>
+                  <div className="mt-1 text-[11px] text-white/55">
+                    of athletes (early access)
+                  </div>
+                </div>
 
-  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-  <div className="text-sm text-white/55">Leaderboard</div>
-    <div className="mt-1 text-2xl font-semibold text-white">
-      {globalRank === null || totalAthletes === null ? "—" : `#${globalRank}`}
-    </div>
-    <div className="mt-1 text-[11px] text-white/55">
-      {totalAthletes === null ? "—" : `out of ${totalAthletes} (early access)`}
-    </div>
-  </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-sm text-white/55">Leaderboard</div>
+                  <div className="mt-1 text-2xl font-semibold text-white">
+                    {globalRank === null || totalAthletes === null
+                      ? "—"
+                      : `#${globalRank}`}
+                  </div>
+                  <div className="mt-1 text-[11px] text-white/55">
+                    {totalAthletes === null
+                      ? "—"
+                      : `out of ${totalAthletes} (early access)`}
+                  </div>
+                </div>
 
-  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-  <div className="text-sm text-white/55">Athlete type</div>
-    <div className="mt-1 text-sm font-semibold text-white">{computedArchetype}</div>
-    <div className="mt-1 text-[11px] text-white/55 line-clamp-2">{archetypeInfo.tagline}</div>
-  </div>
-</div>
-
-
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-sm text-white/55">Athlete type</div>
+                  <div className="mt-1 text-sm font-semibold text-white">
+                    {computedArchetype}
+                  </div>
+                  <div className="mt-1 text-[11px] text-white/55 line-clamp-2">
+                    {archetypeInfo.tagline}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <button
-    id="details-toggle-btn"
-    onClick={() => setShowDetails((v) => !v)}
-    className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
-  >
-    {showDetails ? "Hide details" : "See full breakdown →"}
-  </button>
+              <button
+                id="details-toggle-btn"
+                onClick={() => setShowDetails((v) => !v)}
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+              >
+                {showDetails ? "Hide details" : "See full breakdown →"}
+              </button>
 
-  
-
-  <Link
-    href="/rankings"
-    className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
-  >
-    View Rankings
-  </Link>
-</div>
-
-
-    
-
+              <Link
+                href="/rankings"
+                className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
+              >
+                View Rankings
+              </Link>
+            </div>
 
             {/* Details */}
             {showDetails && (
               <div className="mt-6 space-y-6">
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Archetype</div>
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                    Archetype
+                  </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <ArchetypeBadge archetype={computedArchetype} />
-                    <span className="text-sm text-white/70">{archetypeInfo.tagline}</span>
+                    <ArchetypeBadge archetype={computedArchetype} />
+                    <span className="text-sm text-white/70">
+                      {archetypeInfo.tagline}
+                    </span>
                   </div>
 
-                  <div className="mt-3 text-sm text-white/60 leading-relaxed">{archetypeInfo.description}</div>
+                  <div className="mt-3 text-sm text-white/60 leading-relaxed">
+                    {archetypeInfo.description}
+                  </div>
                   <div className="mt-3 text-sm">
                     <span className="font-semibold text-white">Focus:</span>{" "}
                     <span className="text-white/60">{archetypeInfo.focus}</span>
@@ -1151,7 +1314,9 @@ if (!error) {
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Performance signature</div>
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                    Performance signature
+                  </div>
                   <div className="mt-4 grid place-items-center rounded-2xl border border-white/10 bg-[#020203] p-4">
                     <StrendexChart data={chartData} />
                   </div>
@@ -1161,8 +1326,13 @@ if (!error) {
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                    <div className="mt-1 text-lg font-semibold text-white">Your Athlete Card</div>
-                    <div className="mt-1 text-sm text-white/60">Download your card and post it. Challenge someone to beat your score.</div>
+                      <div className="mt-1 text-lg font-semibold text-white">
+                        Your Athlete Card
+                      </div>
+                      <div className="mt-1 text-sm text-white/60">
+                        Download your card and post it. Challenge someone to
+                        beat your score.
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -1180,162 +1350,401 @@ if (!error) {
                       </button>
                     </div>
                   </div>
-                  
 
-                  <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "16px" }}>
                   <div
-ref={cardRef}
-className="relative overflow-hidden"
-style={{
-width: "min(360px, 100%)",
-aspectRatio: "9/16",
-borderRadius: "28px",
-background: "linear-gradient(160deg, #0D0F14 0%, #07070A 45%, #050507 100%)",
-border: "1px solid rgba(255,255,255,0.1)",
-flexShrink: 0,
-  }}
->
-  {/* Background effects */}
-  <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-    <div style={{
-      position: "absolute", top: "-60px", left: "50%", transform: "translateX(-50%)",
-      width: "300px", height: "220px", borderRadius: "50%",
-      background: "radial-gradient(circle at center, rgba(223,255,0,0.16), transparent 65%)",
-      filter: "blur(50px)",
-    }} />
-    <div style={{
-      position: "absolute", inset: 0, opacity: 0.06,
-      backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)",
-      backgroundSize: "28px 28px",
-      maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 65%)",
-    }} />
-    <div style={{
-      position: "absolute", inset: 0,
-      background: "radial-gradient(85% 55% at 50% 0%, transparent 0%, rgba(7,7,10,0.5) 55%, rgba(7,7,10,0.97) 100%)",
-    }} />
-  </div>
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      width: "100%",
+                      marginTop: "16px",
+                    }}
+                  >
+                    <div
+                      ref={cardRef}
+                      className="relative overflow-hidden"
+                      style={{
+                        width: "min(360px, 100%)",
+                        aspectRatio: "9/16",
+                        borderRadius: "28px",
+                        background:
+                          "linear-gradient(160deg, #0D0F14 0%, #07070A 45%, #050507 100%)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {/* Background effects */}
+                      <div
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          zIndex: 0,
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "-60px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            width: "300px",
+                            height: "220px",
+                            borderRadius: "50%",
+                            background:
+                              "radial-gradient(circle at center, rgba(223,255,0,0.16), transparent 65%)",
+                            filter: "blur(50px)",
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            opacity: 0.06,
+                            backgroundImage:
+                              "linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)",
+                            backgroundSize: "28px 28px",
+                            maskImage:
+                              "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 65%)",
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            background:
+                              "radial-gradient(85% 55% at 50% 0%, transparent 0%, rgba(7,7,10,0.5) 55%, rgba(7,7,10,0.97) 100%)",
+                          }}
+                        />
+                      </div>
 
-  <div style={{ position: "relative", zIndex: 10, padding: "6% 7%", height: "100%", display: "flex", flexDirection: "column" }}>
+                      <div
+                        style={{
+                          position: "relative",
+                          zIndex: 10,
+                          padding: "6% 7%",
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        {/* Header */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div>
+                            <div
+                              style={{
+                                fontSize: "clamp(9px, 3vw, 13px)",
+                                fontWeight: 800,
+                                letterSpacing: "0.3em",
+                                color: "rgba(255,255,255,0.92)",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              STRENDEX
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "clamp(7px, 2vw, 9px)",
+                                letterSpacing: "0.2em",
+                                color: "rgba(255,255,255,0.28)",
+                                textTransform: "uppercase",
+                                marginTop: "4px",
+                              }}
+                            >
+                              Hybrid Athlete Card
+                            </div>
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] ${tierMeta[tier].pill}`}
+                            style={{ backdropFilter: "blur(8px)" }}
+                          >
+                            <span className="h-2 w-2 rounded-full bg-[#DFFF00]" />
+                            {tier}
+                          </span>
+                        </div>
 
-    {/* Header */}
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <div>
-      <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, letterSpacing: "0.3em", color: "rgba(255,255,255,0.92)", textTransform: "uppercase" }}>
-          STRENDEX
-</div>
-<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.2em", color: "rgba(255,255,255,0.28)", textTransform: "uppercase", marginTop: "4px" }}>
-          Hybrid Athlete Card
-</div>
-      </div>
-      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] ${tierMeta[tier].pill}`}
-        style={{ backdropFilter: "blur(8px)" }}>
-        <span className="h-2 w-2 rounded-full bg-[#DFFF00]" />
-        {tier}
-      </span>
-    </div>
+                        {/* Divider accent */}
+                        <div
+                          style={{
+                            marginTop: "20px",
+                            height: "0.5px",
+                            background:
+                              "linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent)",
+                          }}
+                        />
 
-    {/* Divider accent */}
-    <div style={{ marginTop: "20px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent)" }} />
+                        {/* Athlete name */}
+                        <div style={{ marginTop: "16px" }}>
+                          <div
+                            style={{
+                              fontSize: "9px",
+                              letterSpacing: "0.22em",
+                              color: "rgba(255,255,255,0.25)",
+                              textTransform: "uppercase",
+                              marginBottom: "6px",
+                            }}
+                          >
+                            Athlete
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "clamp(18px, 6vw, 26px)",
+                              fontWeight: 700,
+                              color: "white",
+                              letterSpacing: "-0.03em",
+                              lineHeight: 1.05,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {displayName.trim()
+                              ? displayName.trim()
+                              : "Anonymous Athlete"}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "clamp(8px, 2.5vw, 11px)",
+                              color: "rgba(255,255,255,0.38)",
+                              marginTop: "5px",
+                              letterSpacing: "0.06em",
+                            }}
+                          >
+                            {computedArchetype}
+                          </div>
+                        </div>
 
-    {/* Athlete name */}
-    <div style={{ marginTop: "16px" }}>
-      <div style={{ fontSize: "9px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: "6px" }}>
-        Athlete
-      </div>
-      <div style={{ fontSize: "clamp(18px, 6vw, 26px)", fontWeight: 700, color: "white", letterSpacing: "-0.03em", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
-      </div>
-      <div style={{ fontSize: "clamp(8px, 2.5vw, 11px)", color: "rgba(255,255,255,0.38)", marginTop: "5px", letterSpacing: "0.06em" }}>
-        {computedArchetype}
-      </div>
-    </div>
+                        {/* Score — hero */}
+                        <div
+                          style={{
+                            marginTop: "20px",
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "20px",
+                            border: "0.5px solid rgba(223,255,0,0.12)",
+                            background:
+                              "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)",
+                            position: "relative",
+                            overflow: "hidden",
+                            padding: "20px 0",
+                          }}
+                        >
+                          <div
+                            style={{
+                              position: "absolute",
+                              bottom: "-40px",
+                              left: "50%",
+                              transform: "translateX(-50%)",
+                              width: "200px",
+                              height: "200px",
+                              borderRadius: "50%",
+                              background:
+                                "radial-gradient(circle, rgba(223,255,0,0.1), transparent 68%)",
+                              filter: "blur(20px)",
+                              pointerEvents: "none",
+                            }}
+                          />
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              letterSpacing: "0.3em",
+                              color: "rgba(255,255,255,0.22)",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Hybrid Score
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "clamp(72px, 22vw, 100px)",
+                              fontWeight: 700,
+                              lineHeight: 0.9,
+                              letterSpacing: "-0.05em",
+                              color: "#DFFF00",
+                              marginTop: "10px",
+                              WebkitTextFillColor: "#DFFF00",
+                              textShadow: "0 0 60px rgba(223,255,0,0.22)",
+                            }}
+                          >
+                            {hasResults ? Math.round(hybridScore) : "—"}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              letterSpacing: "0.22em",
+                              color: "rgba(255,255,255,0.18)",
+                              textTransform: "uppercase",
+                              marginTop: "10px",
+                            }}
+                          >
+                            out of 100
+                          </div>
+                          {betterThanPercent !== null && (
+                            <div
+                              style={{
+                                marginTop: "16px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "7px",
+                                borderRadius: "999px",
+                                border: "0.5px solid rgba(223,255,0,0.2)",
+                                background: "rgba(223,255,0,0.08)",
+                                padding: "11px 20px",
+                                fontSize: "clamp(9px, 2.5vw, 12px)",
+                                fontWeight: 700,
+                                color: "rgba(240,255,170,0.95)",
+                                letterSpacing: "0.02em",
+                                lineHeight: 1,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: "6px",
+                                  height: "6px",
+                                  borderRadius: "50%",
+                                  background: "#DFFF00",
+                                  boxShadow: "0 0 10px rgba(223,255,0,0.6)",
+                                }}
+                              />
+                              Better than {betterThanPercent.toFixed(1)}% of
+                              athletes
+                            </div>
+                          )}
+                        </div>
 
-    {/* Score — hero */}
-    <div style={{
-      marginTop: "20px", flex: 1,
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      borderRadius: "20px",
-      border: "0.5px solid rgba(223,255,0,0.12)",
-      background: "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)",
-      position: "relative", overflow: "hidden",
-      padding: "20px 0",
-    }}>
-      <div style={{
-        position: "absolute", bottom: "-40px", left: "50%", transform: "translateX(-50%)",
-        width: "200px", height: "200px", borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(223,255,0,0.1), transparent 68%)",
-        filter: "blur(20px)", pointerEvents: "none",
-      }} />
-      <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>
-        Hybrid Score
-      </div>
-      <div style={{
-fontSize: "clamp(72px, 22vw, 100px)", fontWeight: 700, lineHeight: 0.9, letterSpacing: "-0.05em",
-color: "#DFFF00", marginTop: "10px",
-WebkitTextFillColor: "#DFFF00",
-textShadow: "0 0 60px rgba(223,255,0,0.22)",
-      }}>
-        {hasResults ? Math.round(hybridScore) : "—"}
-      </div>
-      <div style={{ fontSize: "10px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", marginTop: "10px" }}>
-        out of 100
-      </div>
-      {betterThanPercent !== null && (
-        <div style={{
-          marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "7px",
-          borderRadius: "999px", border: "0.5px solid rgba(223,255,0,0.2)",
-          background: "rgba(223,255,0,0.08)", padding: "11px 20px",
-          fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 700, color: "rgba(240,255,170,0.95)", letterSpacing: "0.02em", lineHeight: 1,
-        }}>
-          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#DFFF00", boxShadow: "0 0 10px rgba(223,255,0,0.6)" }} />
-          Better than {betterThanPercent.toFixed(1)}% of athletes
-        </div>
-      )}
-    </div>
+                        {/* Stats row */}
+                        <div
+                          style={{
+                            marginTop: "14px",
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr 1fr",
+                            gap: "8px",
+                          }}
+                        >
+                          {[
+                            {
+                              k: "BW",
+                              v:
+                                displayWeight > 0
+                                  ? `${Math.round(displayWeight)} ${unitLabel}`
+                                  : "—",
+                            },
+                            {
+                              k: "Total",
+                              v:
+                                displayTotalLift > 0
+                                  ? `${Math.round(displayTotalLift)} ${unitLabel}`
+                                  : "—",
+                            },
+                            {
+                              k: runDistance.toUpperCase(),
+                              v: runTimeText || "—",
+                            },
+                          ].map((x) => (
+                            <div
+                              key={x.k}
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderRadius: "12px",
+                                border: "0.5px solid rgba(255,255,255,0.06)",
+                                background: "rgba(255,255,255,0.02)",
+                                padding: "11px 8px",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: "clamp(7px, 2vw, 9px)",
+                                  letterSpacing: "0.18em",
+                                  textTransform: "uppercase",
+                                  color: "rgba(255,255,255,0.22)",
+                                  lineHeight: 1,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {x.k}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "clamp(9px, 2.5vw, 12px)",
+                                  fontWeight: 600,
+                                  color: "rgba(255,255,255,0.78)",
+                                  marginTop: "5px",
+                                  lineHeight: 1,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {x.v}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
 
-    {/* Stats row */}
-    <div style={{ marginTop: "14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-      {[
-        { k: "BW", v: displayWeight > 0 ? `${Math.round(displayWeight)} ${unitLabel}` : "—" },
-        { k: "Total", v: displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "—" },
-        { k: runDistance.toUpperCase(), v: runTimeText || "—" },
-      ].map((x) => (
-        <div key={x.k} style={{
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          borderRadius: "12px", border: "0.5px solid rgba(255,255,255,0.06)",
-          background: "rgba(255,255,255,0.02)", padding: "11px 8px",
-        }}>
-          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", lineHeight: 1, whiteSpace: "nowrap" }}>
-            {x.k}
-          </div>
-          <div style={{ fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.78)", marginTop: "5px", lineHeight: 1, whiteSpace: "nowrap" }}>
-            {x.v}
-          </div>
-        </div>
-      ))}
-    </div>
-
-    {/* Footer */}
-    <div style={{ marginTop: "16px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(223,255,0,0.2), transparent)" }} />
-    <div style={{ marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-    <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
-{siteLabel}
-</div>
-<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
-        {globalRank !== null && totalAthletes !== null ? `#${globalRank} / ${totalAthletes}` : "CAN YOU BEAT THIS?"}
-      </div>
-    </div>
-
-  </div>
-  </div>
-</div>
-</div>
-{/* Ranking bands */}
+                        {/* Footer */}
+                        <div
+                          style={{
+                            marginTop: "16px",
+                            height: "0.5px",
+                            background:
+                              "linear-gradient(to right, transparent, rgba(223,255,0,0.2), transparent)",
+                          }}
+                        />
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: "clamp(7px, 2vw, 9px)",
+                              letterSpacing: "0.22em",
+                              color: "rgba(255,255,255,0.18)",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {siteLabel}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "clamp(7px, 2vw, 9px)",
+                              letterSpacing: "0.22em",
+                              color: "rgba(255,255,255,0.18)",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {globalRank !== null && totalAthletes !== null
+                              ? `#${globalRank} / ${totalAthletes}`
+                              : "CAN YOU BEAT THIS?"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Ranking bands */}
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Tiers</div>
-                      <div className="mt-1 text-base font-semibold text-white">Where do you land?</div>
+                      <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+                        Tiers
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-white">
+                        Where do you land?
+                      </div>
                     </div>
                     <Link
                       href="/rankings"
@@ -1364,9 +1773,16 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
                         ].map((row) => {
                           const active = tier === (row.label as Tier);
                           return (
-                            <tr key={row.label} className={active ? "bg-[#DFFF00]/10" : ""}>
-                              <td className="px-5 py-3 font-semibold text-white">{row.label}</td>
-                              <td className="px-5 py-3 text-white/60">{row.range}</td>
+                            <tr
+                              key={row.label}
+                              className={active ? "bg-[#DFFF00]/10" : ""}
+                            >
+                              <td className="px-5 py-3 font-semibold text-white">
+                                {row.label}
+                              </td>
+                              <td className="px-5 py-3 text-white/60">
+                                {row.range}
+                              </td>
                             </tr>
                           );
                         })}
@@ -1379,10 +1795,11 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
 
             {!showDetails && (
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="text-base text-white/70">
-              Open details to see your full breakdown, archetype, and shareable athlete card.
+                <div className="text-base text-white/70">
+                  Open details to see your full breakdown, archetype, and
+                  shareable athlete card.
+                </div>
               </div>
-            </div>
             )}
           </div>
         </div>
@@ -1394,8 +1811,12 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#020203]/85 px-3 py-2 backdrop-blur-xl">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="text-xs font-semibold text-white">Hybrid {Math.round(hybridScore)}</div>
-                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierMeta[tier].pill}`}>
+                <div className="text-xs font-semibold text-white">
+                  Hybrid {Math.round(hybridScore)}
+                </div>
+                <span
+                  className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierMeta[tier].pill}`}
+                >
                   <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />
                   {tier}
                 </span>
@@ -1434,8 +1855,6 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-
-
 function TextField({
   label,
   placeholder,
@@ -1451,7 +1870,9 @@ function TextField({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-white/70">{label}</label>
+      <label className="mb-2 block text-sm font-medium text-white/70">
+        {label}
+      </label>
       <input
         type="text"
         value={value}
@@ -1484,7 +1905,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">{label}</label>
+      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-white/40">
+        {label}
+      </label>
       <input
         type="number"
         inputMode="decimal"
@@ -1508,14 +1931,34 @@ function ArchetypeIcon({
   switch (computedArchetype) {
     case "STRENGTH BEAST":
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4.5 10v4M7 9v6M17 9v6M19.5 10v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M7 12h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M4.5 10v4M7 9v6M17 9v6M19.5 10v4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 12h10"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "ENDURANCE MACHINE":
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path
             d="M13 2L3 14h7l-1 8 12-14h-7l-1-6Z"
             stroke="currentColor"
@@ -1526,29 +1969,74 @@ function ArchetypeIcon({
       );
     case "BALANCED HYBRID":
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 4v16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M6 7h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M7.5 7l-3 6h6l-3-6Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M16.5 7l-3 6h6l-3-6Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M9 20h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 4v16"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M6 7h12"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7.5 7l-3 6h6l-3-6Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M16.5 7l-3 6h6l-3-6Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9 20h6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "POWER HYBRID":
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path
             d="M5 10l3-4 4 5 4-5 3 4v7H5v-7Z"
             stroke="currentColor"
             strokeWidth="1.8"
             strokeLinejoin="round"
           />
-          <path d="M7 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <path
+            d="M7 17h10"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "ENDURANCE-LEANING HYBRID":
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <path
             d="M3 14c2 0 2-4 4-4s2 4 4 4 2-4 4-4 2 4 4 4 2-4 4-4"
             stroke="currentColor"
@@ -1559,33 +2047,78 @@ function ArchetypeIcon({
       );
     case "STRENGTH-LEANING HYBRID":
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7 10v4M9 9v6M15 9v6M17 10v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M9 12h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M7 10v4M9 9v6M15 9v6M17 10v4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M9 12h6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "BASE BUILDER":
     default:
       return (
-        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12 12h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <svg
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M12 12h.01"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
         </svg>
       );
   }
 }
 
 function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
-  const meta: Record<Archetype, { label: string; ring: string; bg: string; icon: ReactNode }> = {
+  const meta: Record<
+    Archetype,
+    { label: string; ring: string; bg: string; icon: ReactNode }
+  > = {
     "STRENGTH BEAST": {
       label: "Strength Beast",
       ring: "border-[#DFFF00]/25",
       bg: "bg-[#DFFF00]/10 text-[#DFFF00]",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M4 12c2.5-3.5 5.5-5 8-5s5.5 1.5 8 5c-2.5 3.5-5.5 5-8 5s-5.5-1.5-8-5Z" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M9 12h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M4 12c2.5-3.5 5.5-5 8-5s5.5 1.5 8 5c-2.5 3.5-5.5 5-8 5s-5.5-1.5-8-5Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M9 12h6"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
         </svg>
       ),
     },
@@ -1595,7 +2128,12 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M13 2 4 14h7l-1 8 10-14h-7l0-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+          <path
+            d="M13 2 4 14h7l-1 8 10-14h-7l0-6Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
     },
@@ -1605,8 +2143,18 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M12 3v18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M6 7h12M7.5 17h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M12 3v18"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M6 7h12M7.5 17h9"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
         </svg>
       ),
     },
@@ -1616,7 +2164,12 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M12 2 5 9l7 13 7-13-7-7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+          <path
+            d="M12 2 5 9l7 13 7-13-7-7Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
     },
@@ -1626,8 +2179,18 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       bg: "bg-white/[0.04] text-white/80",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M7 14c2-6 4-9 5-9s3 3 5 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M5 19h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M7 14c2-6 4-9 5-9s3 3 5 9"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M5 19h14"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
         </svg>
       ),
     },
@@ -1637,7 +2200,12 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       bg: "bg-[#DFFF00]/10 text-[#DFFF00]",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M7 9h10M9 7v10M15 7v10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M7 9h10M9 7v10M15 7v10"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
         </svg>
       ),
     },
@@ -1647,7 +2215,12 @@ function ArchetypeBadge({ archetype }: { archetype: Archetype }) {
       bg: "bg-white/[0.03] text-zinc-200",
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-          <path d="M5 19V9l7-4 7 4v10" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+          <path
+            d="M5 19V9l7-4 7 4v10"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
     },
