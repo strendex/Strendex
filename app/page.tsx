@@ -52,10 +52,10 @@ export default function Home() {
           HERO
       ══════════════════════════ */}
       <section
-        className="flex flex-col gap-6 sm:gap-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16"
+        className="flex flex-col gap-14 sm:gap-12 lg:grid lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16"
         style={{
           paddingTop: "clamp(36px, 7vw, 72px)",
-          paddingBottom: "clamp(40px, 9vw, 96px)",
+          paddingBottom: "clamp(56px, 9vw, 96px)",
         }}
       >
         {/* LEFT — copy + CTA */}
@@ -78,7 +78,7 @@ export default function Home() {
             style={{
               fontFamily: "var(--font-display)",
               marginTop: "var(--space-2)",
-              fontSize: "clamp(48px, 9vw, 96px)",
+              fontSize: "clamp(58px, 15vw, 96px)",
               fontWeight: 400,
               lineHeight: 0.92,
               letterSpacing: "0.005em",
@@ -174,8 +174,31 @@ export default function Home() {
         <div className="mx-auto w-full lg:mx-0 lg:justify-self-end">
           <div
             className="mx-auto flex flex-col items-center"
-            style={{ maxWidth: "420px" }}
+            style={{
+              width: "100%",
+              maxWidth: "360px",
+              background: "#16191F",
+              border: "1px solid var(--hairline)",
+              borderRadius: "24px",
+              padding: "clamp(24px, 6vw, 32px)",
+            }}
           >
+            {/* Example tag */}
+            <span
+              style={{
+                borderRadius: "999px",
+                border: "1px solid var(--hairline)",
+                padding: "5px 12px",
+                marginBottom: "20px",
+                fontSize: "10px",
+                fontWeight: 600,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "var(--muted)",
+              }}
+            >
+              Example
+            </span>
             {/* Ring — smaller on phones, full size at sm+ (desktop unchanged) */}
             <div className="relative aspect-square w-full max-w-[188px] sm:max-w-[320px]">
               <svg
@@ -307,19 +330,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
-            {/* Quiet caption — illustrative, never real user data */}
-            <p
-              style={{
-                marginTop: "var(--space-2)",
-                fontSize: "12px",
-                fontWeight: 400,
-                letterSpacing: "0.01em",
-                color: "var(--muted)",
-              }}
-            >
-              Example score
-            </p>
           </div>
         </div>
       </section>
@@ -329,11 +339,11 @@ export default function Home() {
       ══════════════════════════ */}
       <section
         style={{
-          paddingTop: "clamp(36px, 7vw, 80px)",
+          paddingTop: "clamp(56px, 7vw, 80px)",
           borderTop: "1px solid var(--hairline)",
         }}
       >
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-3 sm:gap-8">
           {steps.map((s) => (
             <div key={s.n} className="flex flex-col items-start">
               <span
@@ -378,7 +388,7 @@ export default function Home() {
       ══════════════════════════ */}
       <section
         style={{
-          marginTop: "clamp(44px, 10vw, 112px)",
+          marginTop: "clamp(64px, 10vw, 112px)",
           paddingTop: "clamp(36px, 7vw, 80px)",
           borderTop: "1px solid var(--hairline)",
         }}
