@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import StrendexChart from "./StrendexChart";
+import AthleteReviewCTA from "@/components/AthleteReviewCTA";
 import { findBannedWord } from "@/lib/nameFilter";
 import { toPng } from "html-to-image";
 
@@ -252,6 +253,7 @@ const [apiEnduranceIndex, setApiEnduranceIndex] = useState<number | null>(null);
 
   
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
+  const [arIntent, setArIntent] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   // parsed
@@ -605,6 +607,8 @@ if (!error) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setSiteLabel(window.location.host);
+
+    if (params.get("intent") === "athlete-review") setArIntent(true);
 
     const sharedName = params.get("name");
     const sharedBw = params.get("bw");
@@ -1128,6 +1132,32 @@ if (!error) {
     View Rankings
   </Link>
 </div>
+
+            {hasResults && !isWorking && (
+              <AthleteReviewCTA
+                hybridScore={Math.round(hybridScore)}
+                strengthPercentile={strengthPercentile}
+                endurancePercentile={endurancePercentile}
+                strengthIndex={apiStrengthIndex}
+                enduranceIndex={apiEnduranceIndex}
+                tier={tier}
+                archetype={computedArchetype}
+                rank={globalRank}
+                totalAthletes={totalAthletes}
+                betterThanPercent={betterThanPercent}
+                inputs={{
+                  bodyweightKg: unitSystem === "lb" ? lbToKg(wLb) : wInput,
+                  benchKg: bInput > 0 ? (unitSystem === "lb" ? lbToKg(bLb) : bInput) : null,
+                  squatKg: sInput > 0 ? (unitSystem === "lb" ? lbToKg(sLb) : sInput) : null,
+                  deadliftKg: dInput > 0 ? (unitSystem === "lb" ? lbToKg(dLb) : dInput) : null,
+                  enduranceSeconds: runSeconds > 0 ? enduranceEqSeconds : null,
+                  runDistance: runSeconds > 0 ? runDistance : null,
+                  runTimeText: runSeconds > 0 ? runTimeText : null,
+                  unitSystem,
+                }}
+                emphasized={arIntent}
+              />
+            )}
 
 
     

@@ -384,6 +384,73 @@ export default function Home() {
       </section>
 
       {/* ══════════════════════════
+          ATHLETE REVIEW
+      ══════════════════════════ */}
+      <section
+        style={{
+          marginTop: "clamp(64px, 10vw, 112px)",
+          paddingTop: "clamp(36px, 7vw, 80px)",
+          borderTop: "1px solid var(--hairline)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            letterSpacing: "0.25em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.4)",
+          }}
+        >
+          New · Athlete Review
+        </span>
+        <h2
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(28px, 5vw, 44px)",
+            lineHeight: 1.05,
+            letterSpacing: "0.005em",
+            textTransform: "uppercase",
+            color: "var(--ink)",
+            margin: "var(--space-2) 0 0",
+          }}
+        >
+          Your score is only the beginning
+        </h2>
+        <p
+          style={{
+            marginTop: "var(--space-3)",
+            fontSize: "16px",
+            lineHeight: 1.6,
+            color: "var(--muted)",
+            maxWidth: "58ch",
+          }}
+        >
+          Strendex can analyze your training, goals, recovery and performance
+          gap to show where your biggest opportunity is hiding — including
+          estimated score scenarios computed from your own numbers. A short
+          guided assessment, a full structured review. Free during early
+          access.
+        </p>
+        <Link
+          href="/athlete-review"
+          style={{
+            display: "inline-block",
+            marginTop: "var(--space-4)",
+            padding: "12px 24px",
+            borderRadius: "999px",
+            border: "1px solid rgba(255,255,255,0.18)",
+            color: "var(--ink)",
+            fontSize: "14px",
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          Explore Athlete Review
+        </Link>
+      </section>
+
+      {/* ══════════════════════════
           FAQ
       ══════════════════════════ */}
       <section
