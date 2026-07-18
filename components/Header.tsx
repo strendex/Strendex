@@ -70,6 +70,44 @@ export default function Header() {
               Rankings
             </Link>
             <Link
+              href="/athlete-review"
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.5)",
+                textDecoration: "none",
+                letterSpacing: "0.01em",
+                transition: "color 0.15s",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color =
+                  "rgba(255,255,255,0.88)")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color =
+                  "rgba(255,255,255,0.5)")
+              }
+            >
+              Athlete Review
+              <span
+                style={{
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  padding: "2px 7px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  color: "rgba(255,255,255,0.7)",
+                }}
+              >
+                New
+              </span>
+            </Link>
+            <Link
               href="/about"
               style={{
                 fontSize: "13px",
