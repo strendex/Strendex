@@ -13,28 +13,43 @@
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  ARCHETYPES,
   DATASET_CONFIDENCE_TIERS,
   DATASET_KINDS,
   MODERATION_STATUSES,
   PROVENANCES,
   REFERENCE_VALUE_BOUNDS,
   ScoringError,
+  TIERS,
+  UNIT_SYSTEMS,
   VERIFICATION_STATUSES,
   VISIBILITIES,
   isSha256Hex,
 } from "@/lib/scoring/core";
 import type {
+  Archetype,
   DatasetConfidence,
   DatasetKind,
   ModerationStatus,
   Provenance,
   RunDistance,
   ScoringDatasetSnapshot,
+  Tier,
   UnitSystem,
   VerificationStatus,
   Visibility,
 } from "@/lib/scoring/core";
 import { computeDatasetHash } from "./hashing";
+
+/**
+ * Sanity ceiling for a weight in the athlete's ORIGINAL unit system. It mirrors
+ * the submissions_original_*_positive CHECK constraints in
+ * 20260802_02_submissions_result_governance.sql and exists only to reject
+ * absurd or non-real values — NOT to re-validate the athlete's numbers, which
+ * VALIDATION_BOUNDS does in kilograms once the unit system is known. A kg bound
+ * cannot be applied here: 198 is a valid lb bodyweight and an impossible kg one.
+ */
+const ORIGINAL_WEIGHT_MAX = 2000;
 
 export type PersistResultInput = {
   idempotencyKey: string;
@@ -52,8 +67,8 @@ export type PersistResultInput = {
   strengthPercentile: number;
   endurancePercentile: number;
   hybridScore: number;
-  tier: string;
-  archetype: string;
+  tier: Tier;
+  archetype: Archetype;
   moderationStatus: ModerationStatus;
   visibility: Visibility;
   provenance: Provenance;
@@ -68,6 +83,17 @@ export type PersistResultInput = {
   originalUnitSystem: UnitSystem;
   originalRunDistance: RunDistance;
   originalRunSeconds: number;
+  /**
+   * The weights EXACTLY as the athlete submitted them, in `originalUnitSystem`.
+   * The *Kg fields above are server-derived and rounded to 2dp, so they cannot
+   * reproduce these, and the request fingerprint is a one-way hash. These are
+   * the only record of the raw submission — pass them through unrounded and
+   * never recompute them from kilograms.
+   */
+  originalBodyweight: number;
+  originalBench: number;
+  originalSquat: number;
+  originalDeadlift: number;
   canonicalEnduranceSeconds: number;
 };
 
@@ -80,8 +106,8 @@ export type PersistedResult = {
   enduranceIndex: number;
   strengthPercentile: number;
   endurancePercentile: number;
-  tier: string;
-  archetype: string;
+  tier: Tier;
+  archetype: Archetype;
   moderationStatus: ModerationStatus;
   visibility: Visibility;
   provenance: Provenance;
@@ -92,6 +118,16 @@ export type PersistedResult = {
   datasetKind: DatasetKind;
   datasetSampleSize: number;
   datasetConfidence: DatasetConfidence;
+  /**
+   * Read back from the STORED row, so what was actually persisted can be proven
+   * rather than assumed. Server-internal: these never reach CanonicalResultView
+   * and are never returned to a browser.
+   */
+  originalUnitSystem: UnitSystem;
+  originalBodyweight: number;
+  originalBench: number;
+  originalSquat: number;
+  originalDeadlift: number;
 };
 
 export interface ScoreRepository {
@@ -181,9 +217,25 @@ function readBoundedNumber(
   if (typeof raw !== "number" && typeof raw !== "string") {
     fail(field, "is missing or not numeric");
   }
+  // Number("") and Number("   ") are 0, which would turn a blank column into a
+  // perfectly valid-looking zero. Reject before coercion.
+  if (typeof raw === "string" && raw.trim().length === 0) {
+    fail(field, "is missing or not numeric");
+  }
   const value = Number(raw);
   if (!Number.isFinite(value)) fail(field, "is not a finite number");
   if (value < min || value > max) fail(field, "is outside its valid range");
+  return value;
+}
+
+/** A quantity that must be strictly greater than zero, e.g. a lifted weight. */
+function readPositiveNumber(
+  row: Record<string, unknown>,
+  field: string,
+  max: number,
+): number {
+  const value = readBoundedNumber(row, field, 0, max);
+  if (value <= 0) fail(field, "is not greater than zero");
   return value;
 }
 
@@ -262,8 +314,11 @@ function parsePersistedResult(row: Record<string, unknown>): PersistedResult {
     enduranceIndex: readBoundedNumber(row, "endurance_index", 0, 100),
     strengthPercentile: readBoundedNumber(row, "strength_percentile", 0, 100),
     endurancePercentile: readBoundedNumber(row, "endurance_percentile", 0, 100),
-    tier: readString(row, "tier"),
-    archetype: readString(row, "archetype"),
+    // Checked against the central allowlists at RUNTIME. A cast at the call site
+    // would only assert the type to the compiler; an unrecognised tier or
+    // archetype coming back from Postgres is corrupt data and must fail closed.
+    tier: readEnum(row, "tier", TIERS),
+    archetype: readEnum(row, "archetype", ARCHETYPES),
     moderationStatus: readEnum(row, "status", MODERATION_STATUSES),
     visibility: readEnum(row, "visibility", VISIBILITIES),
     provenance: readEnum(row, "provenance", PROVENANCES),
@@ -281,6 +336,22 @@ function parsePersistedResult(row: Record<string, unknown>): PersistedResult {
       row,
       "dataset_confidence",
       DATASET_CONFIDENCE_TIERS,
+    ),
+    // Read back from the stored row, not echoed from the attempted write, so a
+    // caller can prove the raw submission was persisted intact. Bounded only by
+    // ORIGINAL_WEIGHT_MAX: the unit system decides what a plausible range is.
+    originalUnitSystem: readEnum(row, "original_unit_system", UNIT_SYSTEMS),
+    originalBodyweight: readPositiveNumber(
+      row,
+      "original_bodyweight",
+      ORIGINAL_WEIGHT_MAX,
+    ),
+    originalBench: readPositiveNumber(row, "original_bench", ORIGINAL_WEIGHT_MAX),
+    originalSquat: readPositiveNumber(row, "original_squat", ORIGINAL_WEIGHT_MAX),
+    originalDeadlift: readPositiveNumber(
+      row,
+      "original_deadlift",
+      ORIGINAL_WEIGHT_MAX,
     ),
   };
 }
@@ -410,6 +481,12 @@ export function createSupabaseScoreRepository(
           original_unit_system: input.originalUnitSystem,
           original_run_distance: input.originalRunDistance,
           original_run_seconds: input.originalRunSeconds,
+          // Verbatim, in the athlete's own unit system. Not converted, not
+          // rounded, and never derived from the *_kg fields above.
+          original_bodyweight: input.originalBodyweight,
+          original_bench: input.originalBench,
+          original_squat: input.originalSquat,
+          original_deadlift: input.originalDeadlift,
           canonical_endurance_seconds: input.canonicalEnduranceSeconds,
           endurance_seconds: input.canonicalEnduranceSeconds,
         },
@@ -453,9 +530,15 @@ export function createSupabaseScoreRepository(
         throw new RepositoryError("Failed to load leaderboard scores.", error);
       }
 
-      return ((data ?? []) as { hq_score: unknown }[])
-        .map((r) => Number(r.hq_score))
-        .filter((n) => Number.isFinite(n));
+      // FAIL CLOSED. Every row the eligibility filters selected must yield a
+      // usable score. Dropping a malformed one would silently shrink `total`
+      // and shift every athlete's rank with nothing to show for it, so a single
+      // unreadable score invalidates the whole placement rather than quietly
+      // producing a plausible wrong answer. Nothing is filtered and nothing is
+      // clamped; 0 and 100 are legitimate scores and are preserved exactly.
+      return ((data ?? []) as Record<string, unknown>[]).map((row) =>
+        readBoundedNumber(row, "hq_score", 0, 100),
+      );
     },
   };
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { SCORE_VERSION, ScoringError } from "../lib/scoring/core";
+import { ARCHETYPES, SCORE_VERSION, ScoringError, TIERS } from "../lib/scoring/core";
 import { computeDatasetHash } from "../lib/server/hashing";
 import {
   RepositoryError,
@@ -37,10 +37,15 @@ function chain(result: QueryResult): Chain {
 function fakeSupabase(options: {
   table?: QueryResult;
   rpc?: QueryResult;
+  /** Receives the payload the repository actually sent to score_result_insert. */
+  onRpc?: (args: Record<string, unknown>) => void;
 }): SupabaseClient {
   const stub = {
     from: () => chain(options.table ?? { data: null, error: null }),
-    rpc: async () => options.rpc ?? { data: null, error: null },
+    rpc: async (_name: string, args: Record<string, unknown>) => {
+      options.onRpc?.(args);
+      return options.rpc ?? { data: null, error: null };
+    },
   };
   return stub as unknown as SupabaseClient;
 }
@@ -76,9 +81,14 @@ const PERSIST_INPUT: PersistResultInput = {
   datasetSampleSize: 40,
   datasetConfidence: "provisional",
   calculatedAt: "2026-08-02T10:00:00.000Z",
-  originalUnitSystem: "kg",
+  originalUnitSystem: "lb",
   originalRunDistance: "5k",
   originalRunSeconds: 1500,
+  // Pounds, at a precision the rounded kg columns above cannot represent.
+  originalBodyweight: 198.4,
+  originalBench: 242.5,
+  originalSquat: 330.75,
+  originalDeadlift: 419.25,
   canonicalEnduranceSeconds: 6900,
 };
 
@@ -105,6 +115,11 @@ function rpcRow(overrides: Record<string, unknown> = {}) {
     dataset_kind: "observed",
     dataset_sample_size: 40,
     dataset_confidence: "provisional",
+    original_unit_system: "lb",
+    original_bodyweight: 198.4,
+    original_bench: 242.5,
+    original_squat: 330.75,
+    original_deadlift: 419.25,
     ...overrides,
   };
 }
@@ -158,7 +173,29 @@ describe("persisted result parsing (fail closed)", () => {
       { endurance_percentile: Number.NaN },
       { tier: undefined },
       { tier: "" },
+      { tier: "LEGENDARY" },
+      { tier: "intermediate" },
+      { tier: 3 },
       { archetype: undefined },
+      { archetype: "" },
+      { archetype: "GYM BRO" },
+      { archetype: "balanced hybrid" },
+      { original_unit_system: undefined },
+      { original_unit_system: "stone" },
+      { original_bodyweight: undefined },
+      { original_bodyweight: null },
+      { original_bodyweight: "" },
+      { original_bodyweight: "heavy" },
+      { original_bodyweight: 0 },
+      { original_bodyweight: -198.4 },
+      { original_bodyweight: Number.NaN },
+      { original_bodyweight: Number.POSITIVE_INFINITY },
+      { original_bench: undefined },
+      { original_bench: 0 },
+      { original_squat: undefined },
+      { original_squat: -1 },
+      { original_deadlift: undefined },
+      { original_deadlift: 99_999 },
       { status: "weird" },
       { visibility: "everyone" },
       { provenance: "trustworthy" },
@@ -234,6 +271,208 @@ describe("persisted result parsing (fail closed)", () => {
       (err: unknown) => {
         assert.ok(err instanceof RepositoryError);
         assert.equal(err.message.includes("secret_idx"), false);
+        return true;
+      },
+    );
+  });
+});
+
+describe("tier and archetype allowlists", () => {
+  it("accepts every tier the scorer can produce", async () => {
+    for (const tier of TIERS) {
+      const repo = repoWithRpc(rpcRow({ tier }));
+      const { result } = await repo.persistResult(PERSIST_INPUT);
+      assert.equal(result.tier, tier);
+    }
+  });
+
+  it("accepts every archetype the scorer can produce", async () => {
+    for (const archetype of ARCHETYPES) {
+      const repo = repoWithRpc(rpcRow({ archetype }));
+      const { result } = await repo.persistResult(PERSIST_INPUT);
+      assert.equal(result.archetype, archetype);
+    }
+  });
+
+  it("never names the rejected value in the error", async () => {
+    for (const override of [
+      { tier: "SUPREME OVERLORD" },
+      { archetype: "CARDIO GOBLIN" },
+    ]) {
+      const repo = repoWithRpc(rpcRow(override));
+      await assert.rejects(
+        () => repo.persistResult(PERSIST_INPUT),
+        (err: unknown) => {
+          assert.ok(err instanceof RepositoryError);
+          assert.equal(err.message.includes("SUPREME"), false);
+          assert.equal(err.message.includes("GOBLIN"), false);
+          return true;
+        },
+      );
+    }
+  });
+});
+
+describe("original submitted weights", () => {
+  it("sends the originals to the RPC unrounded and unconverted", async () => {
+    let payload: Record<string, unknown> | null = null;
+    const repo = createSupabaseScoreRepository(
+      fakeSupabase({
+        rpc: { data: rpcRow(), error: null },
+        onRpc: (args) => {
+          payload = args.p_payload as Record<string, unknown>;
+        },
+      }),
+    );
+
+    await repo.persistResult(PERSIST_INPUT);
+
+    assert.ok(payload, "expected the RPC to be called");
+    const sent = payload as Record<string, unknown>;
+    assert.equal(sent.original_bodyweight, 198.4);
+    assert.equal(sent.original_bench, 242.5);
+    assert.equal(sent.original_squat, 330.75);
+    assert.equal(sent.original_deadlift, 419.25);
+    assert.equal(sent.original_unit_system, "lb");
+
+    // The kg columns travel separately and are NOT the source of the above.
+    assert.equal(sent.bodyweight, 90);
+    assert.notEqual(sent.bodyweight, sent.original_bodyweight);
+  });
+
+  it("reads the originals back from the stored row", async () => {
+    const repo = repoWithRpc(rpcRow());
+    const { result } = await repo.persistResult(PERSIST_INPUT);
+
+    assert.equal(result.originalUnitSystem, "lb");
+    assert.equal(result.originalBodyweight, 198.4);
+    assert.equal(result.originalBench, 242.5);
+    assert.equal(result.originalSquat, 330.75);
+    assert.equal(result.originalDeadlift, 419.25);
+  });
+
+  it("returns what was stored, not what was attempted", async () => {
+    // A replay returns the ORIGINAL submission, which may differ from the
+    // values this particular request tried to write.
+    const repo = repoWithRpc(
+      rpcRow({ replayed: true, original_bodyweight: 201.6 }),
+    );
+    const { result } = await repo.persistResult(PERSIST_INPUT);
+
+    assert.equal(result.originalBodyweight, 201.6);
+    assert.notEqual(result.originalBodyweight, PERSIST_INPUT.originalBodyweight);
+  });
+
+  it("accepts originals delivered as numeric strings", async () => {
+    const repo = repoWithRpc(rpcRow({ original_bodyweight: "198.4" }));
+    const { result } = await repo.persistResult(PERSIST_INPUT);
+    assert.equal(result.originalBodyweight, 198.4);
+  });
+});
+
+describe("leaderboard score loading (fail closed)", () => {
+  function repoWithScores(data: unknown, error: unknown = null) {
+    return createSupabaseScoreRepository(
+      fakeSupabase({ table: { data, error } }),
+    );
+  }
+
+  it("returns every eligible score", async () => {
+    const scores = await repoWithScores([
+      { hq_score: 95 },
+      { hq_score: 80 },
+      { hq_score: 50.5 },
+    ]).loadEligibleScores(DATASET_ID);
+
+    assert.deepEqual(scores, [95, 80, 50.5]);
+  });
+
+  it("accepts the numeric-as-string form PostgREST may return", async () => {
+    const scores = await repoWithScores([
+      { hq_score: "95" },
+      { hq_score: "50.5" },
+    ]).loadEligibleScores(DATASET_ID);
+
+    assert.deepEqual(scores, [95, 50.5]);
+  });
+
+  it("preserves the boundary scores exactly", async () => {
+    const scores = await repoWithScores([
+      { hq_score: 0 },
+      { hq_score: 100 },
+      { hq_score: "0" },
+      { hq_score: "100" },
+    ]).loadEligibleScores(DATASET_ID);
+
+    assert.deepEqual(scores, [0, 100, 0, 100]);
+  });
+
+  it("returns an empty leaderboard for an empty result set", async () => {
+    assert.deepEqual(await repoWithScores([]).loadEligibleScores(DATASET_ID), []);
+    assert.deepEqual(await repoWithScores(null).loadEligibleScores(DATASET_ID), []);
+  });
+
+  it("throws rather than dropping a malformed eligible row", async () => {
+    for (const bad of [
+      { hq_score: null },
+      {},
+      { hq_score: "" },
+      { hq_score: "  " },
+      { hq_score: "not a score" },
+      { hq_score: Number.NaN },
+      { hq_score: Number.POSITIVE_INFINITY },
+      { hq_score: Number.NEGATIVE_INFINITY },
+      { hq_score: -0.01 },
+      { hq_score: -1 },
+      { hq_score: 100.01 },
+      { hq_score: 101 },
+      { hq_score: true },
+      { hq_score: [50] },
+      { hq_score: { value: 50 } },
+    ]) {
+      await assert.rejects(
+        () => repoWithScores([bad]).loadEligibleScores(DATASET_ID),
+        RepositoryError,
+        `expected a RepositoryError for ${JSON.stringify(bad)}`,
+      );
+    }
+  });
+
+  it("fails the whole load when one row among many is malformed", async () => {
+    // Silently dropping this row would shrink `total` and shift every rank.
+    const repo = repoWithScores([
+      { hq_score: 95 },
+      { hq_score: 80 },
+      { hq_score: "corrupt" },
+      { hq_score: 50 },
+    ]);
+
+    await assert.rejects(() => repo.loadEligibleScores(DATASET_ID), RepositoryError);
+  });
+
+  it("does not echo the offending value", async () => {
+    const repo = repoWithScores([{ hq_score: 9999 }]);
+    await assert.rejects(
+      () => repo.loadEligibleScores(DATASET_ID),
+      (err: unknown) => {
+        assert.ok(err instanceof RepositoryError);
+        assert.equal(err.message.includes("9999"), false);
+        return true;
+      },
+    );
+  });
+
+  it("surfaces a query error as a RepositoryError", async () => {
+    const repo = repoWithScores(null, {
+      code: "42501",
+      message: 'permission denied for table "submissions"',
+    });
+
+    await assert.rejects(
+      () => repo.loadEligibleScores(DATASET_ID),
+      (err: unknown) => {
+        assert.ok(err instanceof RepositoryError);
+        assert.equal(err.message.includes("permission denied"), false);
         return true;
       },
     );

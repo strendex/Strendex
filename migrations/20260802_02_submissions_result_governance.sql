@@ -94,9 +94,24 @@ ALTER TABLE public.submissions
   ADD COLUMN IF NOT EXISTS verification_status text,
 
   -- Original, pre-conversion inputs, so a score can always be re-derived.
+  --
+  -- The weights are stored in `original_unit_system`, NOT in kilograms: they are
+  -- exactly the numbers the athlete typed. The kg columns (bodyweight, bench,
+  -- squat, deadlift) are server-derived and rounded, so they cannot reconstruct
+  -- these, and the request fingerprint is a one-way hash. Without these four
+  -- columns the original submission is unrecoverable.
+  --
+  -- `double precision` is IEEE-754 binary64 — the same representation as a
+  -- JavaScript number — so a validated value round-trips exactly, with no
+  -- application-side rounding. This matches how the existing kg weight columns
+  -- are cast in 20260802_03_score_result_insert_rpc.sql.
   ADD COLUMN IF NOT EXISTS original_unit_system text,
   ADD COLUMN IF NOT EXISTS original_run_distance text,
   ADD COLUMN IF NOT EXISTS original_run_seconds integer,
+  ADD COLUMN IF NOT EXISTS original_bodyweight double precision,
+  ADD COLUMN IF NOT EXISTS original_bench double precision,
+  ADD COLUMN IF NOT EXISTS original_squat double precision,
+  ADD COLUMN IF NOT EXISTS original_deadlift double precision,
 
   -- Server-computed canonical (half-marathon-equivalent) seconds.
   ADD COLUMN IF NOT EXISTS canonical_endurance_seconds integer,
@@ -182,6 +197,23 @@ BEGIN
        $chk$request_fingerprint IS NULL OR request_fingerprint ~ '^[0-9a-f]{64}$'$chk$),
       ('submissions_original_run_seconds_range',
        $chk$original_run_seconds IS NULL OR (original_run_seconds > 0 AND original_run_seconds <= 43200)$chk$),
+      -- Original weights are stored in the athlete's OWN unit system, so the
+      -- kilogram ranges in bw_range/bench_range/... deliberately do NOT apply
+      -- here: 198 is a valid lb bodyweight and an impossible kg one. The only
+      -- invariant these columns can assert unit-agnostically is "a positive,
+      -- real number". The generous ceiling is what enforces the "real" half —
+      -- Postgres sorts 'NaN'::float8 ABOVE every other float and 'Infinity'
+      -- likewise, so a finite upper bound is the check that excludes both.
+      -- Range plausibility belongs to VALIDATION_BOUNDS in the application,
+      -- which is the layer that knows which unit system was used.
+      ('submissions_original_bodyweight_positive',
+       $chk$original_bodyweight IS NULL OR (original_bodyweight > 0 AND original_bodyweight <= 2000)$chk$),
+      ('submissions_original_bench_positive',
+       $chk$original_bench IS NULL OR (original_bench > 0 AND original_bench <= 2000)$chk$),
+      ('submissions_original_squat_positive',
+       $chk$original_squat IS NULL OR (original_squat > 0 AND original_squat <= 2000)$chk$),
+      ('submissions_original_deadlift_positive',
+       $chk$original_deadlift IS NULL OR (original_deadlift > 0 AND original_deadlift <= 2000)$chk$),
       ('submissions_canonical_endurance_range',
        $chk$canonical_endurance_seconds IS NULL OR (canonical_endurance_seconds >= 4200 AND canonical_endurance_seconds <= 28800)$chk$),
       ('submissions_dataset_sample_size_min',
@@ -192,15 +224,25 @@ BEGIN
        $chk$idempotency_key IS NULL OR char_length(idempotency_key) BETWEEN 8 AND 128$chk$),
       -- A governed row must carry its full provenance set together. Legacy rows
       -- (dataset_version_id IS NULL) are exempt, so nothing existing breaks.
+      --
+      -- The original_* group is part of that set: a governed row whose raw
+      -- inputs cannot be recovered is not auditable, and the four weights are
+      -- ambiguous without the unit system that gives them meaning, so all five
+      -- are required together or not at all.
       ('submissions_governed_row_complete',
        $chk$dataset_version_id IS NULL OR (
-              score_version       IS NOT NULL
-          AND calculated_at       IS NOT NULL
-          AND visibility          IS NOT NULL
-          AND idempotency_key     IS NOT NULL
-          AND request_fingerprint IS NOT NULL
-          AND dataset_kind        IS NOT NULL
-          AND dataset_label       IS NOT NULL
+              score_version        IS NOT NULL
+          AND calculated_at        IS NOT NULL
+          AND visibility           IS NOT NULL
+          AND idempotency_key      IS NOT NULL
+          AND request_fingerprint  IS NOT NULL
+          AND dataset_kind         IS NOT NULL
+          AND dataset_label        IS NOT NULL
+          AND original_unit_system IS NOT NULL
+          AND original_bodyweight  IS NOT NULL
+          AND original_bench       IS NOT NULL
+          AND original_squat       IS NOT NULL
+          AND original_deadlift    IS NOT NULL
         )$chk$)
     ) AS t(name, expr)
   LOOP
@@ -265,5 +307,13 @@ COMMENT ON COLUMN public.submissions.idempotency_key IS
   'Unique retry token. The uniqueness of this index is the idempotency guarantee for POST /api/score.';
 COMMENT ON COLUMN public.submissions.request_fingerprint IS
   'SHA-256 of buildRequestFingerprintPayload() in lib/scoring/core/hashing.ts. Same key + same fingerprint = retry (returns the original row). Same key + different fingerprint = conflict (rejected, original never overwritten).';
+COMMENT ON COLUMN public.submissions.original_bodyweight IS
+  'Bodyweight exactly as submitted, in original_unit_system — NOT kilograms. Never derived from the rounded kg column and never rounded on write. NULL only on legacy rows.';
+COMMENT ON COLUMN public.submissions.original_bench IS
+  'Bench exactly as submitted, in original_unit_system — NOT kilograms. Never derived from the rounded kg column and never rounded on write. NULL only on legacy rows.';
+COMMENT ON COLUMN public.submissions.original_squat IS
+  'Squat exactly as submitted, in original_unit_system — NOT kilograms. Never derived from the rounded kg column and never rounded on write. NULL only on legacy rows.';
+COMMENT ON COLUMN public.submissions.original_deadlift IS
+  'Deadlift exactly as submitted, in original_unit_system — NOT kilograms. Never derived from the rounded kg column and never rounded on write. NULL only on legacy rows.';
 
 COMMIT;

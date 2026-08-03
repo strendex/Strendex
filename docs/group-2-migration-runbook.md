@@ -13,7 +13,7 @@ script call below is inert until a human runs it.
 | Command | Why it is dangerous |
 | --- | --- |
 | `migrations/20260802_01_scoring_dataset_versions.sql` | Creates a table, a trigger, and revokes public grants. Run in staging first. |
-| `migrations/20260802_02_submissions_result_governance.sql` | Alters the live `submissions` table, **backfills `provenance` on every existing row**, runs constraint validation scans, and adds a RESTRICTIVE RLS policy. Aborts up front if RLS is disabled. |
+| `migrations/20260802_02_submissions_result_governance.sql` | Alters the live `submissions` table, **backfills `provenance` on every existing row**, runs constraint validation scans, and adds a RESTRICTIVE RLS policy. Aborts up front if RLS is disabled. Also adds the nullable `original_bodyweight/bench/squat/deadlift` columns — these are **not** backfilled, and a governed row (one with a `dataset_version_id`) must carry all four plus `original_unit_system`. |
 | `migrations/20260802_03_score_result_insert_rpc.sql` | Creates a `SECURITY DEFINER` function that writes to `submissions`. Requires migration 02 first. |
 | `CONFIRM_CREATE_DRAFT=yes npx tsx scripts/createScoringDatasetVersion.ts --commit` | Writes an `observed` dataset version row. Inspect first without `--commit`. |
 | `CONFIRM_LEGACY_MIXED_BOOTSTRAP="…" npx tsx scripts/bootstrapLegacyDatasetVersion.ts --commit` | Writes a `legacy_mixed_provisional` dataset version row. Transitional only — read §4b before running. |
@@ -143,6 +143,19 @@ SELECT count(*) FROM information_schema.columns
 WHERE table_schema = 'public' AND table_name = 'submissions'
   AND column_name IN ('request_fingerprint', 'dataset_kind', 'dataset_label');
 --   expect: 3
+
+-- (f) Original submitted inputs are recoverable.
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'submissions'
+  AND column_name IN ('original_bodyweight', 'original_bench',
+                      'original_squat', 'original_deadlift')
+ORDER BY column_name;
+--   expect: 4 rows, double precision, is_nullable = YES (legacy rows keep NULL)
+
+SELECT count(*) FROM public.submissions WHERE original_bodyweight IS NOT NULL;
+--   expect: 0 — these are NEVER backfilled. A legacy row's original inputs are
+--   not recoverable and must not be invented from the rounded kg columns.
 ```
 
 The RLS state itself was already proven in §1b — migration 02 cannot have

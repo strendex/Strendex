@@ -39,10 +39,10 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local", quiet: true });
 
 import { createClient } from "@supabase/supabase-js";
-import { VALIDATION_BOUNDS } from "../lib/scoring/core";
 import {
   DatasetDraftError,
   insertDraft,
+  parseReferenceRow,
   prepareDraft,
   printDraftSummary,
 } from "./lib/datasetDraft";
@@ -71,10 +71,6 @@ function arg(name: string): string | null {
 
 function hasFlag(name: string): boolean {
   return process.argv.includes(`--${name}`);
-}
-
-function isValidIndex(n: unknown): n is number {
-  return typeof n === "number" && Number.isFinite(n) && n > 0 && n <= 100;
 }
 
 function printDisclosure() {
@@ -167,24 +163,22 @@ async function main() {
       continue;
     }
 
-    const s = Number(row.strength_index);
-    const e = Number(row.endurance_index);
-    const secs = Number(row.endurance_seconds);
+    // Shared with the observed builder so both tools agree on eligibility.
+    // An index of exactly 0 or exactly 100 is valid and is kept.
+    const pair = parseReferenceRow({
+      strengthIndex: row.strength_index,
+      enduranceIndex: row.endurance_index,
+      enduranceSeconds: row.endurance_seconds,
+    });
 
-    if (
-      !isValidIndex(s) ||
-      !isValidIndex(e) ||
-      !Number.isFinite(secs) ||
-      secs < VALIDATION_BOUNDS.canonicalEnduranceSeconds.min ||
-      secs > VALIDATION_BOUNDS.canonicalEnduranceSeconds.max
-    ) {
+    if (!pair) {
       excluded.corrupt++;
       continue;
     }
 
     legacyUnknown++;
-    strengthReference.push(s);
-    enduranceReference.push(e);
+    strengthReference.push(pair.strengthIndex);
+    enduranceReference.push(pair.enduranceIndex);
   }
 
   const draft = prepareDraft({

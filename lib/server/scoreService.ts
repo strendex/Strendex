@@ -63,6 +63,12 @@ export const SCORE_REQUEST_FIELDS = [
   "idempotency_key",
 ] as const;
 
+/**
+ * What the browser is allowed to see. Deliberately omits the athlete's raw
+ * inputs — the original bodyweight and lifts are persisted for auditability and
+ * stay server-side; echoing them back would put performance data in a response
+ * body for no product reason.
+ */
 export type CanonicalResultView = {
   resultId: string;
   hybridScore: number;
@@ -192,6 +198,14 @@ export async function createCanonicalResult(
     originalUnitSystem: benchmark.unitSystem,
     originalRunDistance: benchmark.runDistance,
     originalRunSeconds: benchmark.runSeconds,
+    // The validated originals, straight from the canonical benchmark. NOT
+    // rounded, NOT converted, and NOT read back off `fields` — after validation
+    // the raw request is no longer the authority on what the athlete entered.
+    // The *Kg values above are rounded for storage and cannot reproduce these.
+    originalBodyweight: benchmark.originalBodyweight,
+    originalBench: benchmark.originalBench,
+    originalSquat: benchmark.originalSquat,
+    originalDeadlift: benchmark.originalDeadlift,
     canonicalEnduranceSeconds: benchmark.canonicalEnduranceSeconds,
   });
 
@@ -218,8 +232,10 @@ export async function createCanonicalResult(
       enduranceIndex: saved.enduranceIndex,
       strengthPercentile: saved.strengthPercentile,
       endurancePercentile: saved.endurancePercentile,
-      tier: saved.tier as Tier,
-      archetype: saved.archetype as Archetype,
+      // Already validated against TIERS / ARCHETYPES when the saved row was
+      // parsed, so no cast is needed to reach the domain types.
+      tier: saved.tier,
+      archetype: saved.archetype,
       moderationStatus: saved.moderationStatus,
       verificationStatus: saved.verificationStatus,
       provenance: saved.provenance,

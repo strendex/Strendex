@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  POUNDS_PER_KILOGRAM,
   SCORE_VERSION,
   ScoringError,
   type ScoringDatasetSnapshot,
@@ -39,6 +40,8 @@ type StoredRow = { result: PersistedResult; fingerprint: string };
 class FakeRepository implements ScoreRepository {
   persistCalls = 0;
   leaderboardScores: number[] = [];
+  /** Exactly what the service asked the database to store, unmodified. */
+  lastPersistInput: PersistResultInput | null = null;
   /**
    * Simulates another request committing this key first: our INSERT loses the
    * race, the re-read finds THEIR row, and we must return it unchanged.
@@ -79,6 +82,11 @@ class FakeRepository implements ScoreRepository {
         datasetKind: input.datasetKind,
         datasetSampleSize: input.datasetSampleSize,
         datasetConfidence: input.datasetConfidence,
+        originalUnitSystem: input.originalUnitSystem,
+        originalBodyweight: input.originalBodyweight,
+        originalBench: input.originalBench,
+        originalSquat: input.originalSquat,
+        originalDeadlift: input.originalDeadlift,
       },
     };
     this.rows.set(input.idempotencyKey, stored);
@@ -87,6 +95,7 @@ class FakeRepository implements ScoreRepository {
 
   async persistResult(input: PersistResultInput) {
     this.persistCalls++;
+    this.lastPersistInput = input;
 
     // The winner committed the same key, with the same request, but its own
     // opaque result id — exactly what score_result_insert's re-read returns.
@@ -207,6 +216,136 @@ describe("canonical score service", () => {
 
     assert.equal(result.moderationStatus, "approved");
     assert.deepEqual(result.leaderboard, { rank: 4, total: 4 });
+  });
+});
+
+describe("original input preservation", () => {
+  /** The service must hand persistence the athlete's numbers, not its own. */
+  async function persistedFor(request: ScoreRequestFields) {
+    const repo = new FakeRepository();
+    await createCanonicalResult(repo, request);
+    assert.ok(repo.lastPersistInput, "expected a persist call");
+    return repo.lastPersistInput;
+  }
+
+  it("stores the exact pound values an lb athlete submitted", async () => {
+    const input = await persistedFor({
+      ...REQUEST,
+      unit_system: "lb",
+      bodyweight: 198,
+      bench: 242,
+      squat: 330,
+      deadlift: 419,
+    });
+
+    assert.equal(input.originalUnitSystem, "lb");
+    assert.equal(input.originalBodyweight, 198);
+    assert.equal(input.originalBench, 242);
+    assert.equal(input.originalSquat, 330);
+    assert.equal(input.originalDeadlift, 419);
+  });
+
+  it("still derives the canonical kilograms server-side", async () => {
+    const input = await persistedFor({
+      ...REQUEST,
+      unit_system: "lb",
+      bodyweight: 198,
+      bench: 242,
+      squat: 330,
+      deadlift: 419,
+    });
+
+    // Converted here, never taken from the request.
+    assert.equal(input.bodyweightKg, Number((198 / POUNDS_PER_KILOGRAM).toFixed(2)));
+    assert.equal(input.benchKg, Number((242 / POUNDS_PER_KILOGRAM).toFixed(2)));
+    assert.equal(input.squatKg, Number((330 / POUNDS_PER_KILOGRAM).toFixed(2)));
+    assert.equal(input.deadliftKg, Number((419 / POUNDS_PER_KILOGRAM).toFixed(2)));
+
+    // And the two are genuinely different numbers, so a later reader cannot
+    // mistake one for the other.
+    assert.notEqual(input.bodyweightKg, input.originalBodyweight);
+  });
+
+  it("does not reconstruct the originals from the rounded kilograms", async () => {
+    const input = await persistedFor({
+      ...REQUEST,
+      unit_system: "lb",
+      bodyweight: 198,
+      bench: 242,
+      squat: 330,
+      deadlift: 419,
+    });
+
+    // Converting the STORED kg back to pounds does not return 198 — the kg
+    // column is rounded to 2dp, so that information is already gone. This is
+    // exactly why the original has to be persisted in its own column.
+    const roundTripped = input.bodyweightKg * POUNDS_PER_KILOGRAM;
+    assert.notEqual(roundTripped, 198);
+    assert.equal(input.originalBodyweight, 198);
+  });
+
+  it("stores kg values at full precision, without rounding", async () => {
+    const input = await persistedFor({
+      ...REQUEST,
+      unit_system: "kg",
+      bodyweight: 90.456,
+      bench: 110.375,
+      squat: 150.125,
+      deadlift: 190.625,
+    });
+
+    assert.equal(input.originalUnitSystem, "kg");
+    assert.equal(input.originalBodyweight, 90.456);
+    assert.equal(input.originalBench, 110.375);
+    assert.equal(input.originalSquat, 150.125);
+    assert.equal(input.originalDeadlift, 190.625);
+
+    // The canonical column IS rounded — proving the original survived a code
+    // path that rounds its neighbour.
+    assert.equal(input.bodyweightKg, 90.46);
+    assert.notEqual(input.bodyweightKg, input.originalBodyweight);
+  });
+
+  it("maps each lift to its own column", async () => {
+    // Deliberately distinct values: a bench/squat/deadlift transposition would
+    // pass every range check and every ratio check silently.
+    const input = await persistedFor({
+      ...REQUEST,
+      unit_system: "kg",
+      bodyweight: 91,
+      bench: 101,
+      squat: 152,
+      deadlift: 193,
+    });
+
+    assert.deepEqual(
+      {
+        bodyweight: input.originalBodyweight,
+        bench: input.originalBench,
+        squat: input.originalSquat,
+        deadlift: input.originalDeadlift,
+      },
+      { bodyweight: 91, bench: 101, squat: 152, deadlift: 193 },
+    );
+  });
+
+  it("never returns the athlete's raw inputs to the browser", async () => {
+    const repo = new FakeRepository();
+    const { result } = await createCanonicalResult(repo, REQUEST);
+
+    for (const field of [
+      "originalBodyweight",
+      "originalBench",
+      "originalSquat",
+      "originalDeadlift",
+      "originalUnitSystem",
+      "bodyweightKg",
+      "benchKg",
+      "squatKg",
+      "deadliftKg",
+    ]) {
+      assert.equal(field in result, false, `${field} must stay server-side`);
+    }
   });
 });
 

@@ -85,6 +85,10 @@ BEGIN
       original_unit_system,
       original_run_distance,
       original_run_seconds,
+      original_bodyweight,
+      original_bench,
+      original_squat,
+      original_deadlift,
       canonical_endurance_seconds,
       dataset_sample_size,
       dataset_confidence,
@@ -121,6 +125,13 @@ BEGIN
       p_payload->>'original_unit_system',
       p_payload->>'original_run_distance',
       (p_payload->>'original_run_seconds')::integer,
+      -- Stored in original_unit_system, NOT converted. double precision is
+      -- binary64, so the validated JavaScript number survives the round trip
+      -- unchanged; no rounding happens on either side of this cast.
+      (p_payload->>'original_bodyweight')::double precision,
+      (p_payload->>'original_bench')::double precision,
+      (p_payload->>'original_squat')::double precision,
+      (p_payload->>'original_deadlift')::double precision,
       (p_payload->>'canonical_endurance_seconds')::integer,
       (p_payload->>'dataset_sample_size')::integer,
       p_payload->>'dataset_confidence',
@@ -185,7 +196,17 @@ BEGIN
     'dataset_confidence',          v_row.dataset_confidence,
     'dataset_label',               v_row.dataset_label,
     'dataset_kind',                v_row.dataset_kind,
-    'canonical_endurance_seconds', v_row.canonical_endurance_seconds
+    'canonical_endurance_seconds', v_row.canonical_endurance_seconds,
+    -- Returned from the SAVED row so the caller verifies what Postgres actually
+    -- stored rather than what it tried to write — and so a real-Postgres
+    -- integration test can assert the originals survived unrounded. On a replay
+    -- these are the ORIGINAL row's values. They are read back by
+    -- parsePersistedResult and deliberately never reach CanonicalResultView.
+    'original_unit_system',        v_row.original_unit_system,
+    'original_bodyweight',         v_row.original_bodyweight,
+    'original_bench',              v_row.original_bench,
+    'original_squat',              v_row.original_squat,
+    'original_deadlift',           v_row.original_deadlift
   );
 END;
 $$;

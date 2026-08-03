@@ -15,10 +15,81 @@ import {
   MIN_DATASET_SIZE,
   REFERENCE_VALUE_BOUNDS,
   SCORE_VERSION,
+  VALIDATION_BOUNDS,
   datasetConfidence,
   type DatasetKind,
 } from "../../lib/scoring/core";
 import { computeDatasetHash } from "../../lib/server/hashing";
+
+/**
+ * One reference index, or null when the row must be excluded as corrupt.
+ *
+ * The valid range is REFERENCE_VALUE_BOUNDS — 0 to 100 INCLUSIVE. An index of
+ * exactly 0 is a real result (an athlete at the bottom of the scale), and the
+ * scorer, the migration CHECK constraints, and prepareDraft below all already
+ * accept it; excluding it here would silently bias every reference population
+ * upward.
+ *
+ * That makes the order of these checks load-bearing. `Number(null)` is 0 and
+ * `Number("")` is 0, so a missing index coerces to a perfectly valid-looking
+ * zero. Null, undefined, blanks, and non-numeric types are therefore rejected
+ * BEFORE any coercion — otherwise "accept exactly 0" would quietly become
+ * "accept every incomplete row as a zero".
+ */
+export function parseReferenceIndex(raw: unknown): number | null {
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
+  if (typeof raw === "string" && raw.trim().length === 0) return null;
+
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return null;
+  if (
+    value < REFERENCE_VALUE_BOUNDS.min ||
+    value > REFERENCE_VALUE_BOUNDS.max
+  ) {
+    return null;
+  }
+  return value;
+}
+
+export type ReferencePair = { strengthIndex: number; enduranceIndex: number };
+
+/**
+ * The shared per-row integrity gate, applied by BOTH builders after each has run
+ * its own moderation, provenance, visibility, and completeness filters. Having
+ * one implementation is what keeps `observed` and `legacy_mixed_provisional`
+ * populations comparable: the same row must be eligible, or not, under either
+ * tool. Returns null for a row to exclude as corrupt — it never repairs a value.
+ *
+ * `enduranceSeconds` is passed in because the two builders read it from
+ * different columns (canonical_endurance_seconds vs the legacy
+ * endurance_seconds); the bound applied to it is identical either way.
+ */
+export function parseReferenceRow(row: {
+  strengthIndex: unknown;
+  enduranceIndex: unknown;
+  enduranceSeconds: unknown;
+}): ReferencePair | null {
+  const strengthIndex = parseReferenceIndex(row.strengthIndex);
+  const enduranceIndex = parseReferenceIndex(row.enduranceIndex);
+  if (strengthIndex === null || enduranceIndex === null) return null;
+
+  const seconds =
+    typeof row.enduranceSeconds === "number" ||
+    (typeof row.enduranceSeconds === "string" &&
+      row.enduranceSeconds.trim().length > 0)
+      ? Number(row.enduranceSeconds)
+      : Number.NaN;
+
+  if (
+    !Number.isFinite(seconds) ||
+    seconds < VALIDATION_BOUNDS.canonicalEnduranceSeconds.min ||
+    seconds > VALIDATION_BOUNDS.canonicalEnduranceSeconds.max
+  ) {
+    return null;
+  }
+
+  return { strengthIndex, enduranceIndex };
+}
 
 export type DraftDatasetCandidate = {
   label: string;
