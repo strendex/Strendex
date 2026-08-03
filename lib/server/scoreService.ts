@@ -23,12 +23,14 @@ import {
 import type {
   Archetype,
   DatasetConfidence,
+  DatasetKind,
   ModerationStatus,
   Provenance,
   Tier,
   VerificationStatus,
   Visibility,
 } from "@/lib/scoring/core";
+import { computeRequestFingerprint } from "./hashing";
 import {
   generatePublicResultId,
   type ScoreRepository,
@@ -76,6 +78,14 @@ export type CanonicalResultView = {
   visibility: Visibility;
   scoreVersion: string;
   datasetVersionId: string;
+  /** Human-readable dataset name, for user-facing disclosure. */
+  datasetLabel: string;
+  /**
+   * What the reference population is made of. Group 3 must surface
+   * 'legacy_mixed_provisional' to the athlete as a provisional legacy mixed
+   * benchmark. Raw reference arrays are never exposed.
+   */
+  datasetKind: DatasetKind;
   datasetSampleSize: number;
   datasetConfidence: DatasetConfidence;
   calculatedAt: string;
@@ -115,6 +125,23 @@ export async function createCanonicalResult(
     runSeconds: fields.run_seconds,
   });
 
+  // Fingerprint of the request's INPUTS, computed server-side from the values
+  // we validated — not from anything the client labelled as a fingerprint.
+  // Reusing one idempotency key for two different submissions is a conflict,
+  // not a retry, and must never return the wrong athlete's result.
+  const requestFingerprint = computeRequestFingerprint({
+    scoreVersion: SCORE_VERSION,
+    displayName,
+    unitSystem: benchmark.unitSystem,
+    bodyweight: benchmark.originalBodyweight,
+    bench: benchmark.originalBench,
+    squat: benchmark.originalSquat,
+    deadlift: benchmark.originalDeadlift,
+    runDistance: benchmark.runDistance,
+    runSeconds: benchmark.runSeconds,
+    visibility,
+  });
+
   const dataset = await repository.loadActiveDataset(SCORE_VERSION);
   if (!dataset) {
     throw new ScoringError(
@@ -132,6 +159,7 @@ export async function createCanonicalResult(
 
   const { result: saved, replayed } = await repository.persistResult({
     idempotencyKey,
+    requestFingerprint,
     publicResultId: generatePublicResultId(),
     athleteName: displayName,
     bodyweightKg: Number(benchmark.bodyweightKg.toFixed(2)),
@@ -156,6 +184,8 @@ export async function createCanonicalResult(
     verificationStatus: "unverified",
     scoreVersion: score.scoreVersion,
     datasetVersionId: score.datasetVersionId,
+    datasetLabel: score.datasetLabel,
+    datasetKind: score.datasetKind,
     datasetSampleSize: score.datasetSampleSize,
     datasetConfidence: score.datasetConfidence,
     calculatedAt: new Date().toISOString(),
@@ -196,6 +226,10 @@ export async function createCanonicalResult(
       visibility: saved.visibility,
       scoreVersion: saved.scoreVersion,
       datasetVersionId: saved.datasetVersionId,
+      // Disclosure comes from the SAVED row, so a replayed result reports the
+      // dataset it was actually scored against, not today's active one.
+      datasetLabel: saved.datasetLabel,
+      datasetKind: saved.datasetKind,
       datasetSampleSize: saved.datasetSampleSize,
       datasetConfidence: saved.datasetConfidence,
       calculatedAt: saved.calculatedAt,

@@ -13,18 +13,55 @@
 --   No assumption is made about the type of `id` or about existing constraints.
 --
 -- Legacy-row policy:
---   * provenance is filled with 'legacy_unknown' for every existing row. Nothing
---     already in the table is presented as reviewed, verified, or real.
+--   * `provenance` IS backfilled: ADD COLUMN ... DEFAULT 'legacy_unknown' writes
+--     that value into every existing row. This is deliberate and is the only
+--     data write in this file. Nothing already in the table is presented as
+--     reviewed, verified, or real, and no pre-existing column is modified.
 --   * every other new column is NULLable with no backfill, so no existing row
 --     can violate a new rule.
 --   * CHECK constraints are written as "col IS NULL OR ..." and added NOT VALID,
---     then validated separately, so the migration cannot fail on legacy data.
+--     then VALIDATE'd in the same transaction. VALIDATE DOES scan the table —
+--     it takes a SHARE UPDATE EXCLUSIVE lock, not an ACCESS EXCLUSIVE one, so
+--     reads and writes continue, but on a large table it is not instant. The
+--     two-step exists so a constraint violation surfaces as a clean failure
+--     rather than an aborted ALTER.
+--
+-- COST: one table rewrite is NOT expected. `DEFAULT 'legacy_unknown'` is a
+-- non-volatile constant, so Postgres 11+ stores it as a fast default without
+-- rewriting existing rows.
 --
 -- DO NOT RUN THIS FILE against production until the runbook has been followed.
 -- Requires 20260802_01_scoring_dataset_versions.sql to be applied first.
 -- =============================================================================
 
 BEGIN;
+
+-- -----------------------------------------------------------------------------
+-- 0. PREFLIGHT — abort before touching anything if the visibility guard added in
+--    section 5 would be inert.
+--
+--    A RESTRICTIVE policy has no effect unless RLS is enabled on the table. If
+--    RLS is off, anon can read every row and every column regardless of what
+--    policy we add, and applying the rest of this migration would create a
+--    false sense of protection.
+--
+--    RLS is deliberately NOT enabled automatically: existing policies and the
+--    /rankings query must be reviewed first, and enabling it blind could empty
+--    the public leaderboard. See docs/group-2-migration-runbook.md.
+-- -----------------------------------------------------------------------------
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class
+    WHERE oid = 'public.submissions'::regclass
+      AND relrowsecurity
+  ) THEN
+    RAISE EXCEPTION
+      'ABORT: row level security is DISABLED on public.submissions. The visibility guard in this migration would be inert and private results would be publicly readable. Review the existing policies and the /rankings query, enable RLS deliberately, then re-run. Nothing has been changed.'
+      USING ERRCODE = '0A000';
+  END IF;
+END $$;
 
 -- -----------------------------------------------------------------------------
 -- 1. New columns
@@ -45,6 +82,11 @@ ALTER TABLE public.submissions
   -- Client-supplied retry token. Unique, so a retry can never double-insert.
   ADD COLUMN IF NOT EXISTS idempotency_key text,
 
+  -- Server-computed SHA-256 of the request INPUTS. Proves that a reused
+  -- idempotency key describes the same submission; a mismatch is a conflict,
+  -- not a retry.
+  ADD COLUMN IF NOT EXISTS request_fingerprint text,
+
   -- private | unlisted | public. NULL = legacy row, unclassified.
   ADD COLUMN IF NOT EXISTS visibility text,
 
@@ -61,6 +103,12 @@ ALTER TABLE public.submissions
 
   ADD COLUMN IF NOT EXISTS dataset_sample_size integer,
   ADD COLUMN IF NOT EXISTS dataset_confidence text,
+
+  -- Denormalised dataset disclosure. Stored on the row so a replayed result
+  -- always reports the dataset it was ACTUALLY scored against, even after a
+  -- newer version has been activated.
+  ADD COLUMN IF NOT EXISTS dataset_label text,
+  ADD COLUMN IF NOT EXISTS dataset_kind text,
 
   -- `rank` already holds the tier string for the legacy leaderboard; `tier` is
   -- the explicit, typed field going forward. `archetype` already exists.
@@ -127,6 +175,11 @@ BEGIN
        $chk$original_run_distance IS NULL OR original_run_distance IN ('3mi','5k','10k','half','marathon')$chk$),
       ('submissions_dataset_confidence_valid',
        $chk$dataset_confidence IS NULL OR dataset_confidence IN ('provisional','established','high')$chk$),
+      ('submissions_dataset_kind_valid',
+       $chk$dataset_kind IS NULL OR dataset_kind IN ('observed','legacy_mixed_provisional')$chk$),
+      -- Lowercase hex SHA-256, exactly 64 characters (SHA256_HEX_PATTERN).
+      ('submissions_request_fingerprint_format',
+       $chk$request_fingerprint IS NULL OR request_fingerprint ~ '^[0-9a-f]{64}$'$chk$),
       ('submissions_original_run_seconds_range',
        $chk$original_run_seconds IS NULL OR (original_run_seconds > 0 AND original_run_seconds <= 43200)$chk$),
       ('submissions_canonical_endurance_range',
@@ -137,9 +190,18 @@ BEGIN
        $chk$public_result_id IS NULL OR char_length(public_result_id) BETWEEN 16 AND 64$chk$),
       ('submissions_idempotency_key_len',
        $chk$idempotency_key IS NULL OR char_length(idempotency_key) BETWEEN 8 AND 128$chk$),
-      -- A governed row must carry the full provenance triple together.
+      -- A governed row must carry its full provenance set together. Legacy rows
+      -- (dataset_version_id IS NULL) are exempt, so nothing existing breaks.
       ('submissions_governed_row_complete',
-       $chk$dataset_version_id IS NULL OR (score_version IS NOT NULL AND calculated_at IS NOT NULL AND visibility IS NOT NULL)$chk$)
+       $chk$dataset_version_id IS NULL OR (
+              score_version       IS NOT NULL
+          AND calculated_at       IS NOT NULL
+          AND visibility          IS NOT NULL
+          AND idempotency_key     IS NOT NULL
+          AND request_fingerprint IS NOT NULL
+          AND dataset_kind        IS NOT NULL
+          AND dataset_label       IS NOT NULL
+        )$chk$)
     ) AS t(name, expr)
   LOOP
     IF NOT EXISTS (
@@ -201,5 +263,7 @@ COMMENT ON COLUMN public.submissions.visibility IS
   'NULL = legacy, unclassified (behaves as today). Group 3 backfills these and tightens submissions_hide_non_public to visibility = ''public''.';
 COMMENT ON COLUMN public.submissions.idempotency_key IS
   'Unique retry token. The uniqueness of this index is the idempotency guarantee for POST /api/score.';
+COMMENT ON COLUMN public.submissions.request_fingerprint IS
+  'SHA-256 of buildRequestFingerprintPayload() in lib/scoring/core/hashing.ts. Same key + same fingerprint = retry (returns the original row). Same key + different fingerprint = conflict (rejected, original never overwritten).';
 
 COMMIT;

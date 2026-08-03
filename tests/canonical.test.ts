@@ -6,11 +6,14 @@ import {
   REVIEW_THRESHOLD,
   SCORE_VERSION,
   ScoringError,
+  assertDatasetIntegrity,
   computeCanonicalScore,
   moderationStatusForScore,
   parseCanonicalBenchmark,
   type ScoringDatasetSnapshot,
+  type ScoringErrorCode,
 } from "../lib/scoring/core";
+import { around, makeSnapshot } from "./helpers/dataset";
 
 // bw 90 / bench 110 / squat 150 / deadlift 190 / 5K 25:00
 // -> strengthIndex 66.9, enduranceIndex 59.1 (6900 canonical seconds)
@@ -24,37 +27,25 @@ const BENCHMARK = parseCanonicalBenchmark({
   runSeconds: 1500,
 });
 
-function snapshot(
-  strength: number[],
-  endurance: number[],
-  overrides: Partial<ScoringDatasetSnapshot> = {},
-): ScoringDatasetSnapshot {
-  return {
-    datasetVersionId: "11111111-1111-1111-1111-111111111111",
-    label: "test dataset",
-    scoreVersion: SCORE_VERSION,
-    strengthReference: strength,
-    enduranceReference: endurance,
-    eligibleSampleSize: Math.min(strength.length, endurance.length),
-    datasetHash: "0".repeat(64),
-    confidence: "provisional",
-    ...overrides,
-  };
-}
-
-/** `below` members under the athlete's index, `above` members over it. */
-function around(index: number, below: number, above: number): number[] {
-  return [
-    ...Array.from({ length: below }, () => index - 10),
-    ...Array.from({ length: above }, () => index + 10),
-  ];
+function expectDatasetError(
+  dataset: ScoringDatasetSnapshot,
+  code: ScoringErrorCode,
+) {
+  assert.throws(
+    () => computeCanonicalScore(BENCHMARK, dataset),
+    (err: unknown) => {
+      assert.ok(err instanceof ScoringError, "expected a ScoringError");
+      assert.equal(err.code, code);
+      return true;
+    },
+  );
 }
 
 describe("canonical score", () => {
   it("derives the documented index values", () => {
     const score = computeCanonicalScore(
       BENCHMARK,
-      snapshot(around(66.9, 20, 20), around(59.1, 20, 20)),
+      makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20)),
     );
 
     assert.equal(score.strengthIndex, 66.9);
@@ -66,21 +57,24 @@ describe("canonical score", () => {
     assert.equal(score.moderationStatus, "approved");
   });
 
-  it("carries the dataset identity onto every result", () => {
-    const dataset = snapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
+  it("carries the dataset identity and disclosure onto every result", () => {
+    const dataset = makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
       datasetVersionId: "22222222-2222-2222-2222-222222222222",
-      confidence: "established",
+      label: "2026-08 provisional legacy",
+      kind: "legacy_mixed_provisional",
     });
     const score = computeCanonicalScore(BENCHMARK, dataset);
 
     assert.equal(score.scoreVersion, SCORE_VERSION);
     assert.equal(score.datasetVersionId, dataset.datasetVersionId);
+    assert.equal(score.datasetLabel, "2026-08 provisional legacy");
+    assert.equal(score.datasetKind, "legacy_mixed_provisional");
     assert.equal(score.datasetSampleSize, 40);
-    assert.equal(score.datasetConfidence, "established");
+    assert.equal(score.datasetConfidence, "provisional");
   });
 
   it("is reproducible against the same dataset version", () => {
-    const dataset = snapshot(around(66.9, 27, 13), around(59.1, 31, 9));
+    const dataset = makeSnapshot(around(66.9, 27, 13), around(59.1, 31, 9));
 
     const first = computeCanonicalScore(BENCHMARK, dataset);
     const second = computeCanonicalScore(BENCHMARK, dataset);
@@ -94,7 +88,7 @@ describe("canonical score", () => {
         runDistance: "5k",
         runSeconds: 1500,
       }),
-      snapshot(around(66.9, 27, 13), around(59.1, 31, 9)),
+      makeSnapshot(around(66.9, 27, 13), around(59.1, 31, 9)),
     );
 
     assert.deepEqual(first, second);
@@ -114,7 +108,7 @@ describe("review threshold", () => {
     // strength percentile 100, endurance percentile 80 -> Hybrid Score 90.
     const score = computeCanonicalScore(
       BENCHMARK,
-      snapshot(around(66.9, 40, 0), around(59.1, 32, 8)),
+      makeSnapshot(around(66.9, 40, 0), around(59.1, 32, 8)),
     );
 
     assert.equal(score.strengthPercentile, 100);
@@ -128,7 +122,7 @@ describe("review threshold", () => {
     // strength percentile 100, endurance percentile 78 -> Hybrid Score 89.
     const score = computeCanonicalScore(
       BENCHMARK,
-      snapshot(around(66.9, 50, 0), around(59.1, 39, 11)),
+      makeSnapshot(around(66.9, 50, 0), around(59.1, 39, 11)),
     );
 
     assert.equal(score.endurancePercentile, 78);
@@ -140,48 +134,107 @@ describe("review threshold", () => {
 describe("dataset guards", () => {
   it("raises a typed error below the minimum sample size — no silent fallback", () => {
     const tooSmall = MIN_DATASET_SIZE - 1;
-
-    assert.throws(
-      () =>
-        computeCanonicalScore(
-          BENCHMARK,
-          snapshot(around(66.9, tooSmall, 0), around(59.1, tooSmall, 0)),
-        ),
-      (err: unknown) => {
-        assert.ok(err instanceof ScoringError);
-        assert.equal(err.code, "DATASET_INSUFFICIENT");
-        return true;
-      },
+    expectDatasetError(
+      makeSnapshot(around(66.9, tooSmall, 0), around(59.1, tooSmall, 0)),
+      "DATASET_INSUFFICIENT",
     );
   });
 
   it("refuses a dataset built for a different score version", () => {
-    assert.throws(
-      () =>
-        computeCanonicalScore(
-          BENCHMARK,
-          snapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
-            scoreVersion: "0.0.1-legacy",
-          }),
-        ),
-      (err: unknown) => {
-        assert.ok(err instanceof ScoringError);
-        assert.equal(err.code, "SCORE_VERSION_MISMATCH");
-        return true;
-      },
+    expectDatasetError(
+      makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
+        scoreVersion: "0.0.1-legacy",
+      }),
+      "SCORE_VERSION_MISMATCH",
+    );
+  });
+});
+
+describe("dataset integrity", () => {
+  const HEALTHY = makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20));
+
+  it("accepts a well-formed dataset", () => {
+    assert.doesNotThrow(() => assertDatasetIntegrity(HEALTHY));
+  });
+
+  it("rejects mismatched reference array lengths", () => {
+    expectDatasetError(
+      makeSnapshot(around(66.9, 40, 0), around(59.1, 35, 0), {
+        eligibleSampleSize: 40,
+      }),
+      "DATASET_CORRUPT",
     );
   });
 
-  it("refuses when only one axis meets the minimum", () => {
-    assert.throws(
-      () =>
-        computeCanonicalScore(
-          BENCHMARK,
-          snapshot(around(66.9, 40, 0), around(59.1, 5, 0), {
-            eligibleSampleSize: 40,
-          }),
-        ),
-      ScoringError,
+  it("rejects a sample size that disagrees with the arrays", () => {
+    expectDatasetError(
+      makeSnapshot(around(66.9, 40, 0), around(59.1, 40, 0), {
+        eligibleSampleSize: 39,
+      }),
+      "DATASET_CORRUPT",
+    );
+  });
+
+  it("rejects non-finite and out-of-range reference values", () => {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -0.1, 100.1]) {
+      const strength = around(66.9, 39, 0);
+      strength.push(bad);
+      expectDatasetError(
+        makeSnapshot(strength, around(59.1, 40, 0)),
+        "DATASET_CORRUPT",
+      );
+    }
+  });
+
+  it("never silently filters an invalid reference value", () => {
+    const strength = around(66.9, 39, 0);
+    strength.push(Number.NaN);
+
+    // A filtering implementation would drop the NaN and score happily against
+    // the surviving 39 members. Refusing outright is the only safe answer.
+    expectDatasetError(
+      makeSnapshot(strength, around(59.1, 40, 0)),
+      "DATASET_CORRUPT",
+    );
+  });
+
+  it("rejects a confidence tier that disagrees with the sample size", () => {
+    expectDatasetError(
+      makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
+        confidence: "high",
+      }),
+      "DATASET_CORRUPT",
+    );
+  });
+
+  it("rejects an unknown dataset kind", () => {
+    expectDatasetError(
+      makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
+        kind: "totally_made_up" as ScoringDatasetSnapshot["kind"],
+      }),
+      "DATASET_CORRUPT",
+    );
+  });
+
+  it("rejects a malformed dataset hash", () => {
+    for (const bad of ["", "not-a-hash", "A".repeat(64), "0".repeat(63)]) {
+      expectDatasetError(
+        makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
+          datasetHash: bad,
+        }),
+        "DATASET_CORRUPT",
+      );
+    }
+  });
+
+  it("accepts a well-formed but wrong hash — value checking belongs at load time", () => {
+    // assertDatasetIntegrity validates FORMAT; the repository recomputes VALUE.
+    assert.doesNotThrow(() =>
+      assertDatasetIntegrity(
+        makeSnapshot(around(66.9, 20, 20), around(59.1, 20, 20), {
+          datasetHash: "0".repeat(64),
+        }),
+      ),
     );
   });
 });

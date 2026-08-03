@@ -3,11 +3,29 @@
 // Everything that talks to Postgres lives behind the ScoreRepository interface,
 // so the scoring service can be exercised in tests without a database and so
 // there is exactly one place where result rows are written.
+//
+// FAIL-CLOSED PARSING: nothing read back from the database is patched up with
+// the value we tried to write. If a persisted field is missing, malformed, out
+// of range, or of the wrong type, that is a RepositoryError and a 500 — never a
+// quietly substituted input. The stored row is the only authority on what was
+// stored.
 
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  DATASET_CONFIDENCE_TIERS,
+  DATASET_KINDS,
+  MODERATION_STATUSES,
+  PROVENANCES,
+  REFERENCE_VALUE_BOUNDS,
+  ScoringError,
+  VERIFICATION_STATUSES,
+  VISIBILITIES,
+  isSha256Hex,
+} from "@/lib/scoring/core";
 import type {
   DatasetConfidence,
+  DatasetKind,
   ModerationStatus,
   Provenance,
   RunDistance,
@@ -16,9 +34,11 @@ import type {
   VerificationStatus,
   Visibility,
 } from "@/lib/scoring/core";
+import { computeDatasetHash } from "./hashing";
 
 export type PersistResultInput = {
   idempotencyKey: string;
+  requestFingerprint: string;
   publicResultId: string;
   athleteName: string;
   bodyweightKg: number;
@@ -40,6 +60,8 @@ export type PersistResultInput = {
   verificationStatus: VerificationStatus;
   scoreVersion: string;
   datasetVersionId: string;
+  datasetLabel: string;
+  datasetKind: DatasetKind;
   datasetSampleSize: number;
   datasetConfidence: DatasetConfidence;
   calculatedAt: string;
@@ -66,6 +88,8 @@ export type PersistedResult = {
   verificationStatus: VerificationStatus;
   scoreVersion: string;
   datasetVersionId: string;
+  datasetLabel: string;
+  datasetKind: DatasetKind;
   datasetSampleSize: number;
   datasetConfidence: DatasetConfidence;
 };
@@ -76,7 +100,9 @@ export interface ScoreRepository {
 
   /**
    * Insert exactly one canonical result, or return the one already stored under
-   * the same idempotency key. Atomic and safe under concurrent retries.
+   * the same idempotency key WHEN it describes the same request. Atomic and safe
+   * under concurrent retries. Throws a ScoringError with code
+   * IDEMPOTENCY_CONFLICT if the key was reused for different inputs.
    */
   persistResult(
     input: PersistResultInput,
@@ -85,39 +111,6 @@ export interface ScoreRepository {
   /** Hybrid Scores of every leaderboard-eligible row in one dataset version. */
   loadEligibleScores(datasetVersionId: string): Promise<number[]>;
 }
-
-const RESULT_ID_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"; // Crockford-ish
-
-/** Opaque, non-enumerable, 120 bits of entropy. */
-export function generatePublicResultId(): string {
-  const bytes = randomBytes(24);
-  let out = "res_";
-  for (let i = 0; i < 24; i++) {
-    out += RESULT_ID_ALPHABET[bytes[i] % RESULT_ID_ALPHABET.length];
-  }
-  return out;
-}
-
-function toFiniteNumber(value: unknown, fallback: number): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function toNumberArray(value: unknown): number[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((v) => Number(v)).filter((n) => Number.isFinite(n));
-}
-
-type DatasetRow = {
-  id: string;
-  label: string;
-  score_version: string;
-  strength_reference: unknown;
-  endurance_reference: unknown;
-  eligible_sample_size: unknown;
-  dataset_hash: string;
-  confidence: string;
-};
 
 export class RepositoryError extends Error {
   readonly cause?: unknown;
@@ -129,6 +122,180 @@ export class RepositoryError extends Error {
   }
 }
 
+const RESULT_ID_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"; // Crockford-ish
+const RESULT_ID_PATTERN = /^res_[0-9abcdefghjkmnpqrstvwxyz]{24}$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Postgres error signalling that an idempotency key was reused with a different
+ * request fingerprint. Raised by public.score_result_insert.
+ */
+const IDEMPOTENCY_CONFLICT_SQLSTATE = "P0409";
+const IDEMPOTENCY_CONFLICT_TOKEN = "STRENDEX_IDEMPOTENCY_CONFLICT";
+
+/** Opaque, non-enumerable, 120 bits of entropy. */
+export function generatePublicResultId(): string {
+  const bytes = randomBytes(24);
+  let out = "res_";
+  for (let i = 0; i < 24; i++) {
+    out += RESULT_ID_ALPHABET[bytes[i] % RESULT_ID_ALPHABET.length];
+  }
+  return out;
+}
+
+// --- Strict readers. Each one throws rather than guessing. ---------------------
+
+function fail(field: string, why: string): never {
+  // Field name and reason only: never the offending value.
+  throw new RepositoryError(`Persisted field "${field}" ${why}.`);
+}
+
+function readString(row: Record<string, unknown>, field: string): string {
+  const value = row[field];
+  if (typeof value !== "string" || value.length === 0) {
+    fail(field, "is missing or not a string");
+  }
+  return value;
+}
+
+function readEnum<T extends string>(
+  row: Record<string, unknown>,
+  field: string,
+  allowed: readonly T[],
+): T {
+  const value = readString(row, field);
+  if (!(allowed as readonly string[]).includes(value)) {
+    fail(field, "is not a recognised value");
+  }
+  return value as T;
+}
+
+function readBoundedNumber(
+  row: Record<string, unknown>,
+  field: string,
+  min: number,
+  max: number,
+): number {
+  const raw = row[field];
+  if (typeof raw !== "number" && typeof raw !== "string") {
+    fail(field, "is missing or not numeric");
+  }
+  const value = Number(raw);
+  if (!Number.isFinite(value)) fail(field, "is not a finite number");
+  if (value < min || value > max) fail(field, "is outside its valid range");
+  return value;
+}
+
+function readInteger(
+  row: Record<string, unknown>,
+  field: string,
+  min: number,
+  max: number,
+): number {
+  const value = readBoundedNumber(row, field, min, max);
+  if (!Number.isInteger(value)) fail(field, "is not an integer");
+  return value;
+}
+
+function readTimestamp(row: Record<string, unknown>, field: string): string {
+  const value = readString(row, field);
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) fail(field, "is not a valid timestamp");
+  return new Date(parsed).toISOString();
+}
+
+function readUuid(row: Record<string, unknown>, field: string): string {
+  const value = readString(row, field);
+  if (!UUID_PATTERN.test(value)) fail(field, "is not a valid UUID");
+  return value.toLowerCase();
+}
+
+function readBoolean(row: Record<string, unknown>, field: string): boolean {
+  const value = row[field];
+  if (typeof value !== "boolean") fail(field, "is missing or not a boolean");
+  return value;
+}
+
+/**
+ * A dataset that cannot be read is a corrupt dataset, not a server bug: it maps
+ * to DATASET_CORRUPT / 503 so the caller learns scoring is unavailable rather
+ * than getting an opaque 500.
+ */
+function datasetCorrupt(detail: string): never {
+  throw new ScoringError(
+    "DATASET_CORRUPT",
+    `The active scoring dataset failed its integrity check (${detail}).`,
+    "dataset",
+  );
+}
+
+function readReferenceArray(value: unknown, field: string): number[] {
+  if (!Array.isArray(value)) datasetCorrupt(`${field} is not an array`);
+
+  // No filtering: a single bad member invalidates the whole population.
+  return value.map((raw) => {
+    const n =
+      typeof raw === "number" || typeof raw === "string" ? Number(raw) : Number.NaN;
+    if (
+      !Number.isFinite(n) ||
+      n < REFERENCE_VALUE_BOUNDS.min ||
+      n > REFERENCE_VALUE_BOUNDS.max
+    ) {
+      datasetCorrupt(`${field} contains an invalid value`);
+    }
+    return n;
+  });
+}
+
+function parsePersistedResult(row: Record<string, unknown>): PersistedResult {
+  const publicResultId = readString(row, "public_result_id");
+  if (!RESULT_ID_PATTERN.test(publicResultId)) {
+    fail("public_result_id", "does not match the expected opaque id format");
+  }
+
+  return {
+    publicResultId,
+    calculatedAt: readTimestamp(row, "calculated_at"),
+    hybridScore: readBoundedNumber(row, "hq_score", 0, 100),
+    strengthIndex: readBoundedNumber(row, "strength_index", 0, 100),
+    enduranceIndex: readBoundedNumber(row, "endurance_index", 0, 100),
+    strengthPercentile: readBoundedNumber(row, "strength_percentile", 0, 100),
+    endurancePercentile: readBoundedNumber(row, "endurance_percentile", 0, 100),
+    tier: readString(row, "tier"),
+    archetype: readString(row, "archetype"),
+    moderationStatus: readEnum(row, "status", MODERATION_STATUSES),
+    visibility: readEnum(row, "visibility", VISIBILITIES),
+    provenance: readEnum(row, "provenance", PROVENANCES),
+    verificationStatus: readEnum(
+      row,
+      "verification_status",
+      VERIFICATION_STATUSES,
+    ),
+    scoreVersion: readString(row, "score_version"),
+    datasetVersionId: readUuid(row, "dataset_version_id"),
+    datasetLabel: readString(row, "dataset_label"),
+    datasetKind: readEnum(row, "dataset_kind", DATASET_KINDS),
+    datasetSampleSize: readInteger(row, "dataset_sample_size", 0, 100_000_000),
+    datasetConfidence: readEnum(
+      row,
+      "dataset_confidence",
+      DATASET_CONFIDENCE_TIERS,
+    ),
+  };
+}
+
+function isIdempotencyConflict(error: {
+  code?: string | null;
+  message?: string | null;
+}): boolean {
+  return (
+    error.code === IDEMPOTENCY_CONFLICT_SQLSTATE ||
+    (typeof error.message === "string" &&
+      error.message.includes(IDEMPOTENCY_CONFLICT_TOKEN))
+  );
+}
+
 export function createSupabaseScoreRepository(
   supabase: SupabaseClient,
 ): ScoreRepository {
@@ -137,7 +304,7 @@ export function createSupabaseScoreRepository(
       const { data, error } = await supabase
         .from("scoring_dataset_versions")
         .select(
-          "id,label,score_version,strength_reference,endurance_reference,eligible_sample_size,dataset_hash,confidence",
+          "id,label,kind,score_version,strength_reference,endurance_reference,eligible_sample_size,dataset_hash,confidence",
         )
         .eq("score_version", scoreVersion)
         .eq("lifecycle", "active")
@@ -150,18 +317,61 @@ export function createSupabaseScoreRepository(
       }
       if (!data) return null;
 
-      const row = data as DatasetRow;
+      const row = data as Record<string, unknown>;
 
-      const snapshot: ScoringDatasetSnapshot = {
-        datasetVersionId: row.id,
-        label: row.label,
-        scoreVersion: row.score_version,
-        strengthReference: toNumberArray(row.strength_reference),
-        enduranceReference: toNumberArray(row.endurance_reference),
-        eligibleSampleSize: toFiniteNumber(row.eligible_sample_size, 0),
-        datasetHash: row.dataset_hash,
-        confidence: row.confidence as DatasetConfidence,
-      };
+      // Every structural failure below is a corrupt dataset (503), not an
+      // internal error (500) — including a row that simply cannot be read.
+      let snapshot: ScoringDatasetSnapshot;
+      try {
+        const datasetHash = readString(row, "dataset_hash");
+        if (!isSha256Hex(datasetHash)) {
+          datasetCorrupt("malformed dataset hash");
+        }
+
+        snapshot = {
+          datasetVersionId: readUuid(row, "id"),
+          label: readString(row, "label"),
+          kind: readEnum(row, "kind", DATASET_KINDS),
+          scoreVersion: readString(row, "score_version"),
+          strengthReference: readReferenceArray(
+            row.strength_reference,
+            "strength_reference",
+          ),
+          enduranceReference: readReferenceArray(
+            row.endurance_reference,
+            "endurance_reference",
+          ),
+          eligibleSampleSize: readInteger(
+            row,
+            "eligible_sample_size",
+            0,
+            100_000_000,
+          ),
+          datasetHash,
+          confidence: readEnum(row, "confidence", DATASET_CONFIDENCE_TIERS),
+        };
+      } catch (err) {
+        if (err instanceof ScoringError) throw err;
+        datasetCorrupt("malformed dataset row");
+      }
+
+      // Content verification: proves the stored population has not drifted
+      // since it was frozen. Structural checks run in assertDatasetIntegrity.
+      const expected = computeDatasetHash({
+        scoreVersion: snapshot.scoreVersion,
+        datasetKind: snapshot.kind,
+        eligibleSampleSize: snapshot.eligibleSampleSize,
+        strengthReference: snapshot.strengthReference,
+        enduranceReference: snapshot.enduranceReference,
+      });
+
+      if (expected !== snapshot.datasetHash) {
+        throw new ScoringError(
+          "DATASET_CORRUPT",
+          "The active scoring dataset failed its integrity check (hash mismatch).",
+          "dataset",
+        );
+      }
 
       return snapshot;
     },
@@ -170,6 +380,7 @@ export function createSupabaseScoreRepository(
       const { data, error } = await supabase.rpc("score_result_insert", {
         p_payload: {
           idempotency_key: input.idempotencyKey,
+          request_fingerprint: input.requestFingerprint,
           public_result_id: input.publicResultId,
           athlete_name: input.athleteName,
           bodyweight: input.bodyweightKg,
@@ -191,6 +402,8 @@ export function createSupabaseScoreRepository(
           verification_status: input.verificationStatus,
           score_version: input.scoreVersion,
           dataset_version_id: input.datasetVersionId,
+          dataset_label: input.datasetLabel,
+          dataset_kind: input.datasetKind,
           dataset_sample_size: input.datasetSampleSize,
           dataset_confidence: input.datasetConfidence,
           calculated_at: input.calculatedAt,
@@ -203,50 +416,27 @@ export function createSupabaseScoreRepository(
       });
 
       if (error) {
+        if (isIdempotencyConflict(error)) {
+          throw new ScoringError(
+            "IDEMPOTENCY_CONFLICT",
+            "This idempotency key was already used for a different submission.",
+            "idempotency_key",
+          );
+        }
         throw new RepositoryError("Failed to persist result.", error);
       }
 
-      const row = (data ?? null) as Record<string, unknown> | null;
-      if (!row || typeof row.public_result_id !== "string") {
+      if (typeof data !== "object" || data === null || Array.isArray(data)) {
         throw new RepositoryError("Persisted result was not returned.");
       }
 
-      // The saved row is authoritative. If the key already existed, what comes
-      // back is the ORIGINAL result, not the one we just tried to write.
-      const result: PersistedResult = {
-        publicResultId: row.public_result_id,
-        calculatedAt: String(row.calculated_at ?? input.calculatedAt),
-        hybridScore: toFiniteNumber(row.hq_score, input.hybridScore),
-        strengthIndex: toFiniteNumber(row.strength_index, input.strengthIndex),
-        enduranceIndex: toFiniteNumber(row.endurance_index, input.enduranceIndex),
-        strengthPercentile: toFiniteNumber(
-          row.strength_percentile,
-          input.strengthPercentile,
-        ),
-        endurancePercentile: toFiniteNumber(
-          row.endurance_percentile,
-          input.endurancePercentile,
-        ),
-        tier: String(row.tier ?? input.tier),
-        archetype: String(row.archetype ?? input.archetype),
-        moderationStatus: (row.status ?? input.moderationStatus) as ModerationStatus,
-        visibility: (row.visibility ?? input.visibility) as Visibility,
-        provenance: (row.provenance ?? input.provenance) as Provenance,
-        verificationStatus: (row.verification_status ??
-          input.verificationStatus) as VerificationStatus,
-        scoreVersion: String(row.score_version ?? input.scoreVersion),
-        datasetVersionId: String(row.dataset_version_id ?? input.datasetVersionId),
-        datasetSampleSize: toFiniteNumber(
-          row.dataset_sample_size,
-          input.datasetSampleSize,
-        ),
-        datasetConfidence: (row.dataset_confidence ??
-          input.datasetConfidence) as DatasetConfidence,
-      };
+      const row = data as Record<string, unknown>;
 
+      // The saved row is authoritative. On a replay this is the ORIGINAL
+      // result, not the one we just tried to write.
       return {
-        result,
-        replayed: result.publicResultId !== input.publicResultId,
+        result: parsePersistedResult(row),
+        replayed: readBoolean(row, "replayed"),
       };
     },
 

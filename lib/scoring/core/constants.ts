@@ -42,6 +42,25 @@ export const DATASET_CONFIDENCE_THRESHOLDS = {
   high: 1000,
 } as const;
 
+/**
+ * What a reference population is actually made of. This is disclosure, not
+ * decoration: a score measured against a legacy_mixed_provisional dataset is
+ * measured against rows whose real-vs-simulated origin is unknown, and the
+ * product must say so.
+ *
+ *   observed                  — governed, complete, approved, public v2 results.
+ *   legacy_mixed_provisional  — pre-governance rows of unknown origin. The
+ *                               transitional bootstrap only; never presented as
+ *                               verified.
+ */
+export const DATASET_KINDS = ["observed", "legacy_mixed_provisional"] as const;
+
+/** Reference index values are percentages of the index scale. */
+export const REFERENCE_VALUE_BOUNDS = { min: 0, max: 100 } as const;
+
+/** Lowercase hex SHA-256, exactly 64 characters. Used for hashes and fingerprints. */
+export const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
+
 /** Endurance index anchors, in canonical (half-marathon-equivalent) seconds. */
 export const ENDURANCE_INDEX_MIN_SEC = 4200; // 1:10:00 -> index 100
 export const ENDURANCE_INDEX_MAX_SEC = 10800; // 3:00:00 -> index 0

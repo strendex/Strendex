@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS public.scoring_dataset_versions (
   -- SCORE_VERSION). A dataset is only usable by a matching score version.
   score_version         text        NOT NULL,
 
+  -- What the population is made of. Disclosure, not decoration:
+  --   observed                 = governed, complete, approved, public v2 results
+  --   legacy_mixed_provisional = pre-governance rows of unknown real/simulated
+  --                              origin; the transitional bootstrap only.
+  kind                  text        NOT NULL DEFAULT 'observed',
+
   lifecycle             text        NOT NULL DEFAULT 'draft',
   frozen                boolean     NOT NULL DEFAULT false,
 
@@ -50,19 +56,50 @@ CREATE TABLE IF NOT EXISTS public.scoring_dataset_versions (
 
   CONSTRAINT scoring_dataset_versions_label_len
     CHECK (char_length(label) BETWEEN 3 AND 120),
+  CONSTRAINT scoring_dataset_versions_kind_valid
+    CHECK (kind IN ('observed', 'legacy_mixed_provisional')),
   CONSTRAINT scoring_dataset_versions_lifecycle_valid
     CHECK (lifecycle IN ('draft', 'active', 'retired')),
   CONSTRAINT scoring_dataset_versions_confidence_valid
     CHECK (confidence IN ('provisional', 'established', 'high')),
+
+  -- Confidence is derived, not chosen. It must agree with the sample size, or
+  -- a dataset could claim more authority than it has.
+  -- Mirrors datasetConfidence() in lib/scoring/core/formulas.ts.
+  CONSTRAINT scoring_dataset_versions_confidence_consistent
+    CHECK (
+      confidence = CASE
+        WHEN eligible_sample_size >= 1000 THEN 'high'
+        WHEN eligible_sample_size >= 250  THEN 'established'
+        ELSE 'provisional'
+      END
+    ),
+
   CONSTRAINT scoring_dataset_versions_sample_size_min
     CHECK (eligible_sample_size >= 30),
-  CONSTRAINT scoring_dataset_versions_hash_len
-    CHECK (char_length(dataset_hash) BETWEEN 16 AND 128),
-  CONSTRAINT scoring_dataset_versions_references_sized
+
+  -- Lowercase hex SHA-256, exactly 64 characters (SHA256_HEX_PATTERN).
+  CONSTRAINT scoring_dataset_versions_hash_format
+    CHECK (dataset_hash ~ '^[0-9a-f]{64}$'),
+
+  -- Both axes must describe the same population, and that population must be
+  -- exactly eligible_sample_size athletes.
+  CONSTRAINT scoring_dataset_versions_references_aligned
     CHECK (
-      array_length(strength_reference, 1) >= 30
-      AND array_length(endurance_reference, 1) >= 30
+      array_length(strength_reference, 1) = array_length(endurance_reference, 1)
+      AND array_length(strength_reference, 1) = eligible_sample_size
     ),
+
+  -- Every reference value must be a real index value. NULL members are
+  -- rejected explicitly because `x <= ALL(array)` is NULL-tolerant.
+  CONSTRAINT scoring_dataset_versions_references_valid
+    CHECK (
+      array_position(strength_reference, NULL) IS NULL
+      AND array_position(endurance_reference, NULL) IS NULL
+      AND 0 <= ALL (strength_reference) AND 100 >= ALL (strength_reference)
+      AND 0 <= ALL (endurance_reference) AND 100 >= ALL (endurance_reference)
+    ),
+
   CONSTRAINT scoring_dataset_versions_activated_when_active
     CHECK (lifecycle <> 'active' OR activated_at IS NOT NULL),
   CONSTRAINT scoring_dataset_versions_frozen_when_active
@@ -102,6 +139,7 @@ BEGIN
   IF OLD.frozen THEN
     IF NEW.id                  IS DISTINCT FROM OLD.id
        OR NEW.label            IS DISTINCT FROM OLD.label
+       OR NEW.kind             IS DISTINCT FROM OLD.kind
        OR NEW.score_version    IS DISTINCT FROM OLD.score_version
        OR NEW.strength_reference  IS DISTINCT FROM OLD.strength_reference
        OR NEW.endurance_reference IS DISTINCT FROM OLD.endurance_reference
@@ -159,6 +197,10 @@ GRANT ALL ON TABLE public.scoring_dataset_versions TO service_role;
 
 COMMENT ON TABLE public.scoring_dataset_versions IS
   'Immutable, server-owned reference populations. One active version per score_version. Never readable or writable by public clients.';
+COMMENT ON COLUMN public.scoring_dataset_versions.kind IS
+  'observed = governed approved public v2 results. legacy_mixed_provisional = pre-governance rows of unknown real/simulated origin; transitional bootstrap only, must be disclosed to users, never presented as verified.';
+COMMENT ON COLUMN public.scoring_dataset_versions.dataset_hash IS
+  'SHA-256 of buildDatasetHashPayload() in lib/scoring/core/hashing.ts: score version, dataset kind, eligible sample size, and both reference arrays sorted ascending. Re-verified on every load.';
 
 COMMIT;
 

@@ -283,6 +283,10 @@ export function parseCanonicalBenchmark(input: {
 
   return {
     unitSystem,
+    originalBodyweight: bodyweight,
+    originalBench: bench,
+    originalSquat: squat,
+    originalDeadlift: deadlift,
     bodyweightKg,
     benchKg,
     squatKg,

@@ -32,11 +32,17 @@ const MAX_BODY_BYTES = 4096;
 const MAX_PER_MINUTE = 5;
 const MAX_PER_DAY = 25;
 
-/** Dataset problems are transient server state, everything else is user error. */
+/** Dataset problems are server state, not something the caller can fix. */
 const SERVICE_UNAVAILABLE_CODES: ReadonlySet<ScoringErrorCode> = new Set([
   "DATASET_UNAVAILABLE",
   "DATASET_INSUFFICIENT",
+  "DATASET_CORRUPT",
   "SCORE_VERSION_MISMATCH",
+]);
+
+/** Reusing one idempotency key for two different submissions. */
+const CONFLICT_CODES: ReadonlySet<ScoringErrorCode> = new Set([
+  "IDEMPOTENCY_CONFLICT",
 ]);
 
 function errorResponse(
@@ -207,12 +213,20 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     if (error instanceof ScoringError) {
       const unavailable = SERVICE_UNAVAILABLE_CODES.has(error.code);
-      const status = unavailable ? 503 : 400;
+      const conflict = CONFLICT_CODES.has(error.code);
+      const status = unavailable ? 503 : conflict ? 409 : 400;
 
       if (unavailable) {
         logError("scoring unavailable", {
           route: ROUTE,
           event: "dataset_unavailable",
+          code: error.code,
+          status,
+        });
+      } else if (conflict) {
+        logWarn("idempotency conflict", {
+          route: ROUTE,
+          event: "idempotency_conflict",
           code: error.code,
           status,
         });

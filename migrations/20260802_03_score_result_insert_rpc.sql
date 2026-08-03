@@ -5,10 +5,16 @@
 -- ADDITIVE ONLY. Creates one function. Nothing is dropped or rewritten.
 --
 -- Why an RPC: POST /api/score must "insert this result, or give me back the one
--- already stored under this idempotency key" as a single atomic database
--- operation. Two separate HTTP round trips (SELECT then INSERT) are NOT atomic
--- and would race under concurrent retries. INSERT ... ON CONFLICT DO NOTHING
--- plus a bounded re-read inside one function is.
+-- already stored under this idempotency key IF it describes the same request"
+-- as a single atomic database operation. Two separate HTTP round trips (SELECT
+-- then INSERT) are NOT atomic and would race under concurrent retries.
+-- INSERT ... ON CONFLICT DO NOTHING plus a bounded re-read inside one function
+-- is.
+--
+-- Idempotency contract:
+--   same key + same request_fingerprint      -> returns the ORIGINAL row, replayed = true
+--   same key + different request_fingerprint -> raises P0409, nothing is written
+--   The stored row is NEVER updated or overwritten by this function.
 --
 -- Security: SECURITY DEFINER, pinned search_path, EXECUTE granted to
 -- service_role only. Public clients (anon, authenticated) cannot call it.
@@ -29,12 +35,19 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_key     text := p_payload->>'idempotency_key';
-  v_row     public.submissions%ROWTYPE;
-  v_attempt integer := 0;
+  v_key         text := p_payload->>'idempotency_key';
+  v_fingerprint text := p_payload->>'request_fingerprint';
+  v_row         public.submissions%ROWTYPE;
+  v_attempt     integer := 0;
+  v_replayed    boolean := false;
 BEGIN
   IF v_key IS NULL OR char_length(v_key) < 8 THEN
     RAISE EXCEPTION 'idempotency_key is required' USING ERRCODE = '22023';
+  END IF;
+
+  IF v_fingerprint IS NULL OR v_fingerprint !~ '^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'request_fingerprint must be 64 lowercase hex characters'
+      USING ERRCODE = '22023';
   END IF;
 
   -- Bounded loop: under READ COMMITTED a concurrent, not-yet-committed insert
@@ -74,7 +87,10 @@ BEGIN
       original_run_seconds,
       canonical_endurance_seconds,
       dataset_sample_size,
-      dataset_confidence
+      dataset_confidence,
+      dataset_label,
+      dataset_kind,
+      request_fingerprint
     )
     VALUES (
       p_payload->>'athlete_name',
@@ -107,7 +123,10 @@ BEGIN
       (p_payload->>'original_run_seconds')::integer,
       (p_payload->>'canonical_endurance_seconds')::integer,
       (p_payload->>'dataset_sample_size')::integer,
-      p_payload->>'dataset_confidence'
+      p_payload->>'dataset_confidence',
+      p_payload->>'dataset_label',
+      p_payload->>'dataset_kind',
+      v_fingerprint
     )
     ON CONFLICT (idempotency_key) DO NOTHING
     RETURNING * INTO v_row;
@@ -116,11 +135,22 @@ BEGIN
       EXIT;
     END IF;
 
+    -- The key already exists (or a concurrent insert has not committed yet).
     SELECT * INTO v_row
     FROM public.submissions
     WHERE idempotency_key = v_key;
 
     IF FOUND THEN
+      -- A retry must describe the SAME submission. If it does not, the caller
+      -- reused someone's key for different inputs: refuse, and leave the stored
+      -- row exactly as it is. No UPDATE happens anywhere in this function.
+      IF v_row.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+        RAISE EXCEPTION
+          'STRENDEX_IDEMPOTENCY_CONFLICT: idempotency key reused with different request inputs'
+          USING ERRCODE = 'P0409';
+      END IF;
+
+      v_replayed := true;
       EXIT;
     END IF;
 
@@ -133,6 +163,7 @@ BEGIN
   END LOOP;
 
   RETURN jsonb_build_object(
+    'replayed',                    v_replayed,
     'public_result_id',            v_row.public_result_id,
     'created_at',                  v_row.created_at,
     'calculated_at',               v_row.calculated_at,
@@ -152,6 +183,8 @@ BEGIN
     'dataset_version_id',          v_row.dataset_version_id,
     'dataset_sample_size',         v_row.dataset_sample_size,
     'dataset_confidence',          v_row.dataset_confidence,
+    'dataset_label',               v_row.dataset_label,
+    'dataset_kind',                v_row.dataset_kind,
     'canonical_endurance_seconds', v_row.canonical_endurance_seconds
   );
 END;

@@ -5,6 +5,7 @@
 import type {
   ARCHETYPES,
   DATASET_CONFIDENCE_TIERS,
+  DATASET_KINDS,
   MODERATION_STATUSES,
   PROVENANCES,
   TIERS,
@@ -23,6 +24,7 @@ export type Provenance = (typeof PROVENANCES)[number];
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 export type ModerationStatus = (typeof MODERATION_STATUSES)[number];
 export type DatasetConfidence = (typeof DATASET_CONFIDENCE_TIERS)[number];
+export type DatasetKind = (typeof DATASET_KINDS)[number];
 
 /** Raw benchmark as the athlete entered it, before any conversion. */
 export type RawBenchmarkInput = {
@@ -38,6 +40,11 @@ export type RawBenchmarkInput = {
 /** Fully converted, validated, leaderboard-eligible benchmark. */
 export type CanonicalBenchmark = {
   unitSystem: UnitSystem;
+  /** Pre-conversion values exactly as submitted, in `unitSystem`. */
+  originalBodyweight: number;
+  originalBench: number;
+  originalSquat: number;
+  originalDeadlift: number;
   bodyweightKg: number;
   benchKg: number;
   squatKg: number;
@@ -52,6 +59,7 @@ export type CanonicalBenchmark = {
 export type ScoringDatasetSnapshot = {
   datasetVersionId: string;
   label: string;
+  kind: DatasetKind;
   scoreVersion: string;
   strengthReference: number[];
   enduranceReference: number[];
@@ -63,6 +71,8 @@ export type ScoringDatasetSnapshot = {
 export type CanonicalScore = {
   scoreVersion: string;
   datasetVersionId: string;
+  datasetLabel: string;
+  datasetKind: DatasetKind;
   datasetSampleSize: number;
   datasetConfidence: DatasetConfidence;
   strengthIndex: number;

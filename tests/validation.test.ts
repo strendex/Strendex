@@ -63,7 +63,7 @@ describe("complete benchmark requirement", () => {
 });
 
 describe("LB / KG equivalence", () => {
-  it("produces an identical canonical benchmark from either unit system", () => {
+  it("produces identical canonical values from either unit system", () => {
     const lb = parseCanonicalBenchmark({
       unitSystem: "lb",
       bodyweight: 200,
@@ -84,10 +84,34 @@ describe("LB / KG equivalence", () => {
       runSeconds: 1500,
     });
 
-    assert.deepEqual(
-      { ...lb, unitSystem: null },
-      { ...kg, unitSystem: null },
-    );
+    // Everything downstream of conversion must be bit-identical…
+    assert.equal(lb.bodyweightKg, kg.bodyweightKg);
+    assert.equal(lb.benchKg, kg.benchKg);
+    assert.equal(lb.squatKg, kg.squatKg);
+    assert.equal(lb.deadliftKg, kg.deadliftKg);
+    assert.equal(lb.canonicalEnduranceSeconds, kg.canonicalEnduranceSeconds);
+    assert.equal(lb.runDistance, kg.runDistance);
+    assert.equal(lb.runSeconds, kg.runSeconds);
+  });
+
+  it("preserves the original pre-conversion inputs verbatim", () => {
+    const lb = parseCanonicalBenchmark({
+      unitSystem: "lb",
+      bodyweight: 200,
+      bench: 225,
+      squat: 315,
+      deadlift: 405,
+      runDistance: "5k",
+      runSeconds: 1500,
+    });
+
+    // The request fingerprint is built from these, so they must be exactly what
+    // was submitted — not the converted kilograms.
+    assert.equal(lb.originalBodyweight, 200);
+    assert.equal(lb.originalBench, 225);
+    assert.equal(lb.originalSquat, 315);
+    assert.equal(lb.originalDeadlift, 405);
+    assert.notEqual(lb.originalBodyweight, lb.bodyweightKg);
   });
 
   it("records the original unit system for provenance", () => {

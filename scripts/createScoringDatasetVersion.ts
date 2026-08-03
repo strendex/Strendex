@@ -1,5 +1,11 @@
 /**
- * Create a DRAFT immutable scoring dataset version.
+ * Create a DRAFT `observed` scoring dataset version.
+ *
+ * "Observed" means the reference population is built only from governed v2
+ * results: approved, public, complete, and self-reported or better. This is the
+ * steady-state builder. It cannot bootstrap the very first dataset, because no
+ * governed results exist until scoring works — for that transitional case use
+ * scripts/bootstrapLegacyDatasetVersion.ts.
  *
  * This script is administrative and interactive-by-intent. It is NOT wired into
  * `npm run build`, `npm run dev`, or any deployment step, and it must never be.
@@ -7,11 +13,10 @@
  * What it does:
  *   - reads eligible `submissions` rows (read-only);
  *   - excludes simulated, legacy-unknown, rejected, pending, private, unlisted,
- *     incomplete, and corrupt records by default;
- *   - computes a deterministic dataset hash;
+ *     incomplete, and corrupt records;
+ *   - computes the shared deterministic dataset hash;
  *   - prints a source-count / sample summary;
- *   - with an explicit label AND explicit confirmation, inserts ONE draft row
- *     into scoring_dataset_versions.
+ *   - with an explicit label AND explicit confirmation, inserts ONE draft row.
  *
  * What it will never do:
  *   - delete, update, or reclassify a submission;
@@ -28,21 +33,21 @@
  *     --label "2026-08 baseline" --commit
  */
 
-import { createHash } from "node:crypto";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local", quiet: true });
 
 import { createClient } from "@supabase/supabase-js";
+import { SCORE_VERSION, VALIDATION_BOUNDS } from "../lib/scoring/core";
 import {
-  MIN_DATASET_SIZE,
-  SCORE_VERSION,
-  VALIDATION_BOUNDS,
-  datasetConfidence,
-} from "../lib/scoring/core";
+  DatasetDraftError,
+  insertDraft,
+  prepareDraft,
+  printDraftSummary,
+} from "./lib/datasetDraft";
 
 const CONFIRM_TOKEN = "yes";
 
-/** Provenance values allowed into a reference population. */
+/** Provenance values allowed into an observed reference population. */
 const ELIGIBLE_PROVENANCE = ["self_reported", "reviewed", "verified"] as const;
 
 type Row = {
@@ -70,26 +75,8 @@ function hasFlag(name: string): boolean {
   return process.argv.includes(`--${name}`);
 }
 
-function finite(n: unknown): n is number {
-  return typeof n === "number" && Number.isFinite(n);
-}
-
-/**
- * Deterministic hash over exactly what makes a dataset a dataset: the scoring
- * version and the two sorted reference distributions. Two runs over the same
- * eligible population always produce the same hash.
- */
-function datasetHash(
-  scoreVersion: string,
-  strength: number[],
-  endurance: number[],
-): string {
-  const canonical = JSON.stringify({
-    scoreVersion,
-    strength: [...strength].sort((a, b) => a - b),
-    endurance: [...endurance].sort((a, b) => a - b),
-  });
-  return createHash("sha256").update(canonical).digest("hex").slice(0, 64);
+function isValidIndex(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n > 0 && n <= 100;
 }
 
 async function main() {
@@ -130,37 +117,37 @@ async function main() {
 
   const rows = (data ?? []) as Row[];
 
-  const excluded = {
-    notApproved: 0,
-    provenanceExcluded: 0,
-    notPublic: 0,
-    wrongScoreVersion: 0,
+  const excluded: Record<string, number> = {
+    "not approved": 0,
+    provenance: 0,
+    "not public": 0,
+    "score version": 0,
     incomplete: 0,
     corrupt: 0,
   };
   const sourceCounts: Record<string, number> = {};
 
-  const strength: number[] = [];
-  const endurance: number[] = [];
+  const strengthReference: number[] = [];
+  const enduranceReference: number[] = [];
 
   for (const row of rows) {
     if (row.status !== "approved") {
-      excluded.notApproved++;
+      excluded["not approved"]++;
       continue;
     }
     if (
       !row.provenance ||
       !(ELIGIBLE_PROVENANCE as readonly string[]).includes(row.provenance)
     ) {
-      excluded.provenanceExcluded++;
+      excluded.provenance++;
       continue;
     }
     if (row.visibility !== "public") {
-      excluded.notPublic++;
+      excluded["not public"]++;
       continue;
     }
     if (row.score_version !== SCORE_VERSION) {
-      excluded.wrongScoreVersion++;
+      excluded["score version"]++;
       continue;
     }
     if (
@@ -179,13 +166,9 @@ async function main() {
     const secs = Number(row.canonical_endurance_seconds);
 
     if (
-      !finite(s) ||
-      !finite(e) ||
-      s <= 0 ||
-      s > 100 ||
-      e <= 0 ||
-      e > 100 ||
-      !finite(secs) ||
+      !isValidIndex(s) ||
+      !isValidIndex(e) ||
+      !Number.isFinite(secs) ||
       secs < VALIDATION_BOUNDS.canonicalEnduranceSeconds.min ||
       secs > VALIDATION_BOUNDS.canonicalEnduranceSeconds.max
     ) {
@@ -194,46 +177,23 @@ async function main() {
     }
 
     sourceCounts[row.provenance] = (sourceCounts[row.provenance] ?? 0) + 1;
-    strength.push(s);
-    endurance.push(e);
+    strengthReference.push(s);
+    enduranceReference.push(e);
   }
 
-  const sampleSize = Math.min(strength.length, endurance.length);
-  const hash = datasetHash(SCORE_VERSION, strength, endurance);
-  const confidence = datasetConfidence(sampleSize);
-
-  console.log("");
-  console.log("Scoring dataset candidate");
-  console.log("─────────────────────────────────────────────");
-  console.log(`  label            ${label}`);
-  console.log(`  score version    ${SCORE_VERSION}`);
-  console.log(`  rows scanned     ${rows.length}`);
-  console.log(`  eligible sample  ${sampleSize}`);
-  console.log(`  confidence       ${confidence}`);
-  console.log(`  dataset hash     ${hash.slice(0, 16)}…`);
-  console.log("");
-  console.log("  eligible by provenance");
   for (const p of ELIGIBLE_PROVENANCE) {
-    console.log(`    ${p.padEnd(16)} ${sourceCounts[p] ?? 0}`);
+    sourceCounts[p] = sourceCounts[p] ?? 0;
   }
-  console.log("");
-  console.log("  excluded");
-  console.log(`    not approved     ${excluded.notApproved}`);
-  console.log(
-    `    provenance       ${excluded.provenanceExcluded}  (simulated / legacy_unknown / unset)`,
-  );
-  console.log(`    not public       ${excluded.notPublic}`);
-  console.log(`    score version    ${excluded.wrongScoreVersion}`);
-  console.log(`    incomplete       ${excluded.incomplete}`);
-  console.log(`    corrupt          ${excluded.corrupt}`);
-  console.log("");
 
-  if (sampleSize < MIN_DATASET_SIZE) {
-    console.error(
-      `Refusing: ${sampleSize} eligible records is below the minimum of ${MIN_DATASET_SIZE}.`,
-    );
-    process.exit(1);
-  }
+  const draft = prepareDraft({
+    label,
+    kind: "observed",
+    strengthReference,
+    enduranceReference,
+    sourceCounts,
+  });
+
+  printDraftSummary(draft, rows.length, excluded);
 
   if (!commit) {
     console.log("Inspection only. Re-run with --commit to create the draft.");
@@ -247,35 +207,19 @@ async function main() {
     process.exit(1);
   }
 
-  const { data: inserted, error: insertError } = await supabase
-    .from("scoring_dataset_versions")
-    .insert({
-      label,
-      score_version: SCORE_VERSION,
-      lifecycle: "draft",
-      frozen: false,
-      strength_reference: strength,
-      endurance_reference: endurance,
-      eligible_sample_size: sampleSize,
-      source_counts: sourceCounts,
-      dataset_hash: hash,
-      confidence,
-    })
-    .select("id,label,lifecycle")
-    .single();
+  const id = await insertDraft(supabase, draft);
 
-  if (insertError) {
-    console.error("Could not create draft dataset:", insertError.message);
-    process.exit(1);
-  }
-
-  console.log(`Created DRAFT dataset version ${inserted?.id}`);
+  console.log(`Created DRAFT observed dataset version ${id}`);
   console.log("");
   console.log("It is NOT active. Activation is a separate, reviewed step —");
   console.log("see docs/group-2-migration-runbook.md, section 5.");
 }
 
 main().catch((e: unknown) => {
+  if (e instanceof DatasetDraftError) {
+    console.error(`Refusing: ${e.message}`);
+    process.exit(1);
+  }
   console.error(e instanceof Error ? e.message : "Unknown error");
   process.exit(1);
 });

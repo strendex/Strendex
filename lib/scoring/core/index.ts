@@ -7,6 +7,7 @@ export * from "./constants";
 export * from "./errors";
 export * from "./types";
 export * from "./units";
+export * from "./hashing";
 export * from "./formulas";
 export * from "./validation";
 export * from "./canonical";
