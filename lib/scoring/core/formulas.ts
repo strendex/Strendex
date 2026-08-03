@@ -1,18 +1,28 @@
-// Canonical scoring — all weights in kg, endurance in half-marathon-equivalent seconds.
+// Canonical scoring formulas.
+//
+// PURE MODULE — no database, HTTP, environment, or React dependencies.
+// These are the ONLY implementations of the strength index, endurance index,
+// percentile, Hybrid Score, tier, archetype, and competition rank. Both the
+// legacy v1 surface (lib/scoring) and the canonical v2 pipeline call into here,
+// so the two can never drift.
 
-export const SCORE_WEIGHTS = {
-  strength: 0.5,
-  endurance: 0.5,
-} as const;
-
-const ENDURANCE_INDEX_MIN_SEC = 4200; // 1:10:00
-const ENDURANCE_INDEX_MAX_SEC = 10800; // 3:00:00
-const MIN_ENDURANCE_SAMPLE = 30;
+import {
+  DATASET_CONFIDENCE_THRESHOLDS,
+  ENDURANCE_INDEX_MAX_SEC,
+  ENDURANCE_INDEX_MIN_SEC,
+  SCORE_WEIGHTS,
+  STRENGTH_RATIO_THRESHOLDS,
+} from "./constants";
+import type { Archetype, DatasetConfidence, Tier } from "./types";
 
 export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * Midrank ("average rank") percentile: ties share the midpoint of the ranks
+ * they span. Returns 50 for an empty population, matching v1.
+ */
 export function percentileMidrank(values: number[], v: number): number {
   const clean = values.filter((x) => Number.isFinite(x));
   const N = clean.length;
@@ -30,6 +40,10 @@ export function percentileMidrank(values: number[], v: number): number {
   return clamp(Number(p.toFixed(1)), 0, 100);
 }
 
+/**
+ * Piecewise lift-ratio curve: 0-40 up to `mid`, 40-70 up to `strong`,
+ * 70-95 up to `elite`, then a shallow 95-100 tail.
+ */
 export function strengthScoreFromRatio(
   ratio: number,
   mid: number,
@@ -47,6 +61,13 @@ export function strengthScoreFromRatio(
   return 95 + clamp((ratio - elite) * 10, 0, 5);
 }
 
+/**
+ * Mean of the entered lifts' piecewise indexes.
+ *
+ * Nulls are tolerated for the legacy v1 surface only; the canonical pipeline
+ * rejects a missing event before reaching here, so a missing lift can never
+ * improve a ranked score.
+ */
 export function computeStrengthIndex(input: {
   bodyweightKg: number;
   benchKg: number | null;
@@ -60,23 +81,30 @@ export function computeStrengthIndex(input: {
   const sRatio = squat !== null ? squat / bw : 0;
   const dRatio = deadlift !== null ? deadlift / bw : 0;
 
+  const b = STRENGTH_RATIO_THRESHOLDS.bench;
+  const s = STRENGTH_RATIO_THRESHOLDS.squat;
+  const d = STRENGTH_RATIO_THRESHOLDS.deadlift;
+
   const bIdx =
-    bench !== null ? strengthScoreFromRatio(bRatio, 0.75, 1.25, 1.75) : 0;
+    bench !== null ? strengthScoreFromRatio(bRatio, b.mid, b.strong, b.elite) : 0;
   const sIdx =
-    squat !== null ? strengthScoreFromRatio(sRatio, 1.0, 1.75, 2.5) : 0;
+    squat !== null ? strengthScoreFromRatio(sRatio, s.mid, s.strong, s.elite) : 0;
   const dIdx =
-    deadlift !== null ? strengthScoreFromRatio(dRatio, 1.25, 2.25, 3.0) : 0;
+    deadlift !== null
+      ? strengthScoreFromRatio(dRatio, d.mid, d.strong, d.elite)
+      : 0;
 
   const strengthParts = [bIdx, sIdx, dIdx].filter((x) => x > 0);
   return strengthParts.length > 0
     ? Number(
         (
-          strengthParts.reduce((a, b) => a + b, 0) / strengthParts.length
+          strengthParts.reduce((a, b2) => a + b2, 0) / strengthParts.length
         ).toFixed(1),
       )
     : 0;
 }
 
+/** Linear index over canonical (half-marathon-equivalent) seconds. */
 export function computeEnduranceIndex(enduranceSeconds: number | null): number {
   return Number(
     (enduranceSeconds !== null
@@ -92,6 +120,7 @@ export function computeEnduranceIndex(enduranceSeconds: number | null): number {
   );
 }
 
+/** Hybrid Score = 50% strength percentile + 50% endurance percentile. */
 export function canonicalScoreFromPercentiles(
   strengthPercentile: number,
   endurancePercentile: number,
@@ -104,7 +133,7 @@ export function canonicalScoreFromPercentiles(
   return clamp(Math.round(raw), 0, 100);
 }
 
-export function getTier(score: number) {
+export function getTier(score: number): Tier {
   if (score >= 90) return "WORLD CLASS";
   if (score >= 75) return "ELITE";
   if (score >= 60) return "ADVANCED";
@@ -115,7 +144,7 @@ export function getTier(score: number) {
 export function getArchetype(
   strengthPercentile: number,
   endurancePercentile: number,
-) {
+): Archetype {
   if (strengthPercentile < 10 && endurancePercentile < 10) {
     return "BASE BUILDER";
   }
@@ -132,90 +161,22 @@ export function getArchetype(
   return "ENDURANCE-LEANING HYBRID";
 }
 
-export type ScoringInput = {
-  bodyweightKg: number;
-  benchKg: number | null;
-  squatKg: number | null;
-  deadliftKg: number | null;
-  enduranceSeconds: number | null;
-};
-
-export type ScoringDataset = {
-  strengthScores: number[];
-  enduranceScores: number[];
-};
-
-export type ScoringResult = {
-  strengthIndex: number;
-  enduranceIndex: number;
-  strengthPercentile: number;
-  endurancePercentile: number;
-  hq: number;
-  tier: string;
-  archetype: string;
-};
-
-export function computeScore(
-  input: ScoringInput,
-  dataset: ScoringDataset,
-): ScoringResult {
-  const strengthIndex = computeStrengthIndex({
-    bodyweightKg: input.bodyweightKg,
-    benchKg: input.benchKg,
-    squatKg: input.squatKg,
-    deadliftKg: input.deadliftKg,
-  });
-
-  const enduranceIndex = computeEnduranceIndex(input.enduranceSeconds);
-
-  const strengthPercentile = percentileMidrank(
-    dataset.strengthScores,
-    strengthIndex,
-  );
-
-  let endurancePercentile = 0;
-  if (input.enduranceSeconds !== null) {
-    endurancePercentile =
-      dataset.enduranceScores.length >= MIN_ENDURANCE_SAMPLE
-        ? percentileMidrank(dataset.enduranceScores, enduranceIndex)
-        : enduranceIndex;
+/**
+ * Competition ranking (1, 2, 2, 4): position is one plus the number of strictly
+ * better scores, so tied athletes share a place and the next place is skipped.
+ */
+export function competitionRank(scores: number[], score: number): number {
+  let better = 0;
+  for (const s of scores) {
+    if (Number.isFinite(s) && s > score) better++;
   }
-
-  const hq = canonicalScoreFromPercentiles(
-    strengthPercentile,
-    endurancePercentile,
-  );
-
-  return {
-    strengthIndex,
-    enduranceIndex,
-    strengthPercentile,
-    endurancePercentile,
-    hq,
-    tier: getTier(hq),
-    archetype: getArchetype(strengthPercentile, endurancePercentile),
-  };
+  return better + 1;
 }
 
-export function buildScoringDataset(
-  rows: {
-    strength_index: number | null;
-    endurance_index: number | null;
-    endurance_seconds: number | null;
-  }[],
-): ScoringDataset {
-  const strengthScores = rows
-    .map((r) => Number(r.strength_index))
-    .filter((n) => Number.isFinite(n) && n > 0);
-
-  const enduranceScores = rows
-    .filter(
-      (r) =>
-        r.endurance_seconds !== null &&
-        Number.isFinite(Number(r.endurance_index)) &&
-        Number(r.endurance_index) > 0,
-    )
-    .map((r) => Number(r.endurance_index));
-
-  return { strengthScores, enduranceScores };
+export function datasetConfidence(sampleSize: number): DatasetConfidence {
+  if (sampleSize >= DATASET_CONFIDENCE_THRESHOLDS.high) return "high";
+  if (sampleSize >= DATASET_CONFIDENCE_THRESHOLDS.established) {
+    return "established";
+  }
+  return "provisional";
 }

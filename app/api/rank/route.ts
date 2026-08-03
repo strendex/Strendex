@@ -1,71 +1,38 @@
+// DEPRECATED — remove in Group 3.
+//
+// Superseded by POST /api/score. This route scores without persisting and
+// derives placement from a live query of `submissions` rather than from an
+// immutable dataset version, so its numbers are not reproducible. Kept only so
+// the currently deployed calculator keeps working; its response contract
+// (hq, indexes, percentiles, betterThanPercent, rank, total) is frozen.
+
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   buildScoringDataset,
   clamp,
   computeScore,
 } from "@/lib/scoring";
 import { getClientIp } from "@/lib/clientIp";
+import { enforceRateLimit } from "@/lib/server/rateLimit";
 
 const MAX_RANK_PER_MINUTE = 20;
 const MAX_RANK_PER_DAY = 200;
 
-function nowUnixSeconds() {
-  return Math.floor(Date.now() / 1000);
-}
-
-async function upsertAndGetRankCount(
-  supabase: any,
-  ip: string,
-  bucket: "minute" | "day",
-  bucketId: number,
-) {
-  const { data, error } = await supabase.rpc("ai_rl_hit", {
-    p_ip: `rank:${ip}`,
-    p_bucket: bucket,
-    p_bucket_id: bucketId,
-  });
-
-  if (error) throw error;
-
-  return Number(data) || 0;
-}
-
+// Same "rank:<ip>" keys, buckets, limits, and messages as before — the shared
+// helper is a de-duplication, not a change in enforcement.
 async function incrementAndCheckRankLimit(
-  supabase: any,
+  supabase: SupabaseClient,
   ip: string,
 ) {
-  const t = nowUnixSeconds();
-  const minuteBucketId = Math.floor(t / 60);
-  const dayBucketId = Math.floor(t / 86400);
-
-  const minute = await upsertAndGetRankCount(
-    supabase,
+  return enforceRateLimit(supabase, {
+    scope: "rank",
     ip,
-    "minute",
-    minuteBucketId,
-  );
-  if (minute > MAX_RANK_PER_MINUTE) {
-    return {
-      ok: false,
-      reason: "Too many scoring requests. Please wait a minute.",
-    };
-  }
-
-  const day = await upsertAndGetRankCount(
-    supabase,
-    ip,
-    "day",
-    dayBucketId,
-  );
-  if (day > MAX_RANK_PER_DAY) {
-    return {
-      ok: false,
-      reason: "Daily scoring limit reached. Try again tomorrow.",
-    };
-  }
-
-  return { ok: true as const };
+    perMinute: MAX_RANK_PER_MINUTE,
+    perDay: MAX_RANK_PER_DAY,
+    minuteMessage: "Too many scoring requests. Please wait a minute.",
+    dayMessage: "Daily scoring limit reached. Try again tomorrow.",
+  });
 }
 
 function badRequest(message: string) {
