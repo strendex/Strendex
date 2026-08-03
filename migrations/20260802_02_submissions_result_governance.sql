@@ -1,0 +1,205 @@
+-- =============================================================================
+-- 20260802_02 — Result governance fields on public.submissions
+-- =============================================================================
+--
+-- ADDITIVE ONLY. Every statement is ADD COLUMN / CREATE INDEX / ADD CONSTRAINT.
+-- Nothing is dropped, renamed, rewritten, backfilled or reclassified.
+--
+-- Schema facts this migration relies on are proven by the repository:
+--   app/api/submit/route.ts inserts athlete_name, bodyweight, bench, squat,
+--   deadlift, endurance_seconds, hq_score, rank, archetype, strength_index,
+--   endurance_index, total_lift, strength_ratio, strength_percentile,
+--   endurance_percentile, status; app/rankings/page.tsx selects id, created_at.
+--   No assumption is made about the type of `id` or about existing constraints.
+--
+-- Legacy-row policy:
+--   * provenance is filled with 'legacy_unknown' for every existing row. Nothing
+--     already in the table is presented as reviewed, verified, or real.
+--   * every other new column is NULLable with no backfill, so no existing row
+--     can violate a new rule.
+--   * CHECK constraints are written as "col IS NULL OR ..." and added NOT VALID,
+--     then validated separately, so the migration cannot fail on legacy data.
+--
+-- DO NOT RUN THIS FILE against production until the runbook has been followed.
+-- Requires 20260802_01_scoring_dataset_versions.sql to be applied first.
+-- =============================================================================
+
+BEGIN;
+
+-- -----------------------------------------------------------------------------
+-- 1. New columns
+-- -----------------------------------------------------------------------------
+
+ALTER TABLE public.submissions
+  -- Opaque, non-enumerable public handle for a result. App-generated.
+  ADD COLUMN IF NOT EXISTS public_result_id text,
+
+  -- Which scoring algorithm produced the stored numbers.
+  ADD COLUMN IF NOT EXISTS score_version text,
+
+  -- Which immutable reference population the percentiles were measured against.
+  ADD COLUMN IF NOT EXISTS dataset_version_id uuid,
+
+  ADD COLUMN IF NOT EXISTS calculated_at timestamptz,
+
+  -- Client-supplied retry token. Unique, so a retry can never double-insert.
+  ADD COLUMN IF NOT EXISTS idempotency_key text,
+
+  -- private | unlisted | public. NULL = legacy row, unclassified.
+  ADD COLUMN IF NOT EXISTS visibility text,
+
+  -- Moderation (status) and verification are deliberately separate concerns.
+  ADD COLUMN IF NOT EXISTS verification_status text,
+
+  -- Original, pre-conversion inputs, so a score can always be re-derived.
+  ADD COLUMN IF NOT EXISTS original_unit_system text,
+  ADD COLUMN IF NOT EXISTS original_run_distance text,
+  ADD COLUMN IF NOT EXISTS original_run_seconds integer,
+
+  -- Server-computed canonical (half-marathon-equivalent) seconds.
+  ADD COLUMN IF NOT EXISTS canonical_endurance_seconds integer,
+
+  ADD COLUMN IF NOT EXISTS dataset_sample_size integer,
+  ADD COLUMN IF NOT EXISTS dataset_confidence text,
+
+  -- `rank` already holds the tier string for the legacy leaderboard; `tier` is
+  -- the explicit, typed field going forward. `archetype` already exists.
+  ADD COLUMN IF NOT EXISTS tier text;
+
+-- Existing rows become 'legacy_unknown' — never 'verified', 'reviewed' or real.
+ALTER TABLE public.submissions
+  ADD COLUMN IF NOT EXISTS provenance text DEFAULT 'legacy_unknown';
+
+-- ...but rows written from here on are self-reported until a real verification
+-- process says otherwise. (Applies to /api/submit, which does not set the
+-- column; /api/score always sets it explicitly.)
+ALTER TABLE public.submissions
+  ALTER COLUMN provenance SET DEFAULT 'self_reported';
+
+-- Deliberately NO default on `visibility`: legacy rows and legacy /api/submit
+-- rows stay NULL and keep exactly today's leaderboard behaviour. /api/score
+-- always writes an explicit value. Group 3 backfills and tightens this.
+
+-- -----------------------------------------------------------------------------
+-- 2. Referential integrity
+-- -----------------------------------------------------------------------------
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'submissions_dataset_version_fk'
+      AND conrelid = 'public.submissions'::regclass
+  ) THEN
+    ALTER TABLE public.submissions
+      ADD CONSTRAINT submissions_dataset_version_fk
+      FOREIGN KEY (dataset_version_id)
+      REFERENCES public.scoring_dataset_versions (id)
+      ON DELETE RESTRICT
+      NOT VALID;
+  END IF;
+END $$;
+
+ALTER TABLE public.submissions
+  VALIDATE CONSTRAINT submissions_dataset_version_fk;
+
+-- -----------------------------------------------------------------------------
+-- 3. CHECK constraints — every one tolerates NULL, so legacy rows always pass.
+--    Added NOT VALID first, then validated, so the ALTER never blocks on a scan
+--    of live data and can never abort the migration on unexpected legacy values.
+-- -----------------------------------------------------------------------------
+
+DO $$
+DECLARE
+  c record;
+BEGIN
+  FOR c IN
+    SELECT * FROM (VALUES
+      ('submissions_visibility_valid',
+       $chk$visibility IS NULL OR visibility IN ('private','unlisted','public')$chk$),
+      ('submissions_provenance_valid',
+       $chk$provenance IS NULL OR provenance IN ('legacy_unknown','simulated','self_reported','reviewed','verified')$chk$),
+      ('submissions_verification_status_valid',
+       $chk$verification_status IS NULL OR verification_status IN ('unverified','in_review','verified','rejected')$chk$),
+      ('submissions_original_unit_system_valid',
+       $chk$original_unit_system IS NULL OR original_unit_system IN ('lb','kg')$chk$),
+      ('submissions_original_run_distance_valid',
+       $chk$original_run_distance IS NULL OR original_run_distance IN ('3mi','5k','10k','half','marathon')$chk$),
+      ('submissions_dataset_confidence_valid',
+       $chk$dataset_confidence IS NULL OR dataset_confidence IN ('provisional','established','high')$chk$),
+      ('submissions_original_run_seconds_range',
+       $chk$original_run_seconds IS NULL OR (original_run_seconds > 0 AND original_run_seconds <= 43200)$chk$),
+      ('submissions_canonical_endurance_range',
+       $chk$canonical_endurance_seconds IS NULL OR (canonical_endurance_seconds >= 4200 AND canonical_endurance_seconds <= 28800)$chk$),
+      ('submissions_dataset_sample_size_min',
+       $chk$dataset_sample_size IS NULL OR dataset_sample_size >= 30$chk$),
+      ('submissions_public_result_id_len',
+       $chk$public_result_id IS NULL OR char_length(public_result_id) BETWEEN 16 AND 64$chk$),
+      ('submissions_idempotency_key_len',
+       $chk$idempotency_key IS NULL OR char_length(idempotency_key) BETWEEN 8 AND 128$chk$),
+      -- A governed row must carry the full provenance triple together.
+      ('submissions_governed_row_complete',
+       $chk$dataset_version_id IS NULL OR (score_version IS NOT NULL AND calculated_at IS NOT NULL AND visibility IS NOT NULL)$chk$)
+    ) AS t(name, expr)
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conname = c.name AND conrelid = 'public.submissions'::regclass
+    ) THEN
+      EXECUTE format(
+        'ALTER TABLE public.submissions ADD CONSTRAINT %I CHECK (%s) NOT VALID',
+        c.name, c.expr
+      );
+      EXECUTE format(
+        'ALTER TABLE public.submissions VALIDATE CONSTRAINT %I', c.name
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- 4. Uniqueness and indexes
+--    Postgres unique indexes treat NULLs as distinct, so legacy rows (all NULL)
+--    never collide.
+-- -----------------------------------------------------------------------------
+
+CREATE UNIQUE INDEX IF NOT EXISTS submissions_public_result_id_key
+  ON public.submissions (public_result_id);
+
+-- The idempotency guarantee behind POST /api/score.
+CREATE UNIQUE INDEX IF NOT EXISTS submissions_idempotency_key_key
+  ON public.submissions (idempotency_key);
+
+-- Leaderboard placement query: eligible + approved + public, per dataset.
+CREATE INDEX IF NOT EXISTS submissions_dataset_leaderboard_idx
+  ON public.submissions (dataset_version_id, hq_score DESC)
+  WHERE status = 'approved' AND visibility = 'public';
+
+-- Dataset-builder eligibility scan.
+CREATE INDEX IF NOT EXISTS submissions_provenance_status_idx
+  ON public.submissions (provenance, status);
+
+-- -----------------------------------------------------------------------------
+-- 5. Do not expose private or unlisted rows to public clients.
+--    This is a RESTRICTIVE policy: it is AND-ed with whatever permissive
+--    policies already exist, so it can only narrow access, never widen it.
+--    Existing rows (visibility IS NULL) keep exactly today's behaviour.
+-- -----------------------------------------------------------------------------
+
+DROP POLICY IF EXISTS submissions_hide_non_public ON public.submissions;
+
+CREATE POLICY submissions_hide_non_public
+  ON public.submissions
+  AS RESTRICTIVE
+  FOR SELECT
+  TO anon, authenticated
+  USING (visibility IS NULL OR visibility = 'public');
+
+COMMENT ON COLUMN public.submissions.provenance IS
+  'legacy_unknown = predates governance; simulated = seeded; self_reported = athlete entered; reviewed/verified = a human process confirmed it. Never inferred.';
+COMMENT ON COLUMN public.submissions.visibility IS
+  'NULL = legacy, unclassified (behaves as today). Group 3 backfills these and tightens submissions_hide_non_public to visibility = ''public''.';
+COMMENT ON COLUMN public.submissions.idempotency_key IS
+  'Unique retry token. The uniqueness of this index is the idempotency guarantee for POST /api/score.';
+
+COMMIT;

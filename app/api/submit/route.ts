@@ -1,17 +1,23 @@
+// DEPRECATED — remove in Group 3.
+//
+// Superseded by POST /api/score, which validates, converts, scores, and
+// persists in one canonical server operation against an immutable dataset
+// version. This route is kept only so the currently deployed calculator keeps
+// working; do not add features to it. Its response contract ({ ok: true }) is
+// frozen.
+
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildScoringDataset, computeScore } from "@/lib/scoring";
+import { REVIEW_THRESHOLD } from "@/lib/scoring/core";
 import { findBannedWord } from "@/lib/nameFilter";
 import { getClientIp } from "@/lib/clientIp";
+import { enforceRateLimit } from "@/lib/server/rateLimit";
 
 const MAX_SUBMIT_PER_MINUTE = 5;
 const MAX_SUBMIT_PER_DAY = 25;
 
 export const runtime = "nodejs";
-
-function nowUnixSeconds() {
-  return Math.floor(Date.now() / 1000);
-}
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -32,53 +38,20 @@ function hasOnlyAllowedKeys(
   return Object.keys(obj).every((key) => allowedKeys.includes(key));
 }
 
-async function upsertAndGetSubmitCount(
-  supabaseAdmin: any,
-  ip: string,
-  bucket: "minute" | "day",
-  bucketId: number,
-) {
-  const { data, error } = await supabaseAdmin.rpc("ai_rl_hit", {
-    p_ip: `submit:${ip}`,
-    p_bucket: bucket,
-    p_bucket_id: bucketId,
-  });
-
-  if (error) throw error;
-
-  return Number(data) || 0;
-}
-
+// Same "submit:<ip>" keys, buckets, limits, and messages as before — the shared
+// helper is a de-duplication, not a change in enforcement.
 async function incrementAndCheckSubmitLimit(
-  supabaseAdmin: any,
+  supabaseAdmin: SupabaseClient,
   ip: string,
 ) {
-  const t = nowUnixSeconds();
-  const minuteBucketId = Math.floor(t / 60);
-  const dayBucketId = Math.floor(t / 86400);
-
-  const minute = await upsertAndGetSubmitCount(
-    supabaseAdmin,
+  return enforceRateLimit(supabaseAdmin, {
+    scope: "submit",
     ip,
-    "minute",
-    minuteBucketId,
-  );
-  if (minute > MAX_SUBMIT_PER_MINUTE) {
-    return {
-      ok: false,
-      reason: "Too many submissions. Please wait a minute.",
-    };
-  }
-
-  const day = await upsertAndGetSubmitCount(supabaseAdmin, ip, "day", dayBucketId);
-  if (day > MAX_SUBMIT_PER_DAY) {
-    return {
-      ok: false,
-      reason: "Daily submission limit reached. Try again tomorrow.",
-    };
-  }
-
-  return { ok: true as const };
+    perMinute: MAX_SUBMIT_PER_MINUTE,
+    perDay: MAX_SUBMIT_PER_DAY,
+    minuteMessage: "Too many submissions. Please wait a minute.",
+    dayMessage: "Daily submission limit reached. Try again tomorrow.",
+  });
 }
 
 export async function POST(req: Request) {
@@ -278,7 +251,10 @@ export async function POST(req: Request) {
     const strength_ratio =
       bodyweight > 0 ? Number((total_lift / bodyweight).toFixed(2)) : null;
 
-    const status = scored.hq >= 95 ? "pending" : "approved";
+    // Canonical review threshold is 90, not 95. The mismatch let scores of
+    // 90-94 auto-publish while the UI already told the athlete they were
+    // pending. Response contract is unchanged.
+    const status = scored.hq >= REVIEW_THRESHOLD ? "pending" : "approved";
 
     const { error: insertError } = await supabaseAdmin.from("submissions").insert([
       {
