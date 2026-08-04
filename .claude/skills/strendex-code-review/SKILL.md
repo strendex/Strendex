@@ -11,7 +11,7 @@ Review the change against the lists below. Report issues by severity (Blocker / 
 - Server routes recalculate the canonical score from raw inputs. Flag any path that trusts a client-sent score.
 - Weights are kg internally; lb is converted before scoring.
 - Hybrid Score = 50% strength + 50% endurance percentile.
-- Leaderboard reads filter status = approved. Score >= 95 is saved as pending.
+- Leaderboard reads filter status = approved. Score >= REVIEW_THRESHOLD (90) is saved as pending.
 
 ## Security
 - No secrets, keys, or service-role tokens in client code or committed to the repo.

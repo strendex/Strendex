@@ -124,6 +124,84 @@ describe("governance migration: original weight columns", () => {
   });
 });
 
+describe("governance migration: submissions write privileges", () => {
+  /** Every role that a browser can reach with a publishable/anon key. */
+  const PUBLIC_ROLES = ["PUBLIC", "anon", "authenticated"] as const;
+
+  for (const role of PUBLIC_ROLES) {
+    it(`revokes INSERT, UPDATE and DELETE from ${role}`, () => {
+      // The section 5 policy is FOR SELECT only, so grants are the only thing
+      // standing between the anon key and a forged or deleted result row.
+      assert.match(
+        GOVERNANCE,
+        new RegExp(
+          `REVOKE INSERT, UPDATE, DELETE ON TABLE public\\.submissions FROM ${role};`,
+        ),
+        `${role} must not keep write privileges on public.submissions`,
+      );
+    });
+  }
+
+  it("leaves SELECT alone so the public leaderboard keeps working", () => {
+    // app/rankings/page.tsx reads submissions with the publishable key.
+    // Revoking SELECT here would empty the leaderboard, and the RESTRICTIVE
+    // policy — not a grant — is what narrows which rows those reads return.
+    assert.equal(
+      /REVOKE[^;]*SELECT[^;]*ON TABLE public\.submissions/.test(GOVERNANCE),
+      false,
+      "SELECT must not be revoked from the public roles",
+    );
+
+    // ...and not by the back door either: REVOKE ALL takes SELECT with it
+    // without ever naming it.
+    assert.equal(
+      /REVOKE\s+ALL[^;]*ON TABLE public\.submissions/.test(GOVERNANCE),
+      false,
+      "a blanket REVOKE ALL on submissions would also remove SELECT",
+    );
+
+    // Every REVOKE against submissions must name exactly the three write
+    // privileges, so a fourth can never be added silently.
+    const revokes =
+      GOVERNANCE.match(/REVOKE [^;]*ON TABLE public\.submissions[^;]*;/g) ?? [];
+    assert.equal(revokes.length, 3, "one REVOKE per public role, no more");
+    for (const statement of revokes) {
+      assert.match(statement, /REVOKE INSERT, UPDATE, DELETE ON TABLE/);
+    }
+  });
+
+  it("keeps the required write privileges on service_role", () => {
+    const grant = GOVERNANCE.match(
+      /GRANT ([^;]*) ON TABLE public\.submissions TO service_role;/,
+    );
+    assert.ok(grant, "service_role needs an explicit grant on submissions");
+
+    // POST /api/score persists through the SECURITY DEFINER RPC, but the
+    // repository reads placement directly and the deprecated POST /api/submit
+    // still inserts directly — both as service_role.
+    for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+      assert.match(
+        grant[1],
+        new RegExp(`\\b${privilege}\\b`),
+        `service_role must retain ${privilege}`,
+      );
+    }
+  });
+
+  it("hardens privileges without granting anything to a public role", () => {
+    const grants = GOVERNANCE.match(/GRANT [^;]*;/g) ?? [];
+    for (const statement of grants) {
+      for (const role of PUBLIC_ROLES) {
+        assert.equal(
+          new RegExp(`TO [^;]*\\b${role}\\b`).test(statement),
+          false,
+          `no privilege may be granted to ${role}: ${statement}`,
+        );
+      }
+    }
+  });
+});
+
 describe("insert RPC: original weight persistence", () => {
   /** The INSERT column list and its VALUES list, as written. */
   const insert = RPC.match(

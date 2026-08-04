@@ -13,7 +13,7 @@ script call below is inert until a human runs it.
 | Command | Why it is dangerous |
 | --- | --- |
 | `migrations/20260802_01_scoring_dataset_versions.sql` | Creates a table, a trigger, and revokes public grants. Run in staging first. |
-| `migrations/20260802_02_submissions_result_governance.sql` | Alters the live `submissions` table, **backfills `provenance` on every existing row**, runs constraint validation scans, and adds a RESTRICTIVE RLS policy. Aborts up front if RLS is disabled. Also adds the nullable `original_bodyweight/bench/squat/deadlift` columns — these are **not** backfilled, and a governed row (one with a `dataset_version_id`) must carry all four plus `original_unit_system`. |
+| `migrations/20260802_02_submissions_result_governance.sql` | Alters the live `submissions` table, **backfills `provenance` on every existing row**, runs constraint validation scans, adds a RESTRICTIVE RLS policy, and **revokes INSERT/UPDATE/DELETE on `submissions` from `anon`, `authenticated` and `PUBLIC`** (§6). Aborts up front if RLS is disabled. Also adds the nullable `original_bodyweight/bench/squat/deadlift` columns — these are **not** backfilled, and a governed row (one with a `dataset_version_id`) must carry all four plus `original_unit_system`. |
 | `migrations/20260802_03_score_result_insert_rpc.sql` | Creates a `SECURITY DEFINER` function that writes to `submissions`. Requires migration 02 first. |
 | `CONFIRM_CREATE_DRAFT=yes npx tsx scripts/createScoringDatasetVersion.ts --commit` | Writes an `observed` dataset version row. Inspect first without `--commit`. |
 | `CONFIRM_LEGACY_MIXED_BOOTSTRAP="…" npx tsx scripts/bootstrapLegacyDatasetVersion.ts --commit` | Writes a `legacy_mixed_provisional` dataset version row. Transitional only — read §4b before running. |
@@ -94,6 +94,19 @@ migrations: the existing policies and the `/rankings` query must be reviewed
 first, and enabling it blind can empty the public leaderboard. Resolve this with
 a human owner, then re-run migration 02.
 
+The third query above is the **grant** picture, which RLS does not cover. The
+RESTRICTIVE policy is `FOR SELECT` only, so if `anon` or `authenticated` shows
+`INSERT`, `UPDATE` or `DELETE` there, a holder of the publishable key can forge a
+result, promote its own row to `status = 'approved'`, or delete somebody else's —
+regardless of RLS. Section 6 of migration 02 revokes exactly those three
+privileges and re-grants them to `service_role` only. `SELECT` is deliberately
+left alone: `app/rankings/page.tsx` reads the leaderboard with the publishable
+key, and the section 5 policy is what narrows those reads.
+
+That block is idempotent — a REVOKE of an absent privilege and a GRANT of a held
+one are both no-ops — so an environment where the hardening was already applied
+by hand can re-run migration 02 safely.
+
 ## 2. Staging migration
 
 Apply, in this exact order, against **staging**:
@@ -137,6 +150,31 @@ FROM pg_policy
 WHERE polrelid = 'public.submissions'::regclass
   AND polname = 'submissions_hide_non_public';
 --   expect: polpermissive = f (restrictive), roles {anon,authenticated}
+
+-- (d2) Writes are server-only. This is a GRANT check, not an RLS check — the
+--      policy above is FOR SELECT and does nothing about INSERT/UPDATE/DELETE.
+SELECT grantee, privilege_type
+FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND table_name = 'submissions'
+  AND grantee IN ('anon', 'authenticated', 'PUBLIC')
+ORDER BY grantee, privilege_type;
+--   expect: no INSERT / UPDATE / DELETE row for any of them.
+--   SELECT may (and should) still be present for anon.
+--
+--   If a TRUNCATE row appears for anon or authenticated, report it before
+--   deploying. Supabase's default grant on public tables is ALL, which includes
+--   TRUNCATE, and section 6 deliberately revokes only the three privileges that
+--   PostgREST can actually issue. TRUNCATE is not reachable with a publishable
+--   key (there is no TRUNCATE verb, and the anon JWT cannot open a direct
+--   Postgres connection), so this is defence in depth rather than a live hole —
+--   but it is a one-line follow-up if it is present.
+
+SELECT privilege_type
+FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND table_name = 'submissions'
+  AND grantee = 'service_role'
+ORDER BY privilege_type;
+--   expect: at least SELECT, INSERT, UPDATE, DELETE.
 
 -- (e) Governance columns from the correction pass.
 SELECT count(*) FROM information_schema.columns
@@ -310,27 +348,57 @@ and the deploy may land before the migrations without breaking it either —
 
 ## 7. Group 3 frontend cutover
 
-Deferred to Group 3, in this order:
+**Steps 1–4b are implemented in code and not yet deployed.** Nothing below has
+run against a database.
 
-1. point `app/tool/page.tsx` at `POST /api/score` (one call replaces the
-   `/api/rank` + `/api/submit` pair) and delete its local `getTier`,
-   `getArchetype`, `lbToKg`, `distanceMeters`, and Riegel duplicates in favour
-   of `@/lib/scoring/core`;
-2. send the ORIGINAL unit system, run distance, and run time — stop converting
-   in the browser;
-3. generate one `idempotency_key` per submission attempt and reuse it only for
-   genuine retries of that exact submission — changing any input under the same
-   key is a `409 IDEMPOTENCY_CONFLICT`, so the key must be regenerated whenever
-   the athlete edits a value;
-4. add a visibility control (default private) to the results step;
-4b. surface `datasetKind`. When it is `legacy_mixed_provisional`, show a
-   "provisional legacy mixed benchmark" disclosure next to the score, using
-   `datasetLabel` and `datasetSampleSize`;
+1. ✅ `app/tool/page.tsx` calls `POST /api/score` once (replacing the
+   `/api/rank` + `/api/submit` pair). Its local `getTier`, `getArchetype`,
+   `lbToKg`/`kgToLb`, `distanceMeters` and Riegel duplicates are gone; the page
+   now imports `@/lib/scoring/core`.
+2. ✅ The request carries the ORIGINAL unit system, weights, run distance and
+   run time. The browser converts nothing.
+3. ✅ One `idempotency_key` per logical submission
+   (`lib/tool/scoreSubmission.ts`). The key is derived from a signature over
+   exactly the fields the server fingerprints — display name, unit system, the
+   four weights, run distance, run seconds, visibility — so an unchanged retry
+   replays the stored row and any edit mints a new key. A `409
+   IDEMPOTENCY_CONFLICT` drops the stored key so the next attempt starts clean.
+   A second click while a request is in flight is refused rather than sent.
+4. ✅ Visibility control on the review step, **private by default**, all three
+   values offered. It is locked once a result is shown — `/api/score` has no
+   update path, so changing it means scoring again under a new key, which writes
+   a second row. `unlisted` is described honestly as "hidden today": no result
+   link surface exists yet, and the section 5 policy hides non-public rows from
+   `anon` regardless.
+4b. ✅ `datasetKind`, `datasetLabel`, `datasetSampleSize` and
+   `datasetConfidence` are disclosed next to the score.
+   `legacy_mixed_provisional` renders as a "provisional benchmark — legacy mixed
+   data" panel plus a status chip; an `observed` dataset still on `provisional`
+   confidence is flagged as a small sample. Moderation, verification and
+   visibility are shown as chips, and a result that is not on the leaderboard
+   says why.
+
+Consequences worth knowing before the deploy:
+
+- **All four lifts and a run time are now required.** `parseCanonicalBenchmark`
+  rejects a missing event, so the old "score me with just a bench" path cannot
+  produce a v2 result. The step gating enforces it in the browser.
+- The browser pre-validates with the same canonical validator the route runs, so
+  an impossible entry no longer costs one of the athlete's 5 requests/minute.
+- A private or unlisted result gets no rank, and the results page says so
+  instead of showing a placeholder placement.
+
+Still outstanding:
+
 5. backfill `visibility` for legacy rows, then tighten
    `submissions_hide_non_public` to `visibility = 'public'`;
 6. filter the leaderboard query on `visibility = 'public'` and on the active
    `dataset_version_id`, and label pre-cutover rows as not comparable;
 7. delete `/api/rank`, `/api/submit`, and `lib/scoring/index.ts`.
+
+Note that (7) is now unblocked for `/api/rank` — nothing calls it — but
+`/api/submit` and `lib/scoring` are still reachable from `/api/athlete-review`
+and the currently deployed build, so both stay until step 6 lands.
 
 ## 8. Monitoring
 

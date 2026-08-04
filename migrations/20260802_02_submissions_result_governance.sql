@@ -2,7 +2,9 @@
 -- 20260802_02 — Result governance fields on public.submissions
 -- =============================================================================
 --
--- ADDITIVE ONLY. Every statement is ADD COLUMN / CREATE INDEX / ADD CONSTRAINT.
+-- ADDITIVE ONLY. Every statement is ADD COLUMN / CREATE INDEX / ADD CONSTRAINT,
+-- plus the privilege hardening in section 6 (REVOKE of write privileges from the
+-- public roles — a permission change, not a schema or data change).
 -- Nothing is dropped, renamed, rewritten, backfilled or reclassified.
 --
 -- Schema facts this migration relies on are proven by the repository:
@@ -298,6 +300,36 @@ CREATE POLICY submissions_hide_non_public
   FOR SELECT
   TO anon, authenticated
   USING (visibility IS NULL OR visibility = 'public');
+
+-- -----------------------------------------------------------------------------
+-- 6. Table privileges — public roles read, only the server writes.
+--
+--    RLS decides which ROWS a role may see. Grants decide which STATEMENTS a
+--    role may issue at all, and the two are independent. The guard in section 5
+--    is FOR SELECT only, so on its own it does nothing to stop a holder of the
+--    anon/publishable key from INSERTing a forged result, UPDATEing its own row
+--    to status = 'approved', or DELETEing somebody else's submission.
+--
+--    Nothing legitimate needs those privileges: every write in this application
+--    already goes through a service_role server route (POST /api/score via
+--    public.score_result_insert, and the deprecated POST /api/submit).
+--
+--    SELECT is deliberately NOT revoked. app/rankings/page.tsx reads the public
+--    leaderboard with the publishable key, and section 5 is what narrows those
+--    reads to rows that are allowed to be public.
+--
+--    Idempotent: REVOKE of an absent privilege and GRANT of a held one are both
+--    no-ops, so re-running this file cannot fail on an environment where the
+--    hardening was already applied by hand.
+-- -----------------------------------------------------------------------------
+
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.submissions FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.submissions FROM anon;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.submissions FROM authenticated;
+
+-- The server identity keeps everything the score routes need. GRANT to
+-- service_role is additive and cannot widen anon or authenticated.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.submissions TO service_role;
 
 COMMENT ON COLUMN public.submissions.provenance IS
   'legacy_unknown = predates governance; simulated = seeded; self_reported = athlete entered; reviewed/verified = a human process confirmed it. Never inferred.';
