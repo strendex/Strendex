@@ -54,6 +54,22 @@ export type ScoreResultView = CanonicalResultView;
 
 export const SCORE_ENDPOINT = "/api/score";
 
+/**
+ * The calculator submits every result publicly — scoring IS entering the
+ * leaderboard, and the page says so next to the button. Sent EXPLICITLY: the
+ * API's own fallback stays private, so nothing can become public by accident
+ * anywhere else, and this constant is the single place the product choice
+ * lives.
+ */
+export const SUBMISSION_VISIBILITY: Visibility = "public";
+
+/**
+ * The name used when the athlete leaves the field blank. A plain string the
+ * contract already accepts (2–60 chars, clean) — the server's own absent-name
+ * fallback ("Anonymous Athlete") is unchanged.
+ */
+export const ANONYMOUS_NAME = "Anonymous";
+
 /** What the athlete has typed. Weights stay strings so empties survive. */
 export type ScoreFormValues = {
   displayName: string;
@@ -253,8 +269,16 @@ export function describeScoringFailure(
     case "UNSUPPORTED_UNIT_SYSTEM":
       return { ...base, message: "Choose either pounds or kilograms." };
 
+    // Unreachable in practice — the calculator always sends a valid, explicit
+    // visibility — but there is no chooser any more, so the copy must not send
+    // the athlete looking for one.
     case "INVALID_VISIBILITY":
-      return { ...base, message: "Choose who can see this result." };
+      return {
+        ...base,
+        field: undefined,
+        message:
+          "We couldn't send that submission correctly. Your entries are still here — please try again.",
+      };
 
     case "IDEMPOTENCY_CONFLICT":
       return {
@@ -379,7 +403,12 @@ export function buildScoreRequestDraft(
   // server would reject too, so this costs the athlete nothing but a round trip.
   let displayName: string;
   try {
-    displayName = parseDisplayName(values.displayName);
+    // A blank field becomes "Anonymous" — decided here, not left to the
+    // server's absent-name fallback, so the leaderboard name is deliberate
+    // and part of the fingerprinted request.
+    displayName = parseDisplayName(
+      values.displayName.trim() ? values.displayName : ANONYMOUS_NAME,
+    );
     parseCanonicalBenchmark({
       unitSystem: values.unitSystem,
       bodyweight: parsed.bodyweight,

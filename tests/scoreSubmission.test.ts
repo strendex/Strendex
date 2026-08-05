@@ -13,6 +13,8 @@ import { DEFAULT_VISIBILITY, VISIBILITIES } from "../lib/scoring/core";
 import type { Visibility } from "../lib/scoring/core";
 import { SCORE_REQUEST_FIELDS } from "../lib/server/scoreService";
 import {
+  ANONYMOUS_NAME,
+  SUBMISSION_VISIBILITY,
   buildScoreRequestDraft,
   createSubmissionSession,
   parseScoreResponse,
@@ -37,7 +39,8 @@ function form(overrides: Partial<ScoreFormValues> = {}): ScoreFormValues {
     deadlift: "425",
     runDistance: "5k",
     runSeconds: 1350,
-    visibility: DEFAULT_VISIBILITY,
+    // What the calculator always sends: every result is a public submission.
+    visibility: SUBMISSION_VISIBILITY,
     ...overrides,
   };
 }
@@ -283,13 +286,28 @@ describe("calculator submission: the result is the server's", () => {
 // --- visibility --------------------------------------------------------------
 
 describe("calculator submission: visibility", () => {
-  it("defaults to private", () => {
+  it("submits every calculation publicly, stated explicitly in the request", async () => {
+    assert.equal(SUBMISSION_VISIBILITY, "public");
+
+    const fetcher = fakeFetch([ok()]);
+    await submitScore(createSubmissionSession(), draft(), {
+      fetchImpl: fetcher.impl,
+      makeKey: nextKey,
+    });
+
+    // Explicit, never implied: the calculator's choice is in the body, so the
+    // server's own fallback is never what makes a row public.
+    assert.equal(fetcher.bodies[0].visibility, "public");
+  });
+
+  it("keeps the API's own fallback private, so nothing else publishes by accident", () => {
+    // The server contract is unchanged — an absent visibility is still
+    // private. Only the calculator's explicit request makes a result public.
     assert.equal(DEFAULT_VISIBILITY, "private");
-    assert.equal(draft().visibility, "private");
   });
 
   for (const visibility of VISIBILITIES) {
-    it(`transmits "${visibility}" when chosen`, async () => {
+    it(`still passes "${visibility}" through unaltered (contract unchanged)`, async () => {
       const fetcher = fakeFetch([ok()]);
 
       await submitScore(createSubmissionSession(), draft({ visibility }), {
@@ -666,11 +684,19 @@ describe("calculator submission: pre-flight validation", () => {
     assert.equal(built.draft.display_name, "Ryan W");
   });
 
-  it("falls back to the anonymous name rather than failing on a blank one", () => {
-    const built = buildScoreRequestDraft(form({ displayName: "" }));
-    assert.ok(built.ok);
-    if (!built.ok) return;
-    assert.equal(built.draft.display_name, "Anonymous Athlete");
+  it("submits a blank name as Anonymous rather than failing", () => {
+    for (const blank of ["", "   "]) {
+      const built = buildScoreRequestDraft(form({ displayName: blank }));
+      assert.ok(built.ok);
+      if (!built.ok) continue;
+      assert.equal(built.draft.display_name, ANONYMOUS_NAME);
+      assert.equal(built.draft.display_name, "Anonymous");
+    }
+
+    // ...while a real name is never replaced.
+    const named = buildScoreRequestDraft(form({ displayName: "Ryan" }));
+    assert.ok(named.ok);
+    if (named.ok) assert.equal(named.draft.display_name, "Ryan");
   });
 
   it("keeps a rejected visibility from reaching the request", () => {

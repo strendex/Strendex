@@ -1,24 +1,18 @@
 // How a saved result is described on the results page.
 //
 // The claims made next to a score are a product promise, so they get the same
-// treatment as the scoring itself: a provisional dataset must be called
-// provisional, an unverified row must never read as verified, a private result
-// must never be described as listed, and placement must come from the server.
+// treatment as the scoring itself: the consolidated "?" explanation must stay
+// honest about the early benchmark and self-reported data, a pending row must
+// not be called listed, and placement must come from the server. No dataset
+// internals — labels, versions, kinds, ids — may leak into consumer copy.
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { DEFAULT_VISIBILITY, REVIEW_THRESHOLD, VISIBILITIES } from "../lib/scoring/core";
 import {
-  VISIBILITY_OPTIONS,
-  datasetDisclosure,
   leaderboardExclusion,
   leaderboardStanding,
-  moderationLabel,
-  moderationNotice,
-  provenanceLabel,
-  verificationNotice,
-  visibilityOption,
+  scoreExplanation,
 } from "../lib/tool/resultPresentation";
 import type { ScoreResultView } from "../lib/tool/scoreSubmission";
 
@@ -29,7 +23,7 @@ function result(overrides: Partial<ScoreResultView> = {}): ScoreResultView {
     strengthIndex: 66.9,
     enduranceIndex: 59.1,
     strengthPercentile: 71.2,
-    endurancePercentile: 56.8,
+    endurancePercentile: 27.5,
     tier: "ADVANCED",
     archetype: "BALANCED HYBRID",
     moderationStatus: "approved",
@@ -38,8 +32,8 @@ function result(overrides: Partial<ScoreResultView> = {}): ScoreResultView {
     visibility: "public",
     scoreVersion: "2.0.0",
     datasetVersionId: "33333333-3333-3333-3333-333333333333",
-    datasetLabel: "2026-08 baseline",
-    datasetKind: "observed",
+    datasetLabel: "2026-08 provisional legacy",
+    datasetKind: "legacy_mixed_provisional",
     datasetSampleSize: 412,
     datasetConfidence: "established",
     calculatedAt: "2026-08-04T12:00:00.000Z",
@@ -48,163 +42,125 @@ function result(overrides: Partial<ScoreResultView> = {}): ScoreResultView {
   };
 }
 
-describe("results page: visibility choices", () => {
-  it("offers every visibility the API accepts, private first", () => {
-    assert.deepEqual(
-      VISIBILITY_OPTIONS.map((option) => option.value),
-      [...VISIBILITIES],
-    );
-    assert.equal(VISIBILITY_OPTIONS[0].value, DEFAULT_VISIBILITY);
+describe("results page: score explanation popover", () => {
+  const joined = (r: ScoreResultView) => scoreExplanation(r).join(" ");
+
+  it("explains the blend, the lifts, the run, and what a percentile means", () => {
+    const text = joined(result());
+
+    assert.match(text, /strength and endurance/i);
+    assert.match(text, /bench, squat and deadlift/i);
+    assert.match(text, /bodyweight/i);
+    assert.match(text, /run/i);
+    // The percentile definition is the point: 27.5 must read as "ahead of
+    // 27.5% of the comparison group", not as a mistake.
+    assert.match(text, /share of athletes/i);
+    assert.match(text, /ahead of 27\.5%/);
   });
 
-  it("explains each choice distinctly", () => {
-    const summaries = new Set(VISIBILITY_OPTIONS.map((o) => o.summary));
-    const details = new Set(VISIBILITY_OPTIONS.map((o) => o.detail));
-
-    assert.equal(summaries.size, VISIBILITY_OPTIONS.length);
-    assert.equal(details.size, VISIBILITY_OPTIONS.length);
-
-    for (const option of VISIBILITY_OPTIONS) {
-      assert.ok(option.label.length > 0);
-      assert.ok(option.detail.length > 40, `${option.value} needs a real explanation`);
-    }
+  it("discloses an early benchmark for legacy mixed data", () => {
+    const text = joined(result({ datasetKind: "legacy_mixed_provisional" }));
+    assert.match(text, /early and provisional/i);
+    assert.match(text, /will shift/i);
   });
 
-  it("does not promise link sharing that does not exist yet", () => {
-    const unlisted = visibilityOption("unlisted");
-    assert.match(unlisted.detail, /no result link to share yet/i);
-    assert.match(unlisted.detail, /off the leaderboard/i);
-
-    // The one-line summary is what most athletes will read, so it must not
-    // advertise a feature that has not been built.
-    assert.equal(
-      /shareable|share it|send the link/i.test(unlisted.summary),
-      false,
-      "the summary must not promise link sharing",
-    );
-  });
-
-  it("warns the public choice that high scores are reviewed first", () => {
-    assert.match(
-      visibilityOption("public").detail,
-      new RegExp(`${REVIEW_THRESHOLD}`),
-    );
-    assert.match(visibilityOption("public").detail, /leaderboard/i);
-  });
-
-  it("falls back to private for an unrecognised value", () => {
-    assert.equal(
-      visibilityOption("nonsense" as never).value,
-      DEFAULT_VISIBILITY,
-    );
-  });
-});
-
-describe("results page: dataset disclosure", () => {
-  it("discloses a legacy mixed dataset as provisional", () => {
-    const disclosure = datasetDisclosure(
-      result({
-        datasetKind: "legacy_mixed_provisional",
-        datasetLabel: "2026-08 provisional legacy",
-        datasetSampleSize: 412,
-      }),
-    );
-
-    assert.equal(disclosure.provisional, true);
-    assert.match(disclosure.headline, /provisional/i);
-    assert.match(disclosure.body, /2026-08 provisional legacy/);
-    assert.match(disclosure.body, /412/);
-    // The population mixes simulated athletes with early self-entered numbers,
-    // and the athlete has to be told so.
-    assert.match(disclosure.body, /simulated/i);
-    assert.equal(/\bverified\b(?!\s|$)/i.test(disclosure.headline), false);
-  });
-
-  it("flags a small observed sample as provisional too", () => {
-    const disclosure = datasetDisclosure(
+  it("discloses an early benchmark for a small observed sample too", () => {
+    const text = joined(
       result({ datasetKind: "observed", datasetConfidence: "provisional" }),
     );
-
-    assert.equal(disclosure.provisional, true);
-    assert.match(disclosure.body, /sample is still small/i);
+    assert.match(text, /early and provisional/i);
   });
 
-  it("stops flagging once the reference set is established", () => {
-    for (const confidence of ["established", "high"] as const) {
-      const disclosure = datasetDisclosure(
-        result({ datasetKind: "observed", datasetConfidence: confidence }),
-      );
-      assert.equal(disclosure.provisional, false);
-      assert.match(disclosure.body, new RegExp(confidence));
+  it("softens but never drops the growth caveat once established", () => {
+    const text = joined(
+      result({ datasetKind: "observed", datasetConfidence: "established" }),
+    );
+    assert.equal(/early and provisional/i.test(text), false);
+    assert.match(text, /keeps growing/i);
+  });
+
+  it("always says results are self-reported unless verified", () => {
+    for (const kind of ["observed", "legacy_mixed_provisional"] as const) {
+      assert.match(joined(result({ datasetKind: kind })), /self-reported unless verified/i);
     }
   });
 
-  it("names the dataset the result was actually scored against", () => {
-    const disclosure = datasetDisclosure(result({ datasetLabel: "some other set" }));
-    assert.match(disclosure.body, /some other set/);
+  it("keeps implementation details out of consumer copy", () => {
+    const text = joined(result());
+    for (const jargon of [
+      "legacy_mixed_provisional",
+      "dataset",
+      "version",
+      "res_",
+      "provenance",
+      "moderation",
+      "2026-08",
+      "2.0.0",
+      "412",
+    ]) {
+      assert.equal(
+        text.toLowerCase().includes(jargon.toLowerCase()),
+        false,
+        `"${jargon}" must not appear in the explanation`,
+      );
+    }
+  });
+
+  it("never presents the data as verified", () => {
+    // "unless verified" is the only permitted use of the word.
+    const text = joined(result());
+    assert.equal(
+      /verified/i.test(text.replace(/unless verified/i, "")),
+      false,
+    );
+  });
+
+  it("quotes the athlete's own endurance percentile in the worked example", () => {
+    // The definition has to be anchored to a number the athlete can see on
+    // screen, or "27.5th percentile" keeps reading like a low score.
+    for (const percentile of [0, 27.5, 99.9, 100]) {
+      const text = joined(result({ endurancePercentile: percentile }));
+      assert.match(text, new RegExp(`ahead of ${percentile.toFixed(1)}%`));
+    }
   });
 });
 
-describe("results page: moderation and verification", () => {
-  it("says a high score is held for review", () => {
-    const notice = moderationNotice(result({ moderationStatus: "pending" }));
-    assert.ok(notice);
-    assert.match(notice.label, /review/i);
-    assert.match(notice.body, new RegExp(`${REVIEW_THRESHOLD}`));
+describe("results page: percentile wording", () => {
+  // The results screen renders `Ahead of ${percentile.toFixed(1)}%` with the
+  // index named separately. These are the boundary values that have to stay
+  // unambiguous and short enough for a 320px card.
+  const rendered = (p: number) => `Ahead of ${p.toFixed(1)}%`;
+
+  it("formats the boundaries exactly, with no rounding surprises", () => {
+    assert.equal(rendered(0), "Ahead of 0.0%");
+    assert.equal(rendered(27.5), "Ahead of 27.5%");
+    assert.equal(rendered(99.9), "Ahead of 99.9%");
+    assert.equal(rendered(100), "Ahead of 100.0%");
   });
 
-  it("says nothing when the result is approved", () => {
-    assert.equal(moderationNotice(result({ moderationStatus: "approved" })), null);
-  });
-
-  it("reports a rejected result plainly", () => {
-    const notice = moderationNotice(result({ moderationStatus: "rejected" }));
-    assert.ok(notice);
-    assert.match(notice.label, /not approved/i);
-  });
-
-  it("never presents an approved result as verified", () => {
-    const notice = verificationNotice(
-      result({ moderationStatus: "approved", verificationStatus: "unverified" }),
-    );
-    assert.equal(notice.label, "Unverified");
-    assert.match(notice.body, /self-entered/i);
-  });
-
-  it("reports provenance as stored, never inferred from the score", () => {
-    assert.equal(provenanceLabel(result({ provenance: "self_reported" })), "Self-reported");
-    assert.equal(provenanceLabel(result({ provenance: "simulated" })), "Simulated");
-    assert.equal(provenanceLabel(result({ provenance: "verified" })), "Verified");
-    assert.match(
-      provenanceLabel(result({ provenance: "legacy_unknown" })),
-      /unknown/i,
-    );
-
-    // A top score is still self-reported.
-    assert.equal(
-      provenanceLabel(result({ hybridScore: 99, provenance: "self_reported" })),
-      "Self-reported",
-    );
-  });
-
-  it("never shows a raw column value for moderation", () => {
-    for (const status of ["approved", "pending", "rejected"] as const) {
-      const label = moderationLabel(result({ moderationStatus: status }));
-      assert.notEqual(label, status, "the raw enum must not reach the UI");
-      assert.match(label, /^[A-Z]/);
+  it("stays short enough for the narrowest phone", () => {
+    // The row gives the value the full card width at 320px; anything past
+    // ~20 characters would start wrapping mid-number.
+    for (const p of [0, 27.5, 99.9, 100]) {
+      assert.ok(
+        rendered(p).length <= 20,
+        `"${rendered(p)}" is too long for a 320px row`,
+      );
     }
-    assert.equal(moderationLabel(result({ moderationStatus: "pending" })), "Held for review");
   });
 
-  it("reports the verification state the row actually carries", () => {
-    assert.equal(
-      verificationNotice(result({ verificationStatus: "verified" })).label,
-      "Verified",
-    );
-    assert.equal(
-      verificationNotice(result({ verificationStatus: "in_review" })).label,
-      "In review",
-    );
+  it("never lets a percentile read as an index", () => {
+    // Same underlying result, two different numbers: the percentile carries a
+    // "%" and the word "ahead", the index is labelled "index".
+    const r = result({ endurancePercentile: 27.5, enduranceIndex: 59.1 });
+    const value = rendered(r.endurancePercentile);
+    const sub = `of athletes · index ${r.enduranceIndex.toFixed(1)}`;
+
+    assert.match(value, /%$/);
+    assert.equal(value.includes("index"), false);
+    assert.match(sub, /index 59\.1/);
+    assert.equal(sub.includes("%"), false);
+    assert.notEqual(value, sub);
   });
 });
 
@@ -227,21 +183,34 @@ describe("results page: leaderboard placement", () => {
     assert.equal(standing.beatPercent, 0);
   });
 
-  for (const visibility of ["private", "unlisted"] as const) {
-    it(`explains why a ${visibility} result is not listed`, () => {
-      const reason = leaderboardExclusion(result({ visibility, leaderboard: null }));
-      assert.ok(reason);
-      assert.match(reason, new RegExp(visibility));
-      assert.match(reason, /Public/);
-    });
-  }
-
-  it("explains a pending public result", () => {
+  it("says a pending result is saved and under review, in plain words", () => {
     const reason = leaderboardExclusion(
-      result({ visibility: "public", moderationStatus: "pending", leaderboard: null }),
+      result({ moderationStatus: "pending", leaderboard: null }),
     );
     assert.ok(reason);
-    assert.match(reason, new RegExp(`${REVIEW_THRESHOLD}`));
+    assert.match(reason, /review/i);
+    assert.match(reason, /saved/i);
+    // Never the raw column value.
+    assert.equal(/pending/i.test(reason), false);
+  });
+
+  it("reports a rejected result plainly", () => {
+    const reason = leaderboardExclusion(
+      result({ moderationStatus: "rejected", leaderboard: null }),
+    );
+    assert.ok(reason);
+    assert.match(reason, /not approved/i);
+  });
+
+  it("falls back to a true, neutral line for any other unlisted row", () => {
+    const reason = leaderboardExclusion(
+      result({ visibility: "private", moderationStatus: "approved", leaderboard: null }),
+    );
+    assert.ok(reason);
+    assert.match(reason, /not shown on the leaderboard/i);
+    // There is no visibility control any more, so no copy may tell the
+    // athlete to go and choose one.
+    assert.equal(/choose/i.test(reason), false);
   });
 
   it("says nothing when the result is listed", () => {

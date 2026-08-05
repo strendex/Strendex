@@ -4,11 +4,14 @@
 //
 // ONE request per submission: POST /api/score validates, converts, scores,
 // persists and returns the SAVED row. Everything shown as a result — score,
-// indexes, percentiles, tier, archetype, moderation, verification, visibility,
-// dataset disclosure, result id and placement — comes from that response. The
-// browser converts nothing and scores nothing; the shared canonical module is
-// used only to pre-check entries before spending a request, and to decompose
-// the server's own strength index for the chart.
+// indexes, percentiles, tier, archetype and placement — comes from that
+// response. The browser converts nothing and scores nothing; the shared
+// canonical module is used only to pre-check entries before spending a
+// request, and to decompose the server's own strength index for the chart.
+//
+// Every calculation is submitted publicly (SUBMISSION_VISIBILITY) and the page
+// says so next to the button — scoring IS entering the leaderboard. The full
+// benchmark disclosure lives in the "?" popover beside the score.
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -16,7 +19,6 @@ import StrendexChart from "./StrendexChart";
 import AthleteReviewCTA from "@/components/AthleteReviewCTA";
 import { findBannedWord } from "@/lib/nameFilter";
 import {
-  DEFAULT_VISIBILITY,
   STRENGTH_RATIO_THRESHOLDS,
   strengthScoreFromRatio,
   toCanonicalEnduranceSeconds,
@@ -27,9 +29,10 @@ import type {
   RunDistance,
   Tier,
   UnitSystem,
-  Visibility,
 } from "@/lib/scoring/core";
 import {
+  ANONYMOUS_NAME,
+  SUBMISSION_VISIBILITY,
   buildScoreRequestDraft,
   createSubmissionSession,
   submitScore,
@@ -38,15 +41,9 @@ import {
   type SubmissionOutcome,
 } from "@/lib/tool/scoreSubmission";
 import {
-  VISIBILITY_OPTIONS,
-  datasetDisclosure,
   leaderboardExclusion,
   leaderboardStanding,
-  moderationLabel,
-  moderationNotice,
-  provenanceLabel,
-  verificationNotice,
-  visibilityOption,
+  scoreExplanation,
 } from "@/lib/tool/resultPresentation";
 import { toPng } from "html-to-image";
 
@@ -221,9 +218,6 @@ export default function ToolPage() {
   const [runTimeDigits, setRunTimeDigits] = useState<string>("");
   const runTimeText = formatDigitsToTime(runTimeDigits);
 
-  // Private until the athlete says otherwise, every time.
-  const [visibility, setVisibility] = useState<Visibility>(DEFAULT_VISIBILITY);
-
   // UX flow
   const [step, setStep] = useState<Step>(1);
   const [showDetails, setShowDetails] = useState<boolean>(false);
@@ -253,6 +247,35 @@ export default function ToolPage() {
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const [arIntent, setArIntent] = useState<boolean>(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const helpButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // The "?" popover must close on a tap anywhere else — on a phone there is no
+  // mouseleave to do it — and on Escape, returning focus to the button so a
+  // keyboard user is never stranded. Listening only while open costs nothing
+  // the rest of the time.
+  useEffect(() => {
+    if (!showHQTooltip) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!tooltipRef.current?.contains(event.target as Node)) {
+        setShowHQTooltip(false);
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setShowHQTooltip(false);
+      helpButtonRef.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showHQTooltip]);
 
   // parsed inputs, in the athlete's OWN unit system
   const wInput = enteredWeight(weight);
@@ -268,12 +291,9 @@ export default function ToolPage() {
   const hasResult = result !== null;
   const tierStyle = result ? tierMeta[result.tier] : NEUTRAL_TIER;
   const archetypeInfo = result ? ARCHETYPE_COPY[result.archetype] : null;
-  const disclosure = result ? datasetDisclosure(result) : null;
   const standing = result ? leaderboardStanding(result) : null;
   const exclusion = result ? leaderboardExclusion(result) : null;
-  const moderation = result ? moderationNotice(result) : null;
-  const verification = result ? verificationNotice(result) : null;
-  const chosenVisibility = visibilityOption(visibility);
+  const explanation = result ? scoreExplanation(result) : null;
 
   /**
    * Per-lift breakdown of the SERVER's strength index, using the same canonical
@@ -358,7 +378,7 @@ export default function ToolPage() {
       .trim()
       .replace(/\s+/g, " ")
       .replace(/[^a-zA-Z0-9 ._-]/g, "");
-    return clean.length >= 2 ? clean : "Anonymous Athlete";
+    return clean.length >= 2 ? clean : ANONYMOUS_NAME;
   }
 
   async function generateProfile() {
@@ -375,7 +395,8 @@ export default function ToolPage() {
       deadlift,
       runDistance,
       runSeconds,
-      visibility,
+      // Always public — the line beside the button says so before the tap.
+      visibility: SUBMISSION_VISIBILITY,
     });
 
     if (!built.ok) {
@@ -469,7 +490,6 @@ export default function ToolPage() {
     setSquat("");
     setDeadlift("");
     setRunTimeDigits("");
-    setVisibility(DEFAULT_VISIBILITY);
     setResult(null);
     setSubmitError(null);
     setShowDetails(false);
@@ -587,7 +607,7 @@ export default function ToolPage() {
     4: {
       kicker: "Final step",
       title: "You're ready",
-      sub: "Check your numbers, choose who can see the result.",
+      sub: "Check your numbers, then get your result.",
     },
   };
 
@@ -625,7 +645,7 @@ export default function ToolPage() {
               </div>
 
               {/* Units toggle */}
-              <div className="grid w-[120px] grid-cols-2 overflow-hidden rounded-full border border-white/10 bg-black/30 sm:w-[128px]">
+              <div className="grid w-[120px] shrink-0 grid-cols-2 overflow-hidden rounded-full border border-white/10 bg-black/30 sm:w-[128px]">
   <button
     type="button"
     onClick={() => {
@@ -882,7 +902,7 @@ export default function ToolPage() {
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
                   <div className="text-sm font-medium text-white/60">Review</div>
                   <div className="mt-3 grid grid-cols-1 gap-3 text-base">
-                      <Row label="Name" value={displayName.trim() ? displayName.trim() : "Anonymous Athlete"} />
+                      <Row label="Name" value={displayName.trim() ? displayName.trim() : ANONYMOUS_NAME} />
                       <Row label="Bodyweight" value={wInput ? `${Math.round(wInput)} ${unitLabel}` : "—"} />
 <Row label="Strength" value={displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel} total` : "—"} />
                       <Row
@@ -892,77 +912,18 @@ export default function ToolPage() {
                     </div>
                   </div>
 
-                  {/* Visibility — private unless the athlete chooses otherwise */}
-                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                    <div className="text-sm font-medium text-white/60">Who can see this result?</div>
-
-                    <div
-                      role="radiogroup"
-                      aria-label="Who can see this result"
-                      className="mt-3 grid gap-2"
-                    >
-                      {VISIBILITY_OPTIONS.map((option) => {
-                        const selected = visibility === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            role="radio"
-                            aria-checked={selected}
-                            disabled={hasResult}
-                            onClick={() => {
-                              setVisibility(option.value);
-                              noteEdit();
-                            }}
-                            className={`rounded-2xl border px-4 py-3 text-left transition disabled:opacity-40 ${
-                              selected
-                                ? "border-white/30 bg-white/[0.07]"
-                                : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-sm font-semibold text-white">
-                                {option.label}
-                                {option.value === "private" ? (
-                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-widest text-white/40">
-                                    Default
-                                  </span>
-                                ) : null}
-                              </span>
-                              <span
-                                aria-hidden="true"
-                                className={`h-3.5 w-3.5 shrink-0 rounded-full border ${
-                                  selected ? "border-white bg-white" : "border-white/25"
-                                }`}
-                              />
-                            </div>
-                            <div className="mt-1 text-xs text-white/55">{option.summary}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-3 text-xs leading-relaxed text-white/60">
-                      {chosenVisibility.detail}
-                    </div>
-
-                    {hasResult ? (
-                      <div className="mt-2 text-xs text-white/45">
-                        Locked for this result — it is already saved with this
-                        choice. Changing any entry, or resetting, lets you score
-                        again; that saves a separate result and leaves this one
-                        as it is.
-                      </div>
-                    ) : null}
-                  </div>
-
                   <button
                     onClick={generateProfile}
                     disabled={!canSubmit}
-                    className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-40"
+                    className="w-full rounded-2xl bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-40"
                   >
                     {isWorking ? "Calculating…" : "Get my score →"}
                   </button>
+
+                  <div className="text-center text-xs leading-relaxed text-white/45">
+                    Calculating adds your result and display name to the public
+                    leaderboard.
+                  </div>
 
                   {submitError ? (
                     <div
@@ -984,14 +945,8 @@ export default function ToolPage() {
                       </div>
                     </div>
                   ) : statusText ? (
-                    <div className="text-xs text-white/60">{statusText}</div>
-                  ) : (
-                    <div className="text-sm text-white/60">
-                      {visibility === "public"
-                        ? "Your result will be listed on the public leaderboard."
-                        : "Your result stays private unless you choose otherwise."}
-                    </div>
-                  )}
+                    <div className="text-center text-xs text-white/60">{statusText}</div>
+                  ) : null}
 
                   <div className="flex gap-2">
                     <button
@@ -1014,12 +969,6 @@ export default function ToolPage() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/65">
-          <div className="font-semibold text-white">How your score is calculated</div>
-  <div className="mt-1">
-    Your Hybrid Score (0–100) is an equal blend of your Strength Percentile and Endurance Percentile — both measured against the Strendex dataset. Higher means more well-rounded.
-  </div>
-</div>
         </div>
 
         {/* RIGHT — Results / Reveal */}
@@ -1048,6 +997,9 @@ export default function ToolPage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+              {/* The popover is anchored to this row, not to the 24px button, so
+                  it spans the card and can never run off a narrow screen. */}
+              <div ref={tooltipRef} className="relative">
               <div className="flex items-end justify-between gap-3">
               <div>
   <div className="text-sm text-white/55">Hybrid Score</div>
@@ -1057,29 +1009,25 @@ export default function ToolPage() {
       {result ? Math.round(result.hybridScore) : "—"}
     </div>
 
-    {result && (
+    {result && explanation && (
   <div
-    className="relative ml-2 -mt-1"
+    className="ml-2 -mt-1"
     onMouseEnter={() => setShowHQTooltip(true)}
     onMouseLeave={() => setShowHQTooltip(false)}
   >
+    {/* The ring stays 24px so it reads as a quiet hint; the ::after box
+        widens the touch target to ~44px without changing how it looks. */}
     <button
+      ref={helpButtonRef}
       type="button"
       onClick={() => setShowHQTooltip((prev) => !prev)}
-      className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 text-[11px] font-medium leading-none text-white/55 transition hover:border-white/35 hover:text-white/80"
-      aria-label="What is Hybrid Score?"
+      className="relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[12px] font-medium leading-none text-white/55 transition after:absolute after:-inset-2.5 after:content-[''] hover:border-white/35 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+      aria-label="How your score works"
+      aria-expanded={showHQTooltip}
+      aria-controls="hybrid-score-help"
     >
       ?
     </button>
-
-    {showHQTooltip && (
-      <div className="absolute left-0 top-8 z-30 w-56">
-      <div className="relative rounded-xl bg-[#0E1014] p-3 text-xs font-medium text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)] leading-relaxed">
-        <div className="absolute left-3 top-[-4px] h-2 w-2 rotate-45 bg-[#0E1014]" />
-        Your Hybrid Score (0–100) is an equal blend of your Strength and Endurance percentiles — both measured against the Strendex dataset. Higher means more well-rounded.
-      </div>
-    </div>
-    )}
   </div>
 )}
   </div>
@@ -1094,63 +1042,83 @@ export default function ToolPage() {
                 </div>
               </div>
 
-              {/* Dopamine-first stats */}
-<div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-  <div className="text-sm text-white/55">You beat</div>
-    <div className="mt-1 text-2xl font-semibold text-white">
-      {standing === null ? "—" : `${standing.beatPercent.toFixed(1)}%`}
-    </div>
-    <div className="mt-1 text-[11px] text-white/55">of listed athletes</div>
-  </div>
-
-  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-  <div className="text-sm text-white/55">Leaderboard</div>
-    <div className="mt-1 text-2xl font-semibold text-white">
-      {standing === null ? (hasResult ? "Not listed" : "—") : `#${standing.rank}`}
-    </div>
-    <div className="mt-1 text-[11px] text-white/55">
-      {standing === null ? "—" : `out of ${standing.total}`}
-    </div>
-  </div>
-
-  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-  <div className="text-sm text-white/55">Athlete type</div>
-    <div className="mt-1 text-sm font-semibold text-white">
-      {result ? result.archetype : "—"}
-    </div>
-    <div className="mt-1 text-[11px] text-white/55 line-clamp-2">
-      {archetypeInfo ? archetypeInfo.tagline : "Scored from your saved result."}
-    </div>
-  </div>
-</div>
-
-              {/* Status of the saved row: privacy, moderation, verification. */}
-              {result && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <StatusChip label={visibilityOption(result.visibility).label} />
-                  {moderation ? <StatusChip label={moderation.label} /> : null}
-                  {verification ? <StatusChip label={verification.label} /> : null}
-                  {disclosure?.provisional ? <StatusChip label="Provisional benchmark" /> : null}
+              {showHQTooltip && explanation && (
+                <div
+                  id="hybrid-score-help"
+                  role="note"
+                  className="absolute left-0 right-0 top-full z-30 mt-2 sm:max-w-md"
+                >
+                  <div className="space-y-2 rounded-xl border border-white/10 bg-[#0E1014] p-3.5 text-xs font-medium leading-relaxed text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+                    {explanation.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
                 </div>
               )}
-
-              {result && exclusion ? (
-                <div className="mt-3 text-xs leading-relaxed text-white/55">{exclusion}</div>
-              ) : null}
-            </div>
-
-            {/* Dataset disclosure — always shown with a result, never buried. */}
-            {result && disclosure ? (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-                  {disclosure.headline}
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-white/65">
-                  {disclosure.body}
-                </div>
               </div>
-            ) : null}
+
+              {/* Strength / endurance against the comparison group. "Ahead of
+                  X%" is the PERCENTILE — the index is named separately on the
+                  line below so the two can never be read as the same number.
+                  Stacked rows, not side-by-side cards: at 320px a two-column
+                  split leaves ~68px per cell, which "Ahead of 100.0%" cannot
+                  fit without wrapping mid-number. */}
+<div className="mt-4 divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+  {[
+    {
+      label: "Strength",
+      percentile: result?.strengthPercentile ?? null,
+      index: result?.strengthIndex ?? null,
+    },
+    {
+      label: "Endurance",
+      percentile: result?.endurancePercentile ?? null,
+      index: result?.enduranceIndex ?? null,
+    },
+  ].map((row) => (
+    <div
+      key={row.label}
+      className="px-3.5 py-3 sm:flex sm:items-baseline sm:justify-between sm:gap-3"
+    >
+      <div className="text-[11px] uppercase tracking-widest text-white/40">
+        {row.label}
+      </div>
+      <div className="mt-1 sm:mt-0 sm:text-right">
+        <div className="text-base font-semibold text-white">
+          {row.percentile === null
+            ? "—"
+            : `Ahead of ${row.percentile.toFixed(1)}%`}
+        </div>
+        <div className="text-[11px] text-white/45">
+          {row.percentile === null || row.index === null
+            ? "of athletes in the current comparison group"
+            : `of athletes · index ${row.index.toFixed(1)}`}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+
+              {/* Athlete type */}
+              <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 sm:mt-3">
+                <div className="text-[11px] uppercase tracking-widest text-white/40">Athlete type</div>
+                <div className="mt-1 text-sm font-semibold text-white">
+                  {result ? result.archetype : "—"}
+                </div>
+                {archetypeInfo && (
+                  <div className="mt-0.5 text-xs text-white/50">{archetypeInfo.tagline}</div>
+                )}
+              </div>
+
+              {/* Placement — the saved row's, or one plain line on why not yet. */}
+              {result && (
+                <div className="mt-3 text-sm text-white/70">
+                  {standing
+                    ? `#${standing.rank} of ${standing.total} on the leaderboard — ahead of ${standing.beatPercent.toFixed(1)}% of listed athletes.`
+                    : exclusion}
+                </div>
+              )}
+            </div>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
             <button
@@ -1205,46 +1173,11 @@ export default function ToolPage() {
                   </div>
                 )}
 
-                {/* Saved result, as recorded on the server. */}
-                {result && (
-                  <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-                      Saved result
-                    </div>
-                    <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                      <Row
-                        label="Strength percentile"
-                        value={`${result.strengthPercentile.toFixed(1)}%`}
-                      />
-                      <Row
-                        label="Endurance percentile"
-                        value={`${result.endurancePercentile.toFixed(1)}%`}
-                      />
-                      <Row label="Strength index" value={result.strengthIndex.toFixed(1)} />
-                      <Row label="Endurance index" value={result.enduranceIndex.toFixed(1)} />
-                      <Row label="Visibility" value={visibilityOption(result.visibility).label} />
-                      <Row label="Moderation" value={moderationLabel(result)} />
-                      <Row label="Verification" value={verification ? verification.label : "—"} />
-                      <Row label="Source" value={provenanceLabel(result)} />
-                      <Row label="Score version" value={result.scoreVersion} />
-                    </div>
-                    <div className="mt-4 text-xs leading-relaxed text-white/45">
-                      {verification ? `${verification.body} ` : ""}
-                      Result ID{" "}
-                      <span className="font-mono break-all text-white/60">
-                        {result.resultId}
-                      </span>
-                      .
-                    </div>
-                  </div>
-                )}
-
                 {result && chartData.length > 0 && (
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
                     <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Performance signature</div>
                     <div className="mt-1 text-xs text-white/45">
-                      Per-lift breakdown of the strength index your result was scored from,
-                      alongside your saved endurance index.
+                      How your bench, squat, deadlift and run stack up.
                     </div>
                     <div className="mt-4 grid place-items-center rounded-2xl border border-white/10 bg-[#020203] p-4">
                       <StrendexChart data={chartData} />
@@ -1338,7 +1271,7 @@ flexShrink: 0,
         Athlete
       </div>
       <div style={{ fontSize: "clamp(18px, 6vw, 26px)", fontWeight: 700, color: "white", letterSpacing: "-0.03em", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {displayName.trim() ? displayName.trim() : "Anonymous Athlete"}
+        {displayName.trim() ? displayName.trim() : ANONYMOUS_NAME}
       </div>
       <div style={{ fontSize: "clamp(8px, 2.5vw, 11px)", color: "rgba(255,255,255,0.38)", marginTop: "5px", letterSpacing: "0.06em" }}>
         {result ? result.archetype : "—"}
@@ -1488,8 +1421,8 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
         <div className="fixed bottom-3 left-3 right-3 z-50 lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#020203]/85 px-3 py-2 backdrop-blur-xl">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="text-xs font-semibold text-white">Hybrid {Math.round(result.hybridScore)}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="truncate text-xs font-semibold text-white">Hybrid {Math.round(result.hybridScore)}</div>
                 <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierStyle.pill}`}>
                   <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />
                   {result.tier}
@@ -1545,14 +1478,6 @@ function Row({ label, value }: { label: string; value: string }) {
       <div className="text-white/60">{label}</div>
       <div className="text-white font-semibold">{value}</div>
     </div>
-  );
-}
-
-function StatusChip({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white/60">
-      {label}
-    </span>
   );
 }
 

@@ -364,19 +364,25 @@ run against a database.
    replays the stored row and any edit mints a new key. A `409
    IDEMPOTENCY_CONFLICT` drops the stored key so the next attempt starts clean.
    A second click while a request is in flight is refused rather than sent.
-4. ✅ Visibility control on the review step, **private by default**, all three
-   values offered. It is locked once a result is shown — `/api/score` has no
-   update path, so changing it means scoring again under a new key, which writes
-   a second row. `unlisted` is described honestly as "hidden today": no result
-   link surface exists yet, and the section 5 policy hides non-public rows from
-   `anon` regardless.
-4b. ✅ `datasetKind`, `datasetLabel`, `datasetSampleSize` and
-   `datasetConfidence` are disclosed next to the score.
-   `legacy_mixed_provisional` renders as a "provisional benchmark — legacy mixed
-   data" panel plus a status chip; an `observed` dataset still on `provisional`
-   confidence is flagged as a small sample. Moderation, verification and
-   visibility are shown as chips, and a result that is not on the leaderboard
-   says why.
+4. ✅→**superseded by product decision (2026-08-04):** the visibility control
+   was built, then removed. The calculator now submits every result with an
+   EXPLICIT `visibility: "public"` (`SUBMISSION_VISIBILITY` in
+   `lib/tool/scoreSubmission.ts`) and discloses it in one line beside the
+   button: "Calculating adds your result and display name to the public
+   leaderboard." The API
+   contract is unchanged — `private`/`unlisted` remain valid request values and
+   the server's absent-visibility fallback is still `private`, so no other
+   caller can publish by accident. A blank display name is submitted as
+   "Anonymous".
+4b. ✅ Benchmark transparency is consolidated into the "?" popover beside the
+   score (`scoreExplanation` in `lib/tool/resultPresentation.ts`): plain-language
+   scoring explanation, percentile definition, an "early and provisional"
+   disclosure whenever the dataset is `legacy_mixed_provisional` or its
+   confidence is `provisional`, and "results are self-reported unless
+   verified". Dataset labels, versions, kinds, sample sizes, result ids and
+   moderation/verification chips no longer appear in the visible results UI;
+   a result that is not on the leaderboard gets one plain line saying why
+   (pending review / not approved).
 
 Consequences worth knowing before the deploy:
 
