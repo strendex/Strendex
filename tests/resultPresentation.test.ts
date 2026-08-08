@@ -58,6 +58,17 @@ describe("results page: score explanation popover", () => {
     assert.match(text, /ahead of 27\.5%/);
   });
 
+  it("says the Hybrid Score is an equal blend and NOT itself a percentile", () => {
+    // The single most common misreading of a 0–100 score, and the one claim
+    // no Strendex surface is allowed to make: "75 means you beat 75%".
+    const text = joined(result());
+
+    assert.match(text, /equal blend/i);
+    assert.match(text, /half each/i);
+    assert.match(text, /not a percentile/i);
+    assert.match(text, /does not mean you beat/i);
+  });
+
   it("discloses an early benchmark for legacy mixed data", () => {
     const text = joined(result({ datasetKind: "legacy_mixed_provisional" }));
     assert.match(text, /early and provisional/i);
@@ -154,7 +165,7 @@ describe("results page: percentile wording", () => {
     // "%" and the word "ahead", the index is labelled "index".
     const r = result({ endurancePercentile: 27.5, enduranceIndex: 59.1 });
     const value = rendered(r.endurancePercentile);
-    const sub = `of athletes · index ${r.enduranceIndex.toFixed(1)}`;
+    const sub = `of the Strendex dataset · index ${r.enduranceIndex.toFixed(1)}`;
 
     assert.match(value, /%$/);
     assert.equal(value.includes("index"), false);

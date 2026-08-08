@@ -45,7 +45,16 @@ export const metadata = {
 
     <p className="mt-4 text-sm text-zinc-400 leading-relaxed">
       The result is rounded to an integer between 0 and 100.
-      A score of 75 means you outperform 75% of athletes on average across strength and endurance.
+    </p>
+
+    <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
+      <span className="text-zinc-100 font-semibold">The Hybrid Score is not itself a percentile.</span>{" "}
+      It is the average of two percentiles, which is a different thing. A Hybrid
+      Score of 75 does <span className="text-zinc-100 font-semibold">not</span>{" "}
+      mean you beat 75% of the Strendex dataset — it means your strength and
+      endurance percentiles average out to 75. A 90 in strength and a 60 in
+      endurance gives the same 75 as a flat 75 in both, and those are very
+      different athletes.
     </p>
   </div>
 
@@ -54,19 +63,19 @@ export const metadata = {
     <div className="text-sm font-semibold text-white">2) What is a percentile?</div>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      A percentile shows how you compare to other athletes.
+      A percentile shows how a result compares to the Strendex dataset.
       It does NOT measure raw weight lifted or raw time alone.
-      It measures your position relative to everyone else.
+      It measures your position within that dataset.
     </p>
 
     <div className="mt-4 space-y-3 text-sm text-zinc-400">
       <div>
         If your Strength Percentile is <span className="text-zinc-100 font-semibold">80</span>,
-        you are stronger than 80% of athletes in the database.
+        your relative strength is ahead of 80% of the Strendex dataset.
       </div>
       <div>
         If your Endurance Percentile is <span className="text-zinc-100 font-semibold">40</span>,
-        you outperform 40% of athletes in endurance.
+        your run is ahead of 40% of the Strendex dataset.
       </div>
     </div>
 
@@ -80,13 +89,13 @@ export const metadata = {
     <div className="text-sm font-semibold text-white">3) Why scores may change over time</div>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      Percentiles are relative to the dataset.
-      As more athletes join STRENDEX, percentiles naturally adjust.
+      Percentiles are relative to the Strendex dataset.
+      As that dataset grows and changes, percentiles adjust with it.
     </p>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      Early in the platform’s growth, percentile shifts may be more noticeable.
-      As the dataset grows larger, scores stabilize.
+      The dataset is early, so percentile shifts may be noticeable for now.
+      As it grows larger, scores stabilize.
     </p>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
@@ -104,19 +113,20 @@ export const metadata = {
     </p>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      Percentiles normalize performance across the entire athlete pool.
+      Percentiles normalize performance across the Strendex dataset.
       This makes your score:
     </p>
 
     <ul className="mt-4 space-y-2 text-sm text-zinc-400 list-disc list-inside">
       <li>Fair across different bodyweights</li>
-      <li>Comparable across all athletes</li>
+      <li>Comparable between entries in the dataset</li>
       <li>Balanced between strength and endurance</li>
       <li>Resistant to inflated raw totals</li>
     </ul>
 
     <p className="mt-4 text-sm text-zinc-400 leading-relaxed">
-      The Hybrid Score is not just a total — it’s a position in the global athlete distribution.
+      The Hybrid Score is not just a total — it combines two positions within the
+      Strendex dataset into one number.
     </p>
   </div>
 

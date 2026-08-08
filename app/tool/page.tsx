@@ -472,8 +472,11 @@ export default function ToolPage() {
       if (window.innerWidth >= 1024) {
         setShowDetails(true);
       } else {
+        // The score itself, not the details button — the button now sits below
+        // the breakdown, and scrolling there would skip straight past the
+        // result the athlete just asked for.
         document
-          .getElementById("details-toggle-btn")
+          .getElementById("score-panel")
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, 800);
@@ -974,185 +977,168 @@ export default function ToolPage() {
         {/* RIGHT — Results / Reveal */}
         <div className="lg:col-span-7">
           <div id="results" />
-          <div className={`rounded-3xl border border-white/10 bg-white/[0.03] p-6 ${tierStyle.glow}`}>
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-              <div className="text-sm font-medium text-white/60">
-  {isWorking ? "Computing" : hasResult ? "Your result" : "Your score will appear here"}
-</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">
-                  Hybrid Score <span className="text-white/60">(0–100)</span>
-                </h2>
-                <p className="mt-2 text-base text-white/70">
-  {hasResult
-    ? "Here’s where you stand."
-    : "Fill in your stats on the left to see where you rank."}
-</p>
-              </div>
+          <div className={`rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 lg:p-7 ${tierStyle.glow}`}>
+            {/* One compact eyebrow row. The panel underneath is already titled
+                "Hybrid Score", so repeating the title and a strapline here only
+                pushed the score itself off the first screen on a phone. */}
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                {isWorking ? "Computing" : "Your result"}
+              </h2>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-white/70">
+              <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-white/70">
                 <span className={`h-1.5 w-1.5 rounded-full ${isWorking ? "bg-[#DFFF00] animate-pulse" : "bg-white/30"}`} />
                 {isWorking ? scanStage : "READY"}
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+            {!hasResult && !isWorking && (
+              // "on the left" was wrong on a phone, where the form is above.
+              <p className="mt-2 text-sm leading-relaxed text-white/55">
+                Fill in your stats to see where you rank.
+              </p>
+            )}
+
+            <div id="score-panel" className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 sm:p-5">
               {/* The popover is anchored to this row, not to the 24px button, so
-                  it spans the card and can never run off a narrow screen. */}
+                  it spans the card and can never run off a narrow screen. The
+                  tier no longer shares this row: it reads after the percentiles,
+                  grouped with the archetype, and the score gets the full width. */}
               <div ref={tooltipRef} className="relative">
-              <div className="flex items-end justify-between gap-3">
-              <div>
-  <div className="text-sm text-white/55">Hybrid Score</div>
+                <div className="text-sm text-white/55">Hybrid Score</div>
 
-  <div className="mt-1 flex items-start gap-2">
-    <div className="text-6xl font-semibold tracking-tight text-[#DFFF00]">
-      {result ? Math.round(result.hybridScore) : "—"}
-    </div>
-
-    {result && explanation && (
-  <div
-    className="ml-2 -mt-1"
-    onMouseEnter={() => setShowHQTooltip(true)}
-    onMouseLeave={() => setShowHQTooltip(false)}
-  >
-    {/* The ring stays 24px so it reads as a quiet hint; the ::after box
-        widens the touch target to ~44px without changing how it looks. */}
-    <button
-      ref={helpButtonRef}
-      type="button"
-      onClick={() => setShowHQTooltip((prev) => !prev)}
-      className="relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[12px] font-medium leading-none text-white/55 transition after:absolute after:-inset-2.5 after:content-[''] hover:border-white/35 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-      aria-label="How your score works"
-      aria-expanded={showHQTooltip}
-      aria-controls="hybrid-score-help"
-    >
-      ?
-    </button>
-  </div>
-)}
-  </div>
-</div>
-
-                <div className="text-right">
-                <div className="text-sm text-white/55">Tier</div>
-                  <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierStyle.pill}`}>
-                    {result && <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />}
-                    {result ? result.tier : "—"}
+                <div className="mt-1 flex items-start gap-2">
+                  <div className="text-6xl font-semibold leading-none tracking-tight text-[#DFFF00] sm:text-7xl">
+                    {result ? Math.round(result.hybridScore) : "—"}
                   </div>
+
+                  {result && explanation && (
+                    <div
+                      className="-mt-1 ml-1"
+                      onMouseEnter={() => setShowHQTooltip(true)}
+                      onMouseLeave={() => setShowHQTooltip(false)}
+                    >
+                      {/* The ring stays 24px so it reads as a quiet hint; the
+                          ::after box widens the touch target to ~44px without
+                          changing how it looks. */}
+                      <button
+                        ref={helpButtonRef}
+                        type="button"
+                        onClick={() => setShowHQTooltip((prev) => !prev)}
+                        className="relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[12px] font-medium leading-none text-white/55 transition after:absolute after:-inset-2.5 after:content-[''] hover:border-white/35 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                        aria-label="How your score works"
+                        aria-expanded={showHQTooltip}
+                        aria-controls="hybrid-score-help"
+                      >
+                        ?
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {showHQTooltip && explanation && (
+                  <div
+                    id="hybrid-score-help"
+                    role="note"
+                    className="absolute left-0 right-0 top-full z-30 mt-2 sm:max-w-md"
+                  >
+                    <div className="space-y-2 rounded-xl border border-white/10 bg-[#0E1014] p-3.5 text-xs font-medium leading-relaxed text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+                      {explanation.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {showHQTooltip && explanation && (
-                <div
-                  id="hybrid-score-help"
-                  role="note"
-                  className="absolute left-0 right-0 top-full z-30 mt-2 sm:max-w-md"
-                >
-                  <div className="space-y-2 rounded-xl border border-white/10 bg-[#0E1014] p-3.5 text-xs font-medium leading-relaxed text-white/75 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
-                    {explanation.map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              </div>
+              {/* Group 4A's one-sentence interpretation lands here, directly
+                  under the score. Nothing is passed yet, so nothing renders. */}
+              <ScoreInterpretation />
 
-              {/* Strength / endurance against the comparison group. "Ahead of
+              {/* Strength / endurance against the Strendex dataset. "Ahead of
                   X%" is the PERCENTILE — the index is named separately on the
                   line below so the two can never be read as the same number.
                   Stacked rows, not side-by-side cards: at 320px a two-column
                   split leaves ~68px per cell, which "Ahead of 100.0%" cannot
                   fit without wrapping mid-number. */}
-<div className="mt-4 divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-  {[
-    {
-      label: "Strength",
-      percentile: result?.strengthPercentile ?? null,
-      index: result?.strengthIndex ?? null,
-    },
-    {
-      label: "Endurance",
-      percentile: result?.endurancePercentile ?? null,
-      index: result?.enduranceIndex ?? null,
-    },
-  ].map((row) => (
-    <div
-      key={row.label}
-      className="px-3.5 py-3 sm:flex sm:items-baseline sm:justify-between sm:gap-3"
-    >
-      <div className="text-[11px] uppercase tracking-widest text-white/40">
-        {row.label}
-      </div>
-      <div className="mt-1 sm:mt-0 sm:text-right">
-        <div className="text-base font-semibold text-white">
-          {row.percentile === null
-            ? "—"
-            : `Ahead of ${row.percentile.toFixed(1)}%`}
-        </div>
-        <div className="text-[11px] text-white/45">
-          {row.percentile === null || row.index === null
-            ? "of athletes in the current comparison group"
-            : `of athletes · index ${row.index.toFixed(1)}`}
-        </div>
-      </div>
-    </div>
-  ))}
-</div>
-
-              {/* Athlete type */}
-              <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 sm:mt-3">
-                <div className="text-[11px] uppercase tracking-widest text-white/40">Athlete type</div>
-                <div className="mt-1 text-sm font-semibold text-white">
-                  {result ? result.archetype : "—"}
-                </div>
-                {archetypeInfo && (
-                  <div className="mt-0.5 text-xs text-white/50">{archetypeInfo.tagline}</div>
-                )}
+              <div className="mt-4 divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                {[
+                  {
+                    label: "Strength",
+                    percentile: result?.strengthPercentile ?? null,
+                    index: result?.strengthIndex ?? null,
+                  },
+                  {
+                    label: "Endurance",
+                    percentile: result?.endurancePercentile ?? null,
+                    index: result?.enduranceIndex ?? null,
+                  },
+                ].map((row) => (
+                  <div
+                    key={row.label}
+                    className="px-3.5 py-3 sm:flex sm:items-baseline sm:justify-between sm:gap-3"
+                  >
+                    <div className="text-[11px] uppercase tracking-widest text-white/40">
+                      {row.label}
+                    </div>
+                    <div className="mt-1 sm:mt-0 sm:text-right">
+                      <div className="text-base font-semibold text-white">
+                        {row.percentile === null
+                          ? "—"
+                          : `Ahead of ${row.percentile.toFixed(1)}%`}
+                      </div>
+                      <div className="text-[11px] text-white/45">
+                        {row.percentile === null || row.index === null
+                          ? "of the Strendex dataset"
+                          : `of the Strendex dataset · index ${row.index.toFixed(1)}`}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Placement — the saved row's, or one plain line on why not yet. */}
+              {/* Tier and athlete type read as one group, in the same rows
+                  treatment as the percentiles above. */}
+              <div className="mt-4 divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                <div className="flex items-center justify-between gap-3 px-3.5 py-3">
+                  <div className="text-[11px] uppercase tracking-widest text-white/40">
+                    Tier
+                  </div>
+                  <div className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-widest ${tierStyle.pill}`}>
+                    {result && <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />}
+                    {result ? result.tier : "—"}
+                  </div>
+                </div>
+
+                <div className="px-3.5 py-3 sm:flex sm:items-baseline sm:justify-between sm:gap-3">
+                  <div className="text-[11px] uppercase tracking-widest text-white/40">
+                    Athlete type
+                  </div>
+                  <div className="mt-1 sm:mt-0 sm:text-right">
+                    <div className="text-sm font-semibold text-white">
+                      {result ? result.archetype : "—"}
+                    </div>
+                    {archetypeInfo && (
+                      <div className="mt-0.5 text-[11px] text-white/45">
+                        {archetypeInfo.tagline}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Placement — the saved row's rank, named as leaderboard
+                  placement and nothing more. It is not a percentile and not a
+                  standing across the dataset, so it does not get phrased as
+                  one. */}
               {result && (
-                <div className="mt-3 text-sm text-white/70">
+                <div className="mt-4 text-sm leading-relaxed text-white/60">
                   {standing
-                    ? `#${standing.rank} of ${standing.total} on the leaderboard — ahead of ${standing.beatPercent.toFixed(1)}% of listed athletes.`
+                    ? `Leaderboard placement: #${standing.rank} of ${standing.total}.`
                     : exclusion}
                 </div>
               )}
             </div>
-
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <button
-    id="details-toggle-btn"
-    onClick={() => setShowDetails((v) => !v)}
-    className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
-  >
-    {showDetails ? "Hide details" : "See full breakdown →"}
-  </button>
-
-  <Link
-    href="/rankings"
-    className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
-  >
-    View Rankings
-  </Link>
-</div>
-
-            {result && !isWorking && reviewInputs && (
-              <AthleteReviewCTA
-                hybridScore={Math.round(result.hybridScore)}
-                strengthPercentile={result.strengthPercentile}
-                endurancePercentile={result.endurancePercentile}
-                strengthIndex={result.strengthIndex}
-                enduranceIndex={result.enduranceIndex}
-                tier={result.tier}
-                archetype={result.archetype}
-                rank={standing?.rank ?? null}
-                totalAthletes={standing?.total ?? null}
-                betterThanPercent={standing?.beatPercent ?? null}
-                inputs={reviewInputs}
-                emphasized={arIntent}
-              />
-            )}
 
             {/* Details */}
             {showDetails && (
@@ -1174,35 +1160,38 @@ export default function ToolPage() {
                 )}
 
                 {result && chartData.length > 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4 sm:p-5">
                     <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Performance signature</div>
                     <div className="mt-1 text-xs text-white/45">
                       How your bench, squat, deadlift and run stack up.
                     </div>
-                    <div className="mt-4 grid place-items-center rounded-2xl border border-white/10 bg-[#020203] p-4">
+                    {/* Full-bleed inside the card on a phone: the padding chain
+                        above was costing the chart ~60px of the width its axis
+                        labels need. Framed normally from sm up. */}
+                    <div className="-mx-4 mt-4 border-y border-white/10 bg-black/40 px-2 py-4 sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
                       <StrendexChart data={chartData} />
                     </div>
                   </div>
                 )}
 
                 {/* Share Card */}
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                    <div className="mt-1 text-lg font-semibold text-white">Your Athlete Card</div>
+                    <div className="text-lg font-semibold text-white">Your Athlete Card</div>
                     <div className="mt-1 text-sm text-white/60">Download your card and post it. Challenge someone to beat your score.</div>
                     </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="flex shrink-0 gap-2">
                       <button
                         onClick={downloadScorecard}
-                        className="rounded-2xl bg-[#DFFF00] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#c9e600]"
+                        className="w-full rounded-2xl bg-[#DFFF00] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#c9e600] sm:w-auto"
                       >
                         Download
                       </button>
                       <button
                         onClick={copyShareLink}
-                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+                        className="w-full whitespace-nowrap rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.06] sm:w-auto"
                       >
                         Copy link
                       </button>
@@ -1308,16 +1297,36 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
       <div style={{ fontSize: "10px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", marginTop: "10px" }}>
         out of 100
       </div>
-      {standing !== null && (
-        <div style={{
-          marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "7px",
-          borderRadius: "999px", border: "0.5px solid rgba(223,255,0,0.2)",
-          background: "rgba(223,255,0,0.08)", padding: "11px 20px",
-          fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 700, color: "rgba(240,255,170,0.95)", letterSpacing: "0.02em", lineHeight: 1,
-        }}>
-          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#DFFF00", boxShadow: "0 0 10px rgba(223,255,0,0.6)" }} />
-          Better than {standing.beatPercent.toFixed(1)}% of listed athletes
-        </div>
+      {/* The two percentiles the athlete can also see on screen, in the same
+          words. This slot used to carry a leaderboard-derived "Better than
+          X% of listed athletes" badge: sitting directly under the score it
+          read as an overall percentile for the Hybrid Score, which is not
+          what it was, and is not a claim this card gets to make. */}
+      {result && (
+        <>
+          <div style={{
+            marginTop: "18px", width: "100%",
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px",
+            padding: "0 6%",
+          }}>
+            {[
+              { k: "Strength", v: result.strengthPercentile },
+              { k: "Endurance", v: result.endurancePercentile },
+            ].map((x) => (
+              <div key={x.k} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", lineHeight: 1, whiteSpace: "nowrap" }}>
+                  {x.k}
+                </div>
+                <div style={{ fontSize: "clamp(9px, 2.6vw, 13px)", fontWeight: 600, color: "rgba(255,255,255,0.82)", marginTop: "6px", lineHeight: 1, whiteSpace: "nowrap" }}>
+                  Ahead of {x.v.toFixed(1)}%
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", marginTop: "7px", lineHeight: 1 }}>
+            of the Strendex dataset
+          </div>
+        </>
       )}
     </div>
 
@@ -1345,12 +1354,21 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
 
     {/* Footer */}
     <div style={{ marginTop: "16px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(223,255,0,0.2), transparent)" }} />
-    <div style={{ marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ marginTop: "12px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "10px" }}>
     <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
 {siteLabel}
 </div>
-<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
-        {standing !== null ? `#${standing.rank} / ${standing.total}` : "CAN YOU BEAT THIS?"}
+{/* Named, so a rank can never be mistaken for a percentile or for a
+    standing across the whole dataset. */}
+<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.16em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap" }}>
+        {standing !== null ? (
+          <>
+            <div style={{ color: "rgba(255,255,255,0.14)" }}>Leaderboard</div>
+            <div>#{standing.rank} / {standing.total}</div>
+          </>
+        ) : (
+          "CAN YOU BEAT THIS?"
+        )}
       </div>
     </div>
 
@@ -1406,11 +1424,48 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
             )}
 
             {!showDetails && (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="text-base text-white/70">
-              Open details to see your full breakdown, archetype, and shareable athlete card.
-              </div>
+              // A caption, not a bordered box: one sentence in a full card was
+              // reading as an empty area between the result and the actions.
+              <p className="mt-6 text-sm leading-relaxed text-white/55">
+                Open details to see your full breakdown, archetype, and shareable athlete card.
+              </p>
+            )}
+
+            {/* Actions come after the breakdown they belong to, so the card
+                reads score → percentiles → tier and archetype → chart →
+                actions in one pass. */}
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+              <button
+                id="details-toggle-btn"
+                onClick={() => setShowDetails((v) => !v)}
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]"
+              >
+                {showDetails ? "Hide details" : "See full breakdown →"}
+              </button>
+
+              <Link
+                href="/rankings"
+                className="w-full rounded-2xl bg-[#DFFF00] px-4 py-3 text-center text-sm font-semibold text-black transition hover:opacity-90"
+              >
+                View Rankings
+              </Link>
             </div>
+
+            {result && !isWorking && reviewInputs && (
+              <AthleteReviewCTA
+                hybridScore={Math.round(result.hybridScore)}
+                strengthPercentile={result.strengthPercentile}
+                endurancePercentile={result.endurancePercentile}
+                strengthIndex={result.strengthIndex}
+                enduranceIndex={result.enduranceIndex}
+                tier={result.tier}
+                archetype={result.archetype}
+                rank={standing?.rank ?? null}
+                totalAthletes={standing?.total ?? null}
+                betterThanPercent={standing?.beatPercent ?? null}
+                inputs={reviewInputs}
+                emphasized={arIntent}
+              />
             )}
           </div>
         </div>
@@ -1420,14 +1475,15 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
       {result && !isWorking && (
         <div className="fixed bottom-3 left-3 right-3 z-50 lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#020203]/85 px-3 py-2 backdrop-blur-xl">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="truncate text-xs font-semibold text-white">Hybrid {Math.round(result.hybridScore)}</div>
-                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest ${tierStyle.pill}`}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#DFFF00]" />
-                  {result.tier}
-                </span>
-              </div>
+            {/* The score is the one thing that must never be cut: it is
+                shrink-0, and the tier — which is on the card in full anyway —
+                is the part that gives way on a narrow phone. */}
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="shrink-0 text-xs font-semibold text-white">Hybrid {Math.round(result.hybridScore)}</div>
+              <span className={`hidden min-w-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-widest min-[360px]:inline-flex ${tierStyle.pill}`}>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#DFFF00]" />
+                <span className="truncate">{result.tier}</span>
+              </span>
             </div>
 
             <div className="flex shrink-0 gap-2">
@@ -1452,6 +1508,25 @@ textShadow: "0 0 60px rgba(223,255,0,0.22)",
 }
 
 // ---------- Small UI components ----------
+
+/**
+ * The seam Group 4A writes into: one short sentence interpreting the score,
+ * directly beneath it.
+ *
+ * Until 4A passes `text`, this renders nothing at all — no reserved height, no
+ * empty paragraph for a screen reader to land on, no placeholder copy. The
+ * layout above and below closes up as if the slot were not there, so adding
+ * the sentence later is a prop, not another redesign.
+ */
+function ScoreInterpretation({ text }: { text?: string | null }) {
+  if (!text) return null;
+
+  return (
+    <p className="mt-2 max-w-[52ch] text-sm leading-relaxed text-white/70">
+      {text}
+    </p>
+  );
+}
 
 function Progress({ step }: { step: Step }) {
   return (

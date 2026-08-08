@@ -117,7 +117,7 @@ export default function AthleteReviewCTA(props: AthleteReviewCTAProps) {
   return (
     <div
       ref={cardRef}
-      className={`mt-5 rounded-3xl border bg-white/[0.03] p-6 transition ${
+      className={`mt-6 rounded-3xl border bg-white/[0.03] p-6 transition ${
         props.emphasized ? "border-white/30" : "border-white/10"
       }`}
     >

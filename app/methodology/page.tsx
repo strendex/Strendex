@@ -24,19 +24,25 @@ export default function MethodologyPage() {
         <section>
           <h2 className="text-xl font-semibold text-white">Outputs</h2>
           <ul className="mt-2 list-disc pl-5 text-white/70 space-y-2">
-            <li>HQ Score (hybrid score)</li>
+            <li>Hybrid Score</li>
             <li>Rank band</li>
             <li>Archetype</li>
-            <li>Percentile estimate (based on current dataset)</li>
+            <li>Strength and Endurance percentiles (relative to the Strendex dataset)</li>
           </ul>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold text-white">Percentiles</h2>
           <p className="mt-2 text-white/70 leading-relaxed">
-            Percentiles are computed relative to the existing submissions in the Strendex dataset.
-            Early on, the dataset may be small, so percentile estimates will become more accurate as
-            more athletes submit data.
+            Percentiles are computed relative to the Strendex dataset.
+            Early on, that dataset may be small, so percentile estimates will become more accurate as
+            it grows.
+          </p>
+          <p className="mt-3 text-white/70 leading-relaxed">
+            The Hybrid Score is an equal blend of the Strength and Endurance percentiles — half
+            each. It is <span className="text-white font-semibold">not itself a percentile</span>,
+            so a Hybrid Score of 75 does not mean an athlete outperformed 75% of the dataset; it
+            means those two percentiles average to 75.
           </p>
         </section>
 

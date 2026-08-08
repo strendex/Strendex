@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 // ── Hero ring sample (illustrative only — not real user data) ──
-const SAMPLE = { score: 68, strength: 72, endurance: 58 };
+// The score must stay the exact average of the two percentiles: the scoring
+// pages now state that the Hybrid Score is an equal blend of them, and an
+// illustration that does not add up undercuts the explanation.
+const SAMPLE = { score: 65, strength: 72, endurance: 58 };
 const RING_R = 130;
 const RING_C = 2 * Math.PI * RING_R;
 
@@ -34,7 +37,7 @@ export default function Home() {
     {
       n: "02",
       t: "See your percentile",
-      d: "Strength and Endurance percentiles show where you land in the field.",
+      d: "Strength and Endurance percentiles show where you land in the Strendex dataset.",
     },
     {
       n: "03",

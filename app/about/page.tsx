@@ -4,7 +4,7 @@ export default function AboutPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-white">About Strendex</h1>
         <p className="mt-4 text-white/70 leading-relaxed">
           Strendex is a hybrid performance benchmarking platform built for athletes who train
-          both strength and endurance. Enter your stats, get a Hybrid Quotient (HQ Score),
+          both strength and endurance. Enter your stats, get a Hybrid Score,
           see where you rank, and share a clean athlete card.
         </p>
   
@@ -21,7 +21,7 @@ export default function AboutPage() {
           <section>
             <h2 className="text-xl font-semibold text-white">What you can do</h2>
             <ul className="mt-2 list-disc pl-5 text-white/70 space-y-2">
-              <li>Calculate your HQ Score from strength + endurance metrics.</li>
+              <li>Calculate your Hybrid Score from strength + endurance metrics.</li>
               <li>See a rank band and archetype based on your profile.</li>
               <li>Compare on the leaderboard.</li>
               <li>Export a shareable athlete card.</li>

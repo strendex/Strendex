@@ -28,7 +28,7 @@ export function scoreExplanation(result: ScoreResultView): string[] {
     result.datasetConfidence === "provisional";
 
   return [
-    "Your Hybrid Score (0–100) blends relative strength and endurance, half and half.",
+    "Your Hybrid Score (0–100) is an equal blend of your strength and endurance percentiles — half each. The score itself is not a percentile: a 75 does not mean you beat 75% of anyone.",
     "Strength looks at your bench, squat and deadlift adjusted for your bodyweight. Endurance compares the run you entered.",
     `A percentile is the share of athletes in the current comparison group your result beats — your endurance ${result.endurancePercentile.toFixed(1)}% means you're ahead of ${result.endurancePercentile.toFixed(1)}% of them on endurance.`,
     provisional
