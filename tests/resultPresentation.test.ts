@@ -137,41 +137,50 @@ describe("results page: score explanation popover", () => {
 });
 
 describe("results page: percentile wording", () => {
-  // The results screen renders `Ahead of ${percentile.toFixed(1)}%` with the
-  // index named separately. These are the boundary values that have to stay
-  // unambiguous and short enough for a 320px card.
-  const rendered = (p: number) => `Ahead of ${p.toFixed(1)}%`;
+  // The results screen and the share card both render this exact phrasing for
+  // the two COMPONENT percentiles. Nothing else on either surface gets it.
+  const rendered = (p: number) => `Better than ${p.toFixed(1)}% of athletes`;
 
   it("formats the boundaries exactly, with no rounding surprises", () => {
-    assert.equal(rendered(0), "Ahead of 0.0%");
-    assert.equal(rendered(27.5), "Ahead of 27.5%");
-    assert.equal(rendered(99.9), "Ahead of 99.9%");
-    assert.equal(rendered(100), "Ahead of 100.0%");
+    assert.equal(rendered(0), "Better than 0.0% of athletes");
+    assert.equal(rendered(27.5), "Better than 27.5% of athletes");
+    assert.equal(rendered(99.9), "Better than 99.9% of athletes");
+    assert.equal(rendered(100), "Better than 100.0% of athletes");
   });
 
-  it("stays short enough for the narrowest phone", () => {
-    // The row gives the value the full card width at 320px; anything past
-    // ~20 characters would start wrapping mid-number.
+  it("keeps the percentage as one unbreakable token", () => {
+    // The phrase is allowed to wrap between words on a narrow phone, but the
+    // number and its "%" must never be split across two lines.
     for (const p of [0, 27.5, 99.9, 100]) {
-      assert.ok(
-        rendered(p).length <= 20,
-        `"${rendered(p)}" is too long for a 320px row`,
+      const numeric = rendered(p).split(" ").find((word) => word.endsWith("%"));
+      assert.equal(numeric, `${p.toFixed(1)}%`);
+    }
+  });
+
+  it("names no index and no dataset internals", () => {
+    // The raw index used to sit under this line. It is gone from the screen
+    // entirely — not hidden, not moved to a caption.
+    const value = rendered(result().strengthPercentile);
+
+    for (const banned of ["index", "dataset", "version", "provisional"]) {
+      assert.equal(
+        value.toLowerCase().includes(banned),
+        false,
+        `"${banned}" must not appear beside a percentile`,
       );
     }
   });
 
-  it("never lets a percentile read as an index", () => {
-    // Same underlying result, two different numbers: the percentile carries a
-    // "%" and the word "ahead", the index is labelled "index".
-    const r = result({ endurancePercentile: 27.5, enduranceIndex: 59.1 });
-    const value = rendered(r.endurancePercentile);
-    const sub = `of the Strendex dataset · index ${r.enduranceIndex.toFixed(1)}`;
+  it("is reserved for the component percentiles, never the Hybrid Score", () => {
+    // The Hybrid Score is the average of these two numbers, so it may never be
+    // described as beating a share of anyone. Guarding the shape of the claim:
+    // whatever the score is, it never renders through this phrasing.
+    const r = result({ hybridScore: 75, strengthPercentile: 90, endurancePercentile: 60 });
 
-    assert.match(value, /%$/);
-    assert.equal(value.includes("index"), false);
-    assert.match(sub, /index 59\.1/);
-    assert.equal(sub.includes("%"), false);
-    assert.notEqual(value, sub);
+    assert.equal(rendered(r.strengthPercentile), "Better than 90.0% of athletes");
+    assert.equal(rendered(r.endurancePercentile), "Better than 60.0% of athletes");
+    // 75 is the average of 90 and 60 — and is not a percentile of anything.
+    assert.equal((r.strengthPercentile + r.endurancePercentile) / 2, r.hybridScore);
   });
 });
 

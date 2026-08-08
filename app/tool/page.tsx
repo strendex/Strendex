@@ -508,7 +508,9 @@ export default function ToolPage() {
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
         pixelRatio: 3,
-        backgroundColor: "#07070A",
+        // Painted behind the card's rounded corners, so it tracks the card's
+        // own gradient rather than the near-black it used to sit on.
+        backgroundColor: "#0E1014",
       });
       const link = document.createElement("a");
       link.download = "strendex-card.png";
@@ -1055,24 +1057,15 @@ export default function ToolPage() {
                   under the score. Nothing is passed yet, so nothing renders. */}
               <ScoreInterpretation />
 
-              {/* Strength / endurance against the Strendex dataset. "Ahead of
-                  X%" is the PERCENTILE — the index is named separately on the
-                  line below so the two can never be read as the same number.
-                  Stacked rows, not side-by-side cards: at 320px a two-column
-                  split leaves ~68px per cell, which "Ahead of 100.0%" cannot
-                  fit without wrapping mid-number. */}
+              {/* The two component percentiles, and only these two. The Hybrid
+                  Score above never gets this treatment — it is an average of
+                  these numbers, not a percentile of its own. Stacked rows, not
+                  side-by-side cards: at 320px a two-column split leaves ~68px
+                  per cell, far too little for this phrasing. */}
               <div className="mt-4 divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
                 {[
-                  {
-                    label: "Strength",
-                    percentile: result?.strengthPercentile ?? null,
-                    index: result?.strengthIndex ?? null,
-                  },
-                  {
-                    label: "Endurance",
-                    percentile: result?.endurancePercentile ?? null,
-                    index: result?.enduranceIndex ?? null,
-                  },
+                  { label: "Strength", percentile: result?.strengthPercentile ?? null },
+                  { label: "Endurance", percentile: result?.endurancePercentile ?? null },
                 ].map((row) => (
                   <div
                     key={row.label}
@@ -1082,15 +1075,10 @@ export default function ToolPage() {
                       {row.label}
                     </div>
                     <div className="mt-1 sm:mt-0 sm:text-right">
-                      <div className="text-base font-semibold text-white">
+                      <div className="text-base font-semibold text-balance text-white">
                         {row.percentile === null
                           ? "—"
-                          : `Ahead of ${row.percentile.toFixed(1)}%`}
-                      </div>
-                      <div className="text-[11px] text-white/45">
-                        {row.percentile === null || row.index === null
-                          ? "of the Strendex dataset"
-                          : `of the Strendex dataset · index ${row.index.toFixed(1)}`}
+                          : `Better than ${row.percentile.toFixed(1)}% of athletes`}
                       </div>
                     </div>
                   </div>
@@ -1199,184 +1187,170 @@ export default function ToolPage() {
                   </div>
 
 
-                  <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "16px" }}>
-                  <div
-ref={cardRef}
-className="relative overflow-hidden"
-style={{
-width: "min(360px, 100%)",
-aspectRatio: "9/16",
-borderRadius: "28px",
-background: "linear-gradient(160deg, #0D0F14 0%, #07070A 45%, #050507 100%)",
-border: "1px solid rgba(255,255,255,0.1)",
-flexShrink: 0,
-  }}
->
-  {/* Background effects */}
-  <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-    <div style={{
-      position: "absolute", top: "-60px", left: "50%", transform: "translateX(-50%)",
-      width: "300px", height: "220px", borderRadius: "50%",
-      background: "radial-gradient(circle at center, rgba(223,255,0,0.16), transparent 65%)",
-      filter: "blur(50px)",
-    }} />
-    <div style={{
-      position: "absolute", inset: 0, opacity: 0.06,
-      backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)",
-      backgroundSize: "28px 28px",
-      maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 65%)",
-    }} />
-    <div style={{
-      position: "absolute", inset: 0,
-      background: "radial-gradient(85% 55% at 50% 0%, transparent 0%, rgba(7,7,10,0.5) 55%, rgba(7,7,10,0.97) 100%)",
-    }} />
-  </div>
+                  {/* The shareable object. Sized in container-query units so
+                      every element keeps the same proportion whether the card
+                      is 216px wide on a phone or 360px on a laptop — and so
+                      the rasterised PNG matches what is on screen. */}
+                  <div style={{ containerType: "inline-size", width: "min(360px, 100%)", marginTop: "16px", marginInline: "auto" }}>
+                    <div
+                      ref={cardRef}
+                      className="relative overflow-hidden"
+                      style={{
+                        width: "100%",
+                        aspectRatio: "9/16",
+                        borderRadius: "8cqw",
+                        background:
+                          "linear-gradient(168deg, #14171D 0%, #0E1014 44%, #090A0D 100%)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      {/* One glow, behind the score, and a soft floor. No grid
+                          pattern, no second gradient, no glass. */}
+                      <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                        <div style={{
+                          position: "absolute", top: "34%", left: "50%", transform: "translate(-50%, -50%)",
+                          width: "86%", aspectRatio: "1", borderRadius: "50%",
+                          background: "radial-gradient(circle, rgba(223,255,0,0.10), transparent 68%)",
+                        }} />
+                        <div style={{
+                          position: "absolute", inset: 0,
+                          background: "linear-gradient(to bottom, transparent 55%, rgba(5,6,8,0.55) 100%)",
+                        }} />
+                      </div>
 
-  <div style={{ position: "relative", zIndex: 10, padding: "6% 7%", height: "100%", display: "flex", flexDirection: "column" }}>
+                      {/* Absolute fill rather than height:100%. The card's
+                          height comes from aspect-ratio, and a percentage
+                          height against that is not resolved consistently —
+                          inset:0 against the positioned card always is. */}
+                      <div style={{
+                        position: "absolute", inset: 0, padding: "7% 7.5%",
+                        display: "flex", flexDirection: "column",
+                      }}>
+                        {/* Wordmark + tier */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4%" }}>
+                          <div style={{ fontSize: "clamp(9px, 3.4cqw, 12px)", fontWeight: 800, letterSpacing: "0.28em", color: "rgba(255,255,255,0.9)", textTransform: "uppercase", lineHeight: 1 }}>
+                            STRENDEX
+                          </div>
+                          <div style={{
+                            flexShrink: 0,
+                            fontSize: "clamp(8px, 2.7cqw, 10px)", fontWeight: 700, letterSpacing: "0.16em",
+                            textTransform: "uppercase", lineHeight: 1, whiteSpace: "nowrap",
+                            padding: "2.4% 3.6%", borderRadius: "999px",
+                            background: result?.tier === "WORLD CLASS" ? "rgba(223,255,0,0.12)" : "rgba(255,255,255,0.06)",
+                            color: result?.tier === "WORLD CLASS" ? "#DFFF00" : "rgba(255,255,255,0.72)",
+                          }}>
+                            {result ? result.tier : "—"}
+                          </div>
+                        </div>
 
-    {/* Header */}
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <div>
-      <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, letterSpacing: "0.3em", color: "rgba(255,255,255,0.92)", textTransform: "uppercase" }}>
-          STRENDEX
-</div>
-<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.2em", color: "rgba(255,255,255,0.28)", textTransform: "uppercase", marginTop: "4px" }}>
-          Hybrid Athlete Card
-</div>
-      </div>
-      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] ${tierStyle.pill}`}
-        style={{ backdropFilter: "blur(8px)" }}>
-        <span className="h-2 w-2 rounded-full bg-[#DFFF00]" />
-        {result ? result.tier : "—"}
-      </span>
-    </div>
+                        {/* Athlete */}
+                        <div style={{ marginTop: "8%" }}>
+                          <div style={{
+                            fontSize: "clamp(20px, 8.2cqw, 30px)", fontWeight: 700, color: "#F5F7FA",
+                            letterSpacing: "-0.02em", lineHeight: 1.05,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {displayName.trim() ? displayName.trim() : ANONYMOUS_NAME}
+                          </div>
+                          <div style={{
+                            fontSize: "clamp(9px, 3cqw, 11px)", color: "rgba(255,255,255,0.42)",
+                            letterSpacing: "0.08em", marginTop: "1.6%", lineHeight: 1.3,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {result ? result.archetype : "—"}
+                          </div>
+                        </div>
 
-    {/* Divider accent */}
-    <div style={{ marginTop: "20px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent)" }} />
+                        {/* Score — the one thing this card is for */}
+                        <div style={{
+                          flex: 1, display: "flex", flexDirection: "column",
+                          alignItems: "center", justifyContent: "center",
+                        }}>
+                          <div style={{ fontSize: "clamp(8px, 2.8cqw, 10px)", letterSpacing: "0.3em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", lineHeight: 1 }}>
+                            Hybrid Score
+                          </div>
+                          <div style={{
+                            fontSize: "clamp(68px, 30cqw, 108px)", fontWeight: 700, lineHeight: 0.88,
+                            letterSpacing: "-0.05em", color: "#DFFF00", WebkitTextFillColor: "#DFFF00",
+                            marginTop: "4%",
+                          }}>
+                            {result ? Math.round(result.hybridScore) : "—"}
+                          </div>
+                          <div style={{ fontSize: "clamp(8px, 2.7cqw, 10px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.24)", textTransform: "uppercase", marginTop: "4%", lineHeight: 1 }}>
+                            out of 100
+                          </div>
+                        </div>
 
-    {/* Athlete name */}
-    <div style={{ marginTop: "16px" }}>
-      <div style={{ fontSize: "9px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: "6px" }}>
-        Athlete
-      </div>
-      <div style={{ fontSize: "clamp(18px, 6vw, 26px)", fontWeight: 700, color: "white", letterSpacing: "-0.03em", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {displayName.trim() ? displayName.trim() : ANONYMOUS_NAME}
-      </div>
-      <div style={{ fontSize: "clamp(8px, 2.5vw, 11px)", color: "rgba(255,255,255,0.38)", marginTop: "5px", letterSpacing: "0.06em" }}>
-        {result ? result.archetype : "—"}
-      </div>
-    </div>
+                        {/* The two component percentiles, worded exactly as the
+                            screen words them. The Hybrid Score above is an
+                            average of these and is never given a percentile. */}
+                        {result && (
+                          <div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4%" }}>
+                              {[
+                                { k: "Strength", v: result.strengthPercentile },
+                                { k: "Endurance", v: result.endurancePercentile },
+                              ].map((x) => (
+                                <div key={x.k} style={{ textAlign: "center", minWidth: 0 }}>
+                                  <div style={{ fontSize: "clamp(8px, 2.7cqw, 10px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.32)", lineHeight: 1, whiteSpace: "nowrap" }}>
+                                    {x.k}
+                                  </div>
+                                  <div style={{ fontSize: "clamp(9px, 3.5cqw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.88)", marginTop: "6%", lineHeight: 1, whiteSpace: "nowrap" }}>
+                                    Better than {x.v.toFixed(1)}%
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: "clamp(8px, 2.6cqw, 9.5px)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: "2.6%", lineHeight: 1 }}>
+                              of athletes
+                            </div>
+                          </div>
+                        )}
 
-    {/* Score — hero */}
-    <div style={{
-      marginTop: "20px", flex: 1,
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      borderRadius: "20px",
-      border: "0.5px solid rgba(223,255,0,0.12)",
-      background: "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)",
-      position: "relative", overflow: "hidden",
-      padding: "20px 0",
-    }}>
-      <div style={{
-        position: "absolute", bottom: "-40px", left: "50%", transform: "translateX(-50%)",
-        width: "200px", height: "200px", borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(223,255,0,0.1), transparent 68%)",
-        filter: "blur(20px)", pointerEvents: "none",
-      }} />
-      <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>
-        Hybrid Score
-      </div>
-      <div style={{
-fontSize: "clamp(72px, 22vw, 100px)", fontWeight: 700, lineHeight: 0.9, letterSpacing: "-0.05em",
-color: "#DFFF00", marginTop: "10px",
-WebkitTextFillColor: "#DFFF00",
-textShadow: "0 0 60px rgba(223,255,0,0.22)",
-      }}>
-        {result ? Math.round(result.hybridScore) : "—"}
-      </div>
-      <div style={{ fontSize: "10px", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", marginTop: "10px" }}>
-        out of 100
-      </div>
-      {/* The two percentiles the athlete can also see on screen, in the same
-          words. This slot used to carry a leaderboard-derived "Better than
-          X% of listed athletes" badge: sitting directly under the score it
-          read as an overall percentile for the Hybrid Score, which is not
-          what it was, and is not a claim this card gets to make. */}
-      {result && (
-        <>
-          <div style={{
-            marginTop: "18px", width: "100%",
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px",
-            padding: "0 6%",
-          }}>
-            {[
-              { k: "Strength", v: result.strengthPercentile },
-              { k: "Endurance", v: result.endurancePercentile },
-            ].map((x) => (
-              <div key={x.k} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", lineHeight: 1, whiteSpace: "nowrap" }}>
-                  {x.k}
+                        {/* The card's only rule. */}
+                        <div style={{ marginTop: "7%", height: "1px", background: "rgba(255,255,255,0.07)" }} />
+
+                        {/* Inputs, as plain type rather than three outlined boxes */}
+                        <div style={{ marginTop: "6%", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "3%" }}>
+                          {[
+                            { k: "BW", v: wInput ? `${Math.round(wInput)} ${unitLabel}` : "—" },
+                            { k: "Total", v: displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "—" },
+                            { k: runDistance.toUpperCase(), v: runTimeText || "—" },
+                          ].map((x) => (
+                            <div key={x.k} style={{ textAlign: "center", minWidth: 0 }}>
+                              <div style={{ fontSize: "clamp(7.5px, 2.5cqw, 9px)", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {x.k}
+                              </div>
+                              <div style={{ fontSize: "clamp(9px, 3.3cqw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.8)", marginTop: "8%", lineHeight: 1, whiteSpace: "nowrap" }}>
+                                {x.v}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Footer. The rank is named as placement, never as a
+                            percentile or a standing across the dataset. */}
+                        <div style={{ marginTop: "auto", paddingTop: "6%", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "4%" }}>
+                          <div style={{ fontSize: "clamp(7.5px, 2.5cqw, 9px)", letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {siteLabel}
+                          </div>
+                          <div style={{ fontSize: "clamp(7.5px, 2.5cqw, 9px)", letterSpacing: "0.16em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap", flexShrink: 0 }}>
+                            {standing !== null ? (
+                              <>
+                                <div style={{ color: "rgba(255,255,255,0.22)" }}>Leaderboard</div>
+                                <div>#{standing.rank} / {standing.total}</div>
+                              </>
+                            ) : (
+                              "Can you beat this?"
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: "clamp(9px, 2.6vw, 13px)", fontWeight: 600, color: "rgba(255,255,255,0.82)", marginTop: "6px", lineHeight: 1, whiteSpace: "nowrap" }}>
-                  Ahead of {x.v.toFixed(1)}%
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", marginTop: "7px", lineHeight: 1 }}>
-            of the Strendex dataset
-          </div>
-        </>
-      )}
-    </div>
 
-    {/* Stats row */}
-    <div style={{ marginTop: "14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-      {[
-        { k: "BW", v: wInput ? `${Math.round(wInput)} ${unitLabel}` : "—" },
-        { k: "Total", v: displayTotalLift > 0 ? `${Math.round(displayTotalLift)} ${unitLabel}` : "—" },
-        { k: runDistance.toUpperCase(), v: runTimeText || "—" },
-      ].map((x) => (
-        <div key={x.k} style={{
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          borderRadius: "12px", border: "0.5px solid rgba(255,255,255,0.06)",
-          background: "rgba(255,255,255,0.02)", padding: "11px 8px",
-        }}>
-          <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", lineHeight: 1, whiteSpace: "nowrap" }}>
-            {x.k}
-          </div>
-          <div style={{ fontSize: "clamp(9px, 2.5vw, 12px)", fontWeight: 600, color: "rgba(255,255,255,0.78)", marginTop: "5px", lineHeight: 1, whiteSpace: "nowrap" }}>
-            {x.v}
-          </div>
-        </div>
-      ))}
-    </div>
-
-    {/* Footer */}
-    <div style={{ marginTop: "16px", height: "0.5px", background: "linear-gradient(to right, transparent, rgba(223,255,0,0.2), transparent)" }} />
-    <div style={{ marginTop: "12px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "10px" }}>
-    <div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.22em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase" }}>
-{siteLabel}
-</div>
-{/* Named, so a rank can never be mistaken for a percentile or for a
-    standing across the whole dataset. */}
-<div style={{ fontSize: "clamp(7px, 2vw, 9px)", letterSpacing: "0.16em", color: "rgba(255,255,255,0.18)", textTransform: "uppercase", textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap" }}>
-        {standing !== null ? (
-          <>
-            <div style={{ color: "rgba(255,255,255,0.14)" }}>Leaderboard</div>
-            <div>#{standing.rank} / {standing.total}</div>
-          </>
-        ) : (
-          "CAN YOU BEAT THIS?"
-        )}
-      </div>
-    </div>
-
-  </div>
-  </div>
-</div>
-</div>
-{/* Ranking bands */}
+                {/* Ranking bands */}
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
