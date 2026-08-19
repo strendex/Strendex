@@ -14,12 +14,16 @@
  */
 
 import { motion } from "motion/react";
+import { useRef } from "react";
 import CtaButton from "./CtaButton";
 import HybridProfileModel from "./HybridProfileModel";
 import { EASE, usePrefersReducedMotion } from "./motion";
 
 export default function Hero() {
   const reduced = usePrefersReducedMotion();
+  /* Scroll target for the profile model's parallax lift — the model reads its
+     progress across this section rather than across the whole page. */
+  const heroRef = useRef<HTMLElement | null>(null);
 
   const step = (delay: number) => ({
     "data-reveal": "",
@@ -29,7 +33,10 @@ export default function Hero() {
   });
 
   return (
-    <section className="pt-[clamp(20px,3vw,40px)] pb-[clamp(48px,6vw,80px)]">
+    <section
+      ref={heroRef}
+      className="pt-[clamp(20px,3vw,40px)] pb-[clamp(48px,6vw,80px)]"
+    >
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,500px)] lg:items-center lg:gap-16 xl:gap-20">
         <div className="max-w-[40rem]">
           <motion.p
@@ -81,7 +88,7 @@ export default function Hero() {
         </div>
 
         <motion.div {...step(0.3)} className="lg:pl-4">
-          <HybridProfileModel />
+          <HybridProfileModel scrollTarget={heroRef} />
         </motion.div>
       </div>
     </section>
