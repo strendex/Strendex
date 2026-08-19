@@ -1,10 +1,21 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   DESIGN TOKENS — single source of truth for the redesign.
+   DESIGN TOKENS — single source of truth.
    Solid tonal dark palette (deliberately NOT low-opacity white
    overlays on black, which go muddy on cheaper laptop panels),
    an 8px spacing scale, and fluid type.
+
+   NOTE ON NAMING: Strendex and shadcn both use the names
+   `--muted` and `--accent` but mean opposite things —
+   Strendex `--muted` is secondary TEXT, shadcn's is a SURFACE;
+   Strendex `--accent` is the lime, shadcn's is a hover SURFACE.
+   Strendex wins at the :root level; the shadcn primitives are
+   remapped in the @theme block below so both systems work.
    ============================================================ */
 :root {
   /* Dark palette — solid tonal steps */
@@ -13,8 +24,15 @@
   --elevated: #21252d;    /* elevated surface */
   --hairline: rgba(255, 255, 255, 0.09); /* hairline borders */
   --ink: #f5f7fa;         /* text primary */
-  --muted: #a0a6b0;       /* text secondary */
-  --accent: #dfff00;      /* brand accent — primary CTA + score number ONLY */
+  --ink-2: #ced4dd;       /* lead body copy — brighter than --muted */
+  --muted: #a0a6b0;       /* tertiary: labels, captions, meta */
+  --accent: #dfff00;      /* brand accent — primary CTA + Hybrid Score ONLY */
+
+  /* Section tones. The steps between these are deliberately tiny (1–3%) —
+     enough to give the page rhythm and depth, never enough to read as
+     alternating coloured boxes. */
+  --band: #13161c;        /* a hair above base */
+  --deep: #0a0c10;        /* near-black */
 
   /* Spacing — 8px base scale */
   --space-1: 8px;
@@ -39,34 +57,181 @@
 
   /* Font stacks — Anton (condensed display) + Inter (body) via next/font */
   --font-display: var(--font-anton), "Arial Narrow", system-ui, sans-serif;
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
 
-  /* Legacy aliases consumed by the Tailwind theme mapping below */
+  /* ── shadcn / registry primitive palette, mapped to Strendex charcoal ──
+     These are what components/ui/* actually read. */
   --background: var(--base);
   --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--elevated);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: var(--base);
+  --secondary: var(--elevated);
+  --secondary-foreground: var(--ink);
+  --muted-surface: var(--elevated);
+  --muted-foreground: var(--muted);
+  --accent-surface: var(--elevated);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: var(--hairline);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: rgba(223, 255, 0, 0.45);
+
+  --chart-1: var(--accent);
+  --chart-2: #6f7683;
+  --chart-3: #4a505b;
+  --chart-4: #343a44;
+  --chart-5: #23272f;
+
+  --radius: 0.625rem;
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--base);
+  --sidebar-accent: var(--elevated);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--ring);
+}
+
+/* The app renders dark-only. `.dark` is applied to <html> so that the
+   `dark:` variants baked into registry components resolve correctly
+   instead of falling back to their light-mode defaults. */
+.dark {
+  --background: var(--base);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--elevated);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: var(--base);
+  --secondary: var(--elevated);
+  --secondary-foreground: var(--ink);
+  --muted-surface: var(--elevated);
+  --muted-foreground: var(--muted);
+  --accent-surface: var(--elevated);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: var(--hairline);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: rgba(223, 255, 0, 0.45);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--base);
+  --sidebar-accent: var(--elevated);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--ring);
 }
 
 /* Expose palette as Tailwind color utilities: bg-base, bg-surface,
-   bg-elevated, border-hairline, text-ink, text-muted, text-accent … */
+   bg-elevated, border-hairline, text-ink, text-subtle, text-accent … */
 @theme inline {
   --color-base: var(--base);
   --color-surface: var(--surface);
   --color-elevated: var(--elevated);
+  --color-band: var(--band);
+  --color-deep: var(--deep);
   --color-hairline: var(--hairline);
   --color-ink: var(--ink);
-  --color-muted: var(--muted);
+  --color-lead: var(--ink-2);
+  --color-subtle: var(--muted);
   --color-accent: var(--accent);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-body);
   --font-display: var(--font-anton), "Arial Narrow", sans-serif;
+  --font-heading: var(--font-body);
+
+  /* shadcn `bg-muted` / `bg-accent` are hover SURFACES, not text colors —
+     point them at --elevated rather than the Strendex text tokens. */
+  --color-muted: var(--muted-surface);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 body {
   background: var(--base);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
+}
+
+/* Lets hero/CTA backgrounds bleed past the layout container without ever
+   producing a horizontal scrollbar. `clip` (not `hidden`) is deliberate —
+   it does not create a scrollport, so the sticky Header keeps working. */
+html,
+body {
+  overflow-x: clip;
 }
 input, select, textarea {
   font-size: 16px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* ============================================================
+   MOTION
+   Animations are decorative. Content is fully legible without
+   them — every animated element resolves to its final state,
+   never to a hidden one.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
