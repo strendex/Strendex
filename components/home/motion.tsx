@@ -11,28 +11,27 @@
  *    app/page.tsx) so the page reads correctly with JS disabled.
  */
 
-import { motion, useInView, type Transition } from "motion/react";
+import {
+  animate,
+  motion,
+  useInView,
+  useMotionValue,
+  useTransform,
+  type Transition,
+} from "motion/react";
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 
 /** Standard house easing — quick out, long settle. No overshoot, no bounce. */
 export const EASE = [0.22, 1, 0.36, 1] as const;
 
-/**
- * easeOutExpo, shared by the score ring and the score count-up so the arc and
- * the numeral arrive together. They previously used different curves, which
- * read as the number lagging the ring.
- */
-export const easeOutExpo = (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
-
-/** Both score animations run for exactly this long. */
-export const SCORE_DURATION_MS = 1100;
+/** How long the score count-up runs. */
+export const SCORE_DURATION_MS = 900;
 
 export const ENTER: Transition = { duration: 0.55, ease: EASE };
 export const ENTER_SLOW: Transition = { duration: 0.7, ease: EASE };
@@ -128,52 +127,76 @@ export function Reveal({
 }
 
 /**
- * Counts from 0 up to `target` the first time the element enters view.
+ * Counts from 0 up to `target` exactly once, then holds.
+ *
+ * Returns a MotionValue of the rounded integer, not React state: the tween
+ * runs outside React entirely, so a 900ms count-up costs zero re-renders.
+ * Render it as the child of a `motion` element — `<motion.span>{display}</…>`.
  *
  * The value is seeded to `target` so server-rendered HTML always contains the
  * real number. On mount we drop to 0 in a layout effect — before paint, so
  * there is no flash — but only when motion is actually allowed.
+ *
+ * This replaces a hand-rolled rAF loop that carried two live bugs:
+ *
+ *  1. It derived progress from the rAF frame timestamp while capturing `start`
+ *     with performance.now() inside the effect. The frame timestamp precedes
+ *     that, so the first tick ran at t < 0 — and easeOutExpo is *negative* for
+ *     negative t, rendering the score as "-2" before it ever counted up.
+ *
+ *  2. It listed `inView` in its dependency array and cancelled the animation in
+ *     the effect cleanup. The moment the element became visible `inView`
+ *     flipped, the cleanup killed the in-flight tween, and the numeral froze on
+ *     that bogus first frame. Only a *hidden* copy ever reached the real value.
  */
 export function useCountUp(
   target: number,
   durationMs = SCORE_DURATION_MS,
   /**
    * Start on mount rather than on scroll-into-view. Used by the hero, which is
-   * above the fold — and which renders a desktop and a mobile variant, only one
-   * of which is ever `display: block`. An inView trigger would leave the hidden
-   * variant stuck at 0 if the viewport later crossed the breakpoint.
+   * above the fold.
    */
   immediate = false
 ) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.4 });
-  const [value, setValue] = useState(target);
-  const animatingRef = useRef(false);
+  const reduced = usePrefersReducedMotion();
+
+  const count = useMotionValue(target);
+  const display = useTransform(count, (v) => Math.round(v).toString());
+
+  const started = useRef(false);
+  const controls = useRef<ReturnType<typeof animate> | null>(null);
 
   useIsoLayoutEffect(() => {
     if (window.matchMedia(REDUCED_QUERY).matches) return;
-    animatingRef.current = true;
-    setValue(0);
-  }, []);
+    count.set(0);
+  }, [count]);
 
+  // One-shot, and deliberately without a cleanup: cancelling here is precisely
+  // bug (2) above. `started` makes re-runs from dependency churn a no-op.
   useEffect(() => {
-    if (!(inView || immediate) || !animatingRef.current) return;
-    animatingRef.current = false;
+    if (started.current) return;
 
-    let frame = 0;
-    const start = performance.now();
+    if (reduced) {
+      started.current = true;
+      count.set(target);
+      return;
+    }
 
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / durationMs, 1);
-      setValue(Math.round(target * easeOutExpo(t)));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
+    if (!(inView || immediate)) return;
 
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [inView, immediate, target, durationMs]);
+    started.current = true;
+    controls.current = animate(count, target, {
+      duration: durationMs / 1000,
+      ease: EASE,
+    });
+  }, [inView, immediate, target, durationMs, reduced, count]);
 
-  return { ref, value };
+  // Stop only on unmount — never on a dependency change.
+  useEffect(() => () => controls.current?.stop(), []);
+
+  return { ref, display };
 }
 
 /**
