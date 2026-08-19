@@ -2,6 +2,7 @@ import "./globals.css";
 import { Anton, Inter } from "next/font/google";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { cn } from "@/lib/utils";
 
 const anton = Anton({
   weight: "400",
@@ -33,7 +34,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${anton.variable} ${inter.variable}`}
+      className={cn("dark", anton.variable, inter.variable, "font-sans")}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-base text-ink antialiased">
