@@ -26,17 +26,17 @@ export default function AthleteReviewPreview() {
               Athlete Review
             </p>
             <h2 className="mt-5 text-balance text-[clamp(27px,3vw,38px)] font-semibold leading-[1.14] tracking-[-0.025em] text-ink">
-              Go deeper than the score.
+              Turn your result into a clear next move.
             </h2>
-            <p className="mt-6 max-w-[44ch] text-[16px] leading-[1.65] text-lead sm:text-[17px]">
-              A short guided assessment turns your result into a written review:
-              where you stand, the one change most likely to move your score,
-              what to keep doing, and score scenarios calculated from your own
-              numbers. Free during early access.
+            <p className="mt-6 max-w-[46ch] text-[16px] leading-[1.65] text-lead sm:text-[17px]">
+              Your benchmark shows the gap. Athlete Review turns it into a
+              written breakdown of what is driving your score, the
+              highest-leverage change, what is already working, and how specific
+              improvements could move your result. Free during early access.
             </p>
             <div className="mt-9">
               <CtaButton href="/athlete-review" tone="secondary">
-                Explore Athlete Review
+                See what’s included
               </CtaButton>
             </div>
           </div>

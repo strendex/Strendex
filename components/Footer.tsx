@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="text-sm text-white/70">
             <div className="font-semibold text-white">STRENDEX</div>
             <div className="mt-1">
-              Hybrid performance benchmarking — strength + endurance, one score.
+              Strength and endurance, benchmarked together.
             </div>
           </div>
 

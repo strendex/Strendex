@@ -21,12 +21,13 @@ export default function LeaderboardPreview() {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-center lg:gap-24">
         <Reveal>
           <div className="max-w-[34rem]">
-            <h2 className="text-[clamp(23px,2.4vw,30px)] font-semibold leading-[1.2] tracking-[-0.02em] text-ink">
-              See where you stack up.
+            <h2 className="text-balance text-[clamp(23px,2.4vw,30px)] font-semibold leading-[1.2] tracking-[-0.02em] text-ink">
+              See how your result compares.
             </h2>
             <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.65] text-lead">
-              If you want to, your result can also appear on the Strendex
-              leaderboard. Entries are self-reported and taking part is optional.
+              Opt into the public leaderboard to compare your result with other
+              submitted athletes. Entries are self-reported, and joining is
+              optional.
             </p>
             <div className="mt-7">
               <CtaButton href="/rankings" tone="secondary">
@@ -62,7 +63,7 @@ export default function LeaderboardPreview() {
               );
             })}
             <li className="border-t border-white/[0.07] pt-4 text-[12px] text-subtle">
-              Example standings.
+              Illustrative standings — not real athletes.
             </li>
           </ul>
         </Reveal>

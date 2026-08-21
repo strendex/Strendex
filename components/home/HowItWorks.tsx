@@ -21,17 +21,17 @@ const STEPS = [
   {
     n: "01",
     title: "Enter your performance",
-    body: "Bodyweight, your main lifts and a recent endurance effort.",
+    body: "Add your bodyweight, main lifts, and a recent run.",
   },
   {
     n: "02",
     title: "We benchmark both sides",
-    body: "Strength and endurance are compared against the Strendex reference dataset.",
+    body: "Strendex compares your strength and endurance against its reference dataset using one consistent scoring framework.",
   },
   {
     n: "03",
     title: "See your athlete profile",
-    body: "Get your Hybrid Score, balance, percentile context and archetype.",
+    body: "Get your Hybrid Score, see your strength-endurance balance, and understand the clearest gap in your profile.",
   },
 ];
 

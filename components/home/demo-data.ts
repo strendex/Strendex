@@ -23,8 +23,20 @@ export const DEMO = {
   profile: "Strength-leaning hybrid",
   /** 0 = fully endurance-leaning, 100 = fully strength-leaning. */
   lean: 62,
-  plain: "Alex's strength currently sits ahead of his endurance.",
+  plain:
+    "Alex’s strength is ahead of his endurance, making endurance the limiting side of the profile.",
 } as const;
+
+/**
+ * Ordinal suffix for the illustrative percentile readings. Kept here beside the
+ * values it formats so the two homepage sections that render them cannot drift
+ * apart again — an earlier version hard-coded "th" and printed "72th".
+ */
+export function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return "th";
+  return ["th", "st", "nd", "rd"][n % 10] ?? "th";
+}
 
 /** Illustrative inputs shown converging into the score in the hero model. */
 export const DEMO_INPUTS = {
@@ -44,16 +56,18 @@ export const REVIEW_SECTIONS = [
   },
   {
     title: "Your highest-leverage improvement",
-    summary: "The single change most likely to move your score.",
+    summary:
+      "The part of your current profile with the most room to move the score.",
     highlight: true,
   },
   {
     title: "What to keep doing",
-    summary: "The parts of your training already carrying the profile.",
+    summary: "The parts of your performance already supporting the profile.",
   },
   {
     title: "Estimated score scenarios",
-    summary: "Projections calculated from your own numbers.",
+    summary:
+      "See how changes to your lifts or run would affect your Hybrid Score.",
   },
 ] as const;
 

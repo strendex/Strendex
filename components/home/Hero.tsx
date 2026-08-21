@@ -43,7 +43,7 @@ export default function Hero() {
             {...step(0)}
             className="text-[11px] font-medium uppercase tracking-[0.2em] text-subtle"
           >
-            Hybrid athlete benchmarking
+            Strength + endurance, benchmarked together
           </motion.p>
 
           <motion.h1
@@ -63,9 +63,10 @@ export default function Hero() {
             {...step(0.14)}
             className="mt-6 max-w-[46ch] text-[16px] leading-[1.6] text-lead sm:text-[17px]"
           >
-            Enter your lifts and a recent run. Strendex compares strength and
-            endurance on the same scale, then shows your Hybrid Score and
-            athlete profile.
+            Enter your lifts and a recent run. Strendex benchmarks strength
+            and endurance together to show where you stand, which side is
+            limiting your overall profile, and where your next gains can come
+            from.
           </motion.p>
 
           <motion.div

@@ -6,6 +6,12 @@ import AthleteReviewPreview from "@/components/home/AthleteReviewPreview";
 import LeaderboardPreview from "@/components/home/LeaderboardPreview";
 import FinalCTA from "@/components/home/FinalCTA";
 
+export const metadata = {
+  title: "STRENDEX | Hybrid Athlete Benchmarking",
+  description:
+    "Benchmark your strength and endurance together. Get a Hybrid Score, see your balance, identify the limiting side of your profile, and compare your result.",
+};
+
 export default function Home() {
   return (
     <>

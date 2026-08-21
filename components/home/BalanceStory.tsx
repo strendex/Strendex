@@ -12,7 +12,7 @@
 
 import { motion } from "motion/react";
 import Band from "./Band";
-import { DEMO } from "./demo-data";
+import { DEMO, ordinal } from "./demo-data";
 import { EASE, Reveal, usePrefersReducedMotion } from "./motion";
 
 const ROWS = [
@@ -29,11 +29,12 @@ export default function BalanceStory() {
         <Reveal>
           <div className="max-w-[34rem]">
             <h2 className="text-balance text-[clamp(27px,3vw,38px)] font-semibold leading-[1.14] tracking-[-0.025em] text-ink">
-              Strong and fast are usually measured separately.
+              Strength and endurance are usually measured separately.
             </h2>
-            <p className="mt-6 max-w-[42ch] text-[16px] leading-[1.65] text-lead sm:text-[17px]">
-              Strendex puts them on the same scale so you can finally see how
-              the two sides of your performance compare.
+            <p className="mt-6 max-w-[44ch] text-[16px] leading-[1.65] text-lead sm:text-[17px]">
+              A big total says nothing about your engine. A fast 5K says nothing
+              about your strength. Strendex puts both into one view so you can
+              see the full athlete, not half the picture.
             </p>
           </div>
         </Reveal>
@@ -47,7 +48,7 @@ export default function BalanceStory() {
                   <div className="flex items-baseline justify-between">
                     <span className="text-[15px] text-ink">{row.label}</span>
                     <span className="text-[13px] tabular-nums text-subtle">
-                      {row.value}th percentile
+                      {row.value}{ordinal(row.value)} percentile
                     </span>
                   </div>
                   <div className="relative mt-3 h-px w-full bg-white/12">
@@ -99,7 +100,9 @@ export default function BalanceStory() {
               </div>
             </div>
 
-            <p className="mt-7 text-[12px] text-subtle">Example figures.</p>
+            <p className="mt-7 text-[12px] text-subtle">
+              Illustrative data — not a real athlete.
+            </p>
           </div>
         </Reveal>
       </div>

@@ -24,8 +24,8 @@ export default function FinalCTA() {
       />
       <Reveal>
         <div className="relative flex flex-col items-start gap-9">
-          <h2 className="max-w-[15ch] text-balance text-[clamp(32px,4vw,54px)] font-semibold leading-[1.08] tracking-[-0.03em] text-ink">
-            How complete is your athleticism?
+          <h2 className="max-w-[20ch] text-balance text-[clamp(32px,4vw,54px)] font-semibold leading-[1.08] tracking-[-0.03em] text-ink">
+            See where you stand—and what to work on next.
           </h2>
           <CtaButton href="/tool">Benchmark yourself</CtaButton>
         </div>

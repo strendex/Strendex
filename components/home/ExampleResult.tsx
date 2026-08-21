@@ -13,7 +13,7 @@
 
 import { motion } from "motion/react";
 import Band from "./Band";
-import { DEMO } from "./demo-data";
+import { DEMO, ordinal } from "./demo-data";
 import { EASE, Meter, Reveal, usePrefersReducedMotion } from "./motion";
 
 export default function ExampleResult() {
@@ -103,7 +103,7 @@ export default function ExampleResult() {
                   <div className="flex items-baseline justify-between">
                     <span className="text-[15px] text-ink">{row.label}</span>
                     <span className="text-[13px] tabular-nums text-subtle">
-                      {row.value}th percentile
+                      {row.value}{ordinal(row.value)} percentile
                     </span>
                   </div>
                   <Meter
@@ -125,11 +125,11 @@ export default function ExampleResult() {
             {DEMO.plain}
           </p>
           <p className="mt-4 text-[16px] leading-[1.65] text-lead">
-            Strendex gives the numbers context, so you see the profile instead of
-            five disconnected metrics.
+            The score shows the level of the whole profile. The breakdown shows
+            where the next points are most likely to come from.
           </p>
           <p className="mt-6 text-[12px] text-subtle">
-            Example data — not a real athlete.
+            Illustrative data — not a real athlete.
           </p>
         </div>
       </Reveal>
