@@ -18,21 +18,24 @@ import { Reveal } from "./motion";
 
 export default function AthleteReviewPreview() {
   return (
-    <section className="py-[clamp(56px,7vw,104px)]">
-      <div className="grid gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:items-center lg:gap-24">
+    <section className="py-[clamp(48px,6vw,88px)]">
+      {/* items-start, not items-center: the report excerpt is deliberately taller
+          than the copy beside it, and centring the short column against it left
+          a ~200px hole above the heading that read as a layout fault. */}
+      <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:items-start lg:gap-20">
         <Reveal>
           <div className="max-w-[32rem]">
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-subtle">
               Athlete Review
             </p>
             <h2 className="mt-5 text-balance text-[clamp(27px,3vw,38px)] font-semibold leading-[1.14] tracking-[-0.025em] text-ink">
-              Turn your result into a clear next move.
+              A written breakdown of your result.
             </h2>
             <p className="mt-6 max-w-[46ch] text-[16px] leading-[1.65] text-lead sm:text-[17px]">
-              Your benchmark shows the gap. Athlete Review turns it into a
-              written breakdown of what is driving your score, the
-              highest-leverage change, what is already working, and how specific
-              improvements could move your result. Free during early access.
+              Athlete Review reads your result and writes it up: what is
+              driving your score, the part of your profile with the most room
+              to move it, what is already working, and how specific
+              improvements would change the number. Free during early access.
             </p>
             <div className="mt-9">
               <CtaButton href="/athlete-review" tone="secondary">
