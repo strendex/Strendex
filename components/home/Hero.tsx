@@ -3,93 +3,163 @@
 /**
  * Hero.
  *
- * The headline is set in the body sans at weight 600 with tight tracking, not
- * Anton. Giant condensed caps read as gym apparel; this needs to read as a
- * performance instrument. Anton survives on this page only as the Hybrid Score
- * numeral inside the model.
+ * ── Typography ────────────────────────────────────────────────────────────
+ * The headline is Anton, already loaded by app/layout.tsx as `--font-anton`
+ * and exposed as `font-display`. Nothing new is fetched. An earlier revision
+ * set the headline in the body sans on the theory that condensed caps "read as
+ * gym apparel"; at this size, with the two lines broken explicitly and a
+ * little positive tracking to open the counters, it reads as a masthead
+ * instead. Anton is a single weight (400) but a very heavy one, so no
+ * synthetic bolding is applied anywhere.
  *
- * Mobile order is the composition order: eyebrow, headline, copy, CTAs, model.
- * At 400×590 that puts the headline, supporting line and primary control all
- * within the first screen, with the model beginning just below it.
+ * The line break is structural — two block spans, not a `<br>` and not
+ * `text-balance` — so the headline can never wrap somewhere awkward. Body and
+ * interface text stay in Inter.
+ *
+ * ── The photograph ────────────────────────────────────────────────────────
+ * public/images/strendex-hero.png is 1672×941 and its left ~37% is a flat
+ * #0D0E11, within a shade of the brand base #0E1014. Two different framings
+ * fall out of that, from one <Image fill>:
+ *
+ *   desktop — `object-contain object-right`. Not a crop: the photo is laid out
+ *     at its own aspect ratio, full height, flush right, and the surplus width
+ *     to its left is plain `bg-base`. Because the photo's own left band is the
+ *     same charcoal the join is invisible, so the dark copy area GROWS with
+ *     the viewport instead of shrinking. Both athletes survive at every width.
+ *
+ *   mobile — `object-cover object-right` in a 6:5 box. That shows the
+ *     rightmost 67.5% of the frame (6/5 ÷ 1672/941), which discards the dead
+ *     black band and starts at 32.5% — still clear of the barbell's left plate
+ *     at ~38%. Nothing is cropped vertically, so neither athlete loses a face
+ *     or a working limb.
+ *
+ * The section height is deliberately NOT full-screen. It is short enough that
+ * a shorter hero makes the contained photo smaller, which moves its left edge
+ * right and hands the copy more dark space — height and headline width are one
+ * adjustment, not two.
  */
 
+import Image from "next/image";
+import Link from "next/link";
 import { motion } from "motion/react";
-import { useRef } from "react";
 import CtaButton from "./CtaButton";
-import HybridProfileModel from "./HybridProfileModel";
 import { EASE, usePrefersReducedMotion } from "./motion";
 
 export default function Hero() {
   const reduced = usePrefersReducedMotion();
-  /* Scroll target for the profile model's parallax lift — the model reads its
-     progress across this section rather than across the whole page. */
-  const heroRef = useRef<HTMLElement | null>(null);
 
   const step = (delay: number) => ({
     "data-reveal": "",
-    initial: { opacity: 0, y: 12 },
+    initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
-    transition: reduced ? { duration: 0 } : { duration: 0.55, ease: EASE, delay },
+    transition: reduced ? { duration: 0 } : { duration: 0.45, ease: EASE, delay },
   });
 
   return (
     <section
-      ref={heroRef}
-      className="pt-[clamp(20px,3vw,40px)] pb-[clamp(48px,6vw,80px)]"
+      className={
+        "relative flex flex-col " +
+        "pt-[clamp(4px,1.5vw,20px)] pb-[clamp(32px,4vw,56px)] " +
+        "lg:min-h-[clamp(390px,32vw,500px)] lg:flex-row lg:items-center"
+      }
     >
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,500px)] lg:items-center lg:gap-16 xl:gap-20">
-        <div className="max-w-[40rem]">
-          <motion.p
-            {...step(0)}
-            className="text-[11px] font-medium uppercase tracking-[0.2em] text-subtle"
-          >
-            Strength + endurance, benchmarked together
-          </motion.p>
+      {/*
+        Decorative: the headline and supporting copy already say what the
+        product benchmarks, so the photograph carries nothing a screen reader
+        is missing.
 
-          <motion.h1
-            {...step(0.07)}
-            className="mt-6 text-balance font-semibold tracking-[-0.03em] text-ink"
-            // Capped at 58px: at 66px the line broke as "One / benchmark for /
-            // both sides of / your fitness." — a one-word orphan on line one.
-            style={{
-              fontSize: "clamp(40px, 4.2vw, 58px)",
-              lineHeight: 1.08,
-            }}
-          >
-            One benchmark for both sides of your fitness.
-          </motion.h1>
+        Bleeds past the layout's max-w-6xl column using the house idiom from
+        Band.tsx; globals.css sets `overflow-x: clip` on html/body so this can
+        never raise a scrollbar.
+      */}
+      <div
+        aria-hidden="true"
+        className={
+          "pointer-events-none relative left-1/2 order-last w-screen " +
+          "-translate-x-1/2 mt-[clamp(28px,6vw,40px)] " +
+          "aspect-[6/5] sm:aspect-[16/9] " +
+          "lg:absolute lg:inset-y-0 lg:order-none lg:mt-0 lg:aspect-auto"
+        }
+      >
+        <Image
+          src="/images/strendex-hero.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-right lg:object-contain"
+        />
 
-          <motion.p
-            {...step(0.14)}
-            className="mt-6 max-w-[46ch] text-[16px] leading-[1.6] text-lead sm:text-[17px]"
-          >
-            Enter your lifts and a recent run. Strendex benchmarks strength
-            and endurance together to show where you stand, which side is
-            limiting your overall profile, and where your next gains can come
-            from.
-          </motion.p>
+        {/* Contrast insurance, desktop only. Solid across the stretch the copy
+            occupies — which is already base charcoal, so it reads as nothing —
+            then released before it reaches the lifter. */}
+        <div
+          className={
+            "absolute inset-0 hidden lg:block " +
+            "bg-[linear-gradient(to_right,var(--base)_0%,var(--base)_28%,rgba(14,16,20,0.86)_42%,rgba(14,16,20,0.45)_54%,rgba(14,16,20,0)_68%)]"
+          }
+        />
 
-          <motion.div
-            {...step(0.21)}
-            className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
-          >
-            <CtaButton href="/tool">Benchmark yourself</CtaButton>
-            {/* Borderless on phones so the two stacked controls don't read as
-                a matched pair of equally important buttons. */}
-            <CtaButton
-              href="#how-it-works"
-              tone="secondary"
-              // Base-then-sm ordering (rather than a max-sm override) so
-              // tailwind-merge resolves the border colour deterministically.
-              className="border-transparent hover:border-transparent sm:border-white/12 sm:hover:border-white/22"
-            >
-              See how it works
-            </CtaButton>
-          </motion.div>
-        </div>
+        {/* The photo is laid out at its own aspect ratio, so on desktop its top
+            and bottom edges land inside the section rather than on it. Without
+            this the bright sky at the top right meets the charcoal as a hard
+            rule and the whole thing reads as a pasted rectangle. */}
+        <div
+          className={
+            "absolute inset-0 hidden lg:block " +
+            "bg-[linear-gradient(to_bottom,var(--base)_0%,rgba(14,16,20,0)_9%,rgba(14,16,20,0)_88%,var(--base)_100%)]"
+          }
+        />
+      </div>
 
-        <motion.div {...step(0.3)} className="lg:pl-4">
-          <HybridProfileModel scrollTarget={heroRef} />
+      <div className="relative z-10 max-w-[34rem] lg:max-w-[32rem] xl:max-w-[40rem]">
+        <motion.p
+          {...step(0)}
+          className="text-[11px] font-medium uppercase tracking-[0.2em] text-subtle"
+        >
+          Strength + Endurance
+        </motion.p>
+
+        <motion.h1
+          {...step(0.05)}
+          className="mt-5 font-display uppercase text-ink"
+          style={{
+            fontSize: "clamp(34px, 4.4vw, 60px)",
+            lineHeight: 1.0,
+            letterSpacing: "0.005em",
+          }}
+        >
+          <span className="block">Built for both.</span>
+          <span className="block">Know where you stand.</span>
+        </motion.h1>
+
+        <motion.p
+          {...step(0.1)}
+          className="mt-5 max-w-[46ch] text-[15px] leading-[1.6] text-lead sm:text-[16px]"
+        >
+          Enter your bodyweight, lifts and 5K time. See your Hybrid Score, how
+          your strength and endurance compare, and what to work on next.
+        </motion.p>
+
+        <motion.div
+          {...step(0.15)}
+          className="mt-7 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-7"
+        >
+          <CtaButton href="/tool" className="w-full sm:w-auto">
+            Get your Hybrid Score
+          </CtaButton>
+
+          {/* A text link, not a second button. The lime control is the only
+              thing in this composition that should look pressable. */}
+          <Link
+            href="#how-it-works"
+            className={
+              "text-[15px] font-medium text-lead underline-offset-[6px] " +
+              "transition-colors duration-150 hover:text-ink hover:underline"
+            }
+          >
+            See how it works
+          </Link>
         </motion.div>
       </div>
     </section>

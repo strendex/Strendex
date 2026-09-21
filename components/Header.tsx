@@ -5,11 +5,12 @@ import Image from "next/image";
  * Visual refinement only — the routes, the link set and their order are
  * unchanged.
  *
- * What changed: the pure-black strip is now the base charcoal at 72% behind the
- * blur (the old near-black read as a hard band sitting on top of the page), the
- * hairline is softer, hover states moved from inline onMouseEnter handlers to
- * CSS so they can be understated and interruptible, and the Calculate Score
- * control is smaller with a moderate radius to match the page's buttons.
+ * ── Why this bar is opaque and unblurred ──────────────────────────────────
+ * It used to be `bg-base/72 backdrop-blur-xl`. Lime passing underneath — the
+ * hero CTA, the Hybrid Score numeral — bloomed through that blur and read as a
+ * glow sitting behind the logo. A solid base fill removes the effect entirely
+ * and costs nothing: the bar is the page's own background colour, so it does
+ * not read as a band on top of the page either.
  */
 
 const NAV_LINK =
@@ -17,7 +18,7 @@ const NAV_LINK =
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-base/72 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-base">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-[62px] sm:px-6 lg:px-8">
         <div className="flex items-center gap-9">
           <Link href="/" className="flex items-center">
@@ -61,7 +62,7 @@ export default function Header() {
           href="/tool"
           className="inline-flex h-8 items-center justify-center rounded-lg bg-accent px-3 text-[12px] font-semibold whitespace-nowrap text-[#0E1014] transition-[filter] duration-150 hover:brightness-[1.06] sm:h-9 sm:px-4 sm:text-[13px]"
         >
-          Calculate Score
+          Get your Hybrid Score
         </Link>
       </div>
     </header>
