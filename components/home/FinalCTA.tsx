@@ -21,7 +21,7 @@ export default function FinalCTA() {
       <Reveal>
         <div className="flex flex-col items-start gap-8">
           <h2 className="max-w-[18ch] text-balance text-[clamp(30px,3.6vw,48px)] font-semibold leading-[1.1] tracking-[-0.03em] text-ink">
-            Your lifts and your 5K, in one score.
+            Your lifts and your run, in one score.
           </h2>
           <CtaButton href="/tool">Get your Hybrid Score</CtaButton>
         </div>

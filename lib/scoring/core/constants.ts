@@ -78,8 +78,35 @@ export const VALIDATION_BOUNDS = {
   benchKg: { min: 20, max: 318 },
   squatKg: { min: 20, max: 409 },
   deadliftKg: { min: 20, max: 454 },
-  /** Canonical half-marathon-equivalent seconds. */
+  /**
+   * Canonical half-marathon-equivalent seconds a row must fall within to be
+   * ELIGIBLE FOR A REFERENCE DATASET (scripts/lib/datasetDraft.ts). Changing it
+   * changes which rows a dataset build admits, and therefore every percentile.
+   * It is not the submission limit — see SUBMISSION_CANONICAL_ENDURANCE_SECONDS.
+   */
   canonicalEnduranceSeconds: { min: 4200, max: 28800 },
+} as const;
+
+/**
+ * Canonical half-marathon-equivalent seconds a SUBMISSION may convert to.
+ *
+ * Derived, not chosen: it is exactly the span of RUN_DISTANCES' entered-time
+ * windows after toCanonicalEnduranceSeconds — the floor is the 3-mile minimum
+ * (660 s -> 3151 s) and the ceiling is the half-marathon maximum (28800 s).
+ * tests/runTimeBounds.test.ts recomputes both from the real conversion.
+ *
+ * Wider at the bottom than the dataset eligibility bound above, so athletes
+ * faster than a 1:10:00 half equivalent can be scored. It does not change how
+ * anything is scored: the endurance index already reaches 100 at
+ * ENDURANCE_INDEX_MIN_SEC and is clamped there. Validation-only change, so
+ * SCORE_VERSION stays 2.0.0.
+ *
+ * The database mirrors this in submissions_canonical_endurance_range
+ * (migrations/20260928_01_submissions_canonical_endurance_fast_runners.sql).
+ */
+export const SUBMISSION_CANONICAL_ENDURANCE_SECONDS = {
+  min: 3151,
+  max: 28800,
 } as const;
 
 /** Plausibility caps on lift-to-bodyweight ratio. */

@@ -8,12 +8,12 @@ Output: Hybrid Score (0-100), strength + endurance percentiles, tier, archetype,
 Next.js (App Router) + TypeScript, Tailwind, Supabase, Vercel, GitHub.
 
 ## Hard rules (never break)
-- All scoring lives in lib/scoring.ts. Both /api/submit and /api/rank import it. Never duplicate or inline scoring math.
+- All scoring lives in lib/scoring/core (canonical engine). POST /api/score is the only route that calculates and saves a score; /api/submit and /api/rank are retired (HTTP 410). Never duplicate or inline scoring math.
 - Weights are kilograms internally. Convert lb to kg before scoring.
 - Hybrid Score = 50% strength percentile + 50% endurance percentile.
 - Never trust a score sent from the browser. Server routes recalculate the canonical score from raw inputs.
 - Public leaderboard shows only rows where status = approved.
-- Hybrid Score >= 95 is saved as status = pending for manual review.
+- Hybrid Score >= 90 is saved as status = pending for manual review (REVIEW_THRESHOLD in lib/scoring/core/constants.ts).
 - No medical claims. No fake precision. The dataset is currently simulated - never imply real users exist.
 
 ## Brand / UI

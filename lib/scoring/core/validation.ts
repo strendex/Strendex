@@ -15,6 +15,7 @@ import {
   DISPLAY_NAME,
   IDEMPOTENCY_KEY,
   MAX_LIFT_RATIO,
+  SUBMISSION_CANONICAL_ENDURANCE_SECONDS,
   UNIT_SYSTEMS,
   VALIDATION_BOUNDS,
   VISIBILITIES,
@@ -275,9 +276,13 @@ export function parseCanonicalBenchmark(input: {
   checkRatio(squatKg, bodyweightKg, MAX_LIFT_RATIO.squat, "squat");
   checkRatio(deadliftKg, bodyweightKg, MAX_LIFT_RATIO.deadlift, "deadlift");
 
+  // Backstop. The per-distance window above is the binding limit and converts
+  // entirely inside this range; this catches a future window edit that does
+  // not. Deliberately NOT VALIDATION_BOUNDS.canonicalEnduranceSeconds, which is
+  // the reference-dataset eligibility bound.
   const canonicalEnduranceSeconds = requireWithin(
     toCanonicalEnduranceSeconds(runSeconds, runDistance),
-    VALIDATION_BOUNDS.canonicalEnduranceSeconds,
+    SUBMISSION_CANONICAL_ENDURANCE_SECONDS,
     "run_seconds",
   );
 

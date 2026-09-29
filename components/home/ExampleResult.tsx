@@ -85,7 +85,7 @@ export default function ExampleResult() {
                 {DEMO.tier}
               </div>
 
-              <div className={`${LABEL} mt-6`}>Archetype</div>
+              <div className={`${LABEL} mt-6`}>Athlete type</div>
               <div className="mt-2 text-[18px] font-medium text-ink">
                 {DEMO.profile}
               </div>
@@ -120,8 +120,9 @@ export default function ExampleResult() {
               </div>
 
               <p className="mt-6 max-w-[46ch] text-[13px] leading-[1.55] text-subtle">
-                The Hybrid Score is the midpoint of the two: half the strength
-                percentile, half the endurance percentile.
+                The Hybrid Score is the average of the two percentiles. The
+                athlete type sums up how they compare: a high score can still
+                lean heavily to one side.
               </p>
             </div>
           </div>
@@ -141,7 +142,7 @@ export default function ExampleResult() {
 
       <Reveal delay={0.1}>
         <p className="mt-5 text-[12px] text-subtle">
-          Example result — fictional athlete.
+          Example result — fictional athlete, simulated reference dataset.
         </p>
       </Reveal>
     </Band>

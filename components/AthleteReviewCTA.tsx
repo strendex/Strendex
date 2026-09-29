@@ -21,6 +21,8 @@ export type AthleteReviewCTAProps = {
   totalAthletes: number | null;
   betterThanPercent: number | null;
   inputs: ResultSnapshotV1["inputs"];
+  /** From the SAVED result: the benchmark it was scored against. */
+  benchmark: ResultSnapshotV1["benchmark"];
   emphasized?: boolean;
 };
 
@@ -93,6 +95,7 @@ export default function AthleteReviewCTA(props: AthleteReviewCTAProps) {
   function handleClick() {
     saveSnapshot({
       inputs: props.inputs,
+      benchmark: props.benchmark,
       display: {
         hybridScore: props.hybridScore,
         strengthPercentile: props.strengthPercentile,

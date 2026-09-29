@@ -13,17 +13,23 @@ export const RUN_DISTANCE_IDS = ["3mi", "5k", "10k", "half", "marathon"] as cons
 type RunDistanceId = (typeof RUN_DISTANCE_IDS)[number];
 
 /**
- * Supported calculator distances, in metres, with plausibility windows for the
- * originally entered time. These are coarse sanity guards; the binding limit is
- * the canonical endurance window in VALIDATION_BOUNDS.
+ * Supported calculator distances, in metres, with the accepted window for the
+ * originally entered time, in whole seconds, inclusive. These windows are the
+ * binding per-distance limits the athlete is shown.
+ *
+ * Minimums sit just under the world record for each distance. The 3 mi, 5K and
+ * 10K maximums are the largest entered times whose canonical conversion stays
+ * within the 28800 s ceiling (1:40:32, 1:44:20, 3:37:33); one second more
+ * converts past it. SUBMISSION_CANONICAL_ENDURANCE_SECONDS is the span of these
+ * windows after conversion.
  */
 export const RUN_DISTANCES: Record<
   RunDistanceId,
   { readonly metres: number; readonly minSeconds: number; readonly maxSeconds: number }
 > = {
-  "3mi": { metres: 4828.032, minSeconds: 660, maxSeconds: 10800 },
-  "5k": { metres: 5000, minSeconds: 700, maxSeconds: 10800 },
-  "10k": { metres: 10000, minSeconds: 1500, maxSeconds: 18000 },
+  "3mi": { metres: 4828.032, minSeconds: 660, maxSeconds: 6032 },
+  "5k": { metres: 5000, minSeconds: 700, maxSeconds: 6260 },
+  "10k": { metres: 10000, minSeconds: 1500, maxSeconds: 13053 },
   half: { metres: 21097.5, minSeconds: 3300, maxSeconds: 28800 },
   marathon: { metres: 42195, minSeconds: 6900, maxSeconds: 43200 },
 } as const;

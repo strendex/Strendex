@@ -46,10 +46,9 @@ export default function BalanceStory() {
               Strength and endurance are usually measured separately.
             </h2>
             <p className="mt-5 max-w-[46ch] text-[16px] leading-[1.6] text-lead">
-              A squat in kilograms and a 5K in minutes have no common unit, so
-              neither number tells you much about the other. Strendex converts
-              both to percentiles of the same reference population. Once they
-              share a scale, they can be compared and combined.
+              A squat in kilograms and a run in minutes have no common unit.
+              Strendex places each one as a percentile of the same reference
+              dataset, so the two can be compared and combined.
             </p>
           </div>
         </Reveal>

@@ -13,28 +13,49 @@
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  ARCHETYPES,
   DATASET_CONFIDENCE_TIERS,
   DATASET_KINDS,
   MODERATION_STATUSES,
   PROVENANCES,
   REFERENCE_VALUE_BOUNDS,
   ScoringError,
+  TIERS,
+  UNIT_SYSTEMS,
   VERIFICATION_STATUSES,
   VISIBILITIES,
   isSha256Hex,
 } from "@/lib/scoring/core";
 import type {
+  Archetype,
   DatasetConfidence,
   DatasetKind,
   ModerationStatus,
   Provenance,
   RunDistance,
   ScoringDatasetSnapshot,
+  Tier,
   UnitSystem,
   VerificationStatus,
   Visibility,
 } from "@/lib/scoring/core";
 import { computeDatasetHash } from "./hashing";
+import {
+  LEADERBOARD_PAGE_SIZE,
+  placementFromCounts,
+  type LeaderboardScope,
+  type LeaderboardSourceRow,
+} from "@/lib/leaderboard";
+
+/**
+ * Sanity ceiling for a weight in the athlete's ORIGINAL unit system. It mirrors
+ * the submissions_original_*_positive CHECK constraints in
+ * 20260802_02_submissions_result_governance.sql and exists only to reject
+ * absurd or non-real values — NOT to re-validate the athlete's numbers, which
+ * VALIDATION_BOUNDS does in kilograms once the unit system is known. A kg bound
+ * cannot be applied here: 198 is a valid lb bodyweight and an impossible kg one.
+ */
+const ORIGINAL_WEIGHT_MAX = 2000;
 
 export type PersistResultInput = {
   idempotencyKey: string;
@@ -52,8 +73,8 @@ export type PersistResultInput = {
   strengthPercentile: number;
   endurancePercentile: number;
   hybridScore: number;
-  tier: string;
-  archetype: string;
+  tier: Tier;
+  archetype: Archetype;
   moderationStatus: ModerationStatus;
   visibility: Visibility;
   provenance: Provenance;
@@ -68,6 +89,17 @@ export type PersistResultInput = {
   originalUnitSystem: UnitSystem;
   originalRunDistance: RunDistance;
   originalRunSeconds: number;
+  /**
+   * The weights EXACTLY as the athlete submitted them, in `originalUnitSystem`.
+   * The *Kg fields above are server-derived and rounded to 2dp, so they cannot
+   * reproduce these, and the request fingerprint is a one-way hash. These are
+   * the only record of the raw submission — pass them through unrounded and
+   * never recompute them from kilograms.
+   */
+  originalBodyweight: number;
+  originalBench: number;
+  originalSquat: number;
+  originalDeadlift: number;
   canonicalEnduranceSeconds: number;
 };
 
@@ -80,8 +112,8 @@ export type PersistedResult = {
   enduranceIndex: number;
   strengthPercentile: number;
   endurancePercentile: number;
-  tier: string;
-  archetype: string;
+  tier: Tier;
+  archetype: Archetype;
   moderationStatus: ModerationStatus;
   visibility: Visibility;
   provenance: Provenance;
@@ -92,6 +124,16 @@ export type PersistedResult = {
   datasetKind: DatasetKind;
   datasetSampleSize: number;
   datasetConfidence: DatasetConfidence;
+  /**
+   * Read back from the STORED row, so what was actually persisted can be proven
+   * rather than assumed. Server-internal: these never reach CanonicalResultView
+   * and are never returned to a browser.
+   */
+  originalUnitSystem: UnitSystem;
+  originalBodyweight: number;
+  originalBench: number;
+  originalSquat: number;
+  originalDeadlift: number;
 };
 
 export interface ScoreRepository {
@@ -108,8 +150,28 @@ export interface ScoreRepository {
     input: PersistResultInput,
   ): Promise<{ result: PersistedResult; replayed: boolean }>;
 
-  /** Hybrid Scores of every leaderboard-eligible row in one dataset version. */
-  loadEligibleScores(datasetVersionId: string): Promise<number[]>;
+  /**
+   * One specific frozen dataset version by id — active OR retired, never a
+   * draft — hash-verified exactly like the active one. Null when no such frozen
+   * version exists. The Athlete Review uses it to reuse the dataset a saved
+   * result was scored against, even after a newer one is activated.
+   */
+  loadDatasetVersion(datasetVersionId: string): Promise<ScoringDatasetSnapshot | null>;
+
+  /**
+   * Calculator placement for `score` within this scope, from ONE database
+   * statement (public.leaderboard_placement) — never from a fetched list of
+   * scores, which PostgREST's row limit could silently truncate:
+   *   rank  = 1 + eligible results scoring strictly higher
+   *   total = all eligible results
+   * Both counts come from the same snapshot. Null when that snapshot's total
+   * is below higher + 1 — i.e. the saved result itself was not eligible at
+   * that moment (for example, moderated in the meantime).
+   */
+  loadPlacement(
+    scope: LeaderboardScope,
+    score: number,
+  ): Promise<{ rank: number; total: number } | null>;
 }
 
 export class RepositoryError extends Error {
@@ -181,9 +243,25 @@ function readBoundedNumber(
   if (typeof raw !== "number" && typeof raw !== "string") {
     fail(field, "is missing or not numeric");
   }
+  // Number("") and Number("   ") are 0, which would turn a blank column into a
+  // perfectly valid-looking zero. Reject before coercion.
+  if (typeof raw === "string" && raw.trim().length === 0) {
+    fail(field, "is missing or not numeric");
+  }
   const value = Number(raw);
   if (!Number.isFinite(value)) fail(field, "is not a finite number");
   if (value < min || value > max) fail(field, "is outside its valid range");
+  return value;
+}
+
+/** A quantity that must be strictly greater than zero, e.g. a lifted weight. */
+function readPositiveNumber(
+  row: Record<string, unknown>,
+  field: string,
+  max: number,
+): number {
+  const value = readBoundedNumber(row, field, 0, max);
+  if (value <= 0) fail(field, "is not greater than zero");
   return value;
 }
 
@@ -225,7 +303,7 @@ function readBoolean(row: Record<string, unknown>, field: string): boolean {
 function datasetCorrupt(detail: string): never {
   throw new ScoringError(
     "DATASET_CORRUPT",
-    `The active scoring dataset failed its integrity check (${detail}).`,
+    `The scoring dataset failed its integrity check (${detail}).`,
     "dataset",
   );
 }
@@ -262,8 +340,11 @@ function parsePersistedResult(row: Record<string, unknown>): PersistedResult {
     enduranceIndex: readBoundedNumber(row, "endurance_index", 0, 100),
     strengthPercentile: readBoundedNumber(row, "strength_percentile", 0, 100),
     endurancePercentile: readBoundedNumber(row, "endurance_percentile", 0, 100),
-    tier: readString(row, "tier"),
-    archetype: readString(row, "archetype"),
+    // Checked against the central allowlists at RUNTIME. A cast at the call site
+    // would only assert the type to the compiler; an unrecognised tier or
+    // archetype coming back from Postgres is corrupt data and must fail closed.
+    tier: readEnum(row, "tier", TIERS),
+    archetype: readEnum(row, "archetype", ARCHETYPES),
     moderationStatus: readEnum(row, "status", MODERATION_STATUSES),
     visibility: readEnum(row, "visibility", VISIBILITIES),
     provenance: readEnum(row, "provenance", PROVENANCES),
@@ -282,6 +363,161 @@ function parsePersistedResult(row: Record<string, unknown>): PersistedResult {
       "dataset_confidence",
       DATASET_CONFIDENCE_TIERS,
     ),
+    // Read back from the stored row, not echoed from the attempted write, so a
+    // caller can prove the raw submission was persisted intact. Bounded only by
+    // ORIGINAL_WEIGHT_MAX: the unit system decides what a plausible range is.
+    originalUnitSystem: readEnum(row, "original_unit_system", UNIT_SYSTEMS),
+    originalBodyweight: readPositiveNumber(
+      row,
+      "original_bodyweight",
+      ORIGINAL_WEIGHT_MAX,
+    ),
+    originalBench: readPositiveNumber(row, "original_bench", ORIGINAL_WEIGHT_MAX),
+    originalSquat: readPositiveNumber(row, "original_squat", ORIGINAL_WEIGHT_MAX),
+    originalDeadlift: readPositiveNumber(
+      row,
+      "original_deadlift",
+      ORIGINAL_WEIGHT_MAX,
+    ),
+  };
+}
+
+const DATASET_COLUMNS =
+  "id,label,kind,score_version,strength_reference,endurance_reference,eligible_sample_size,dataset_hash,confidence";
+
+/**
+ * Parse a scoring_dataset_versions row and prove its content still matches the
+ * hash it was frozen with. Shared by the active-dataset and by-id loaders.
+ */
+function verifiedDataset(data: unknown): ScoringDatasetSnapshot {
+  const row = data as Record<string, unknown>;
+
+  // Every structural failure below is a corrupt dataset (503), not an
+  // internal error (500) — including a row that simply cannot be read.
+  let snapshot: ScoringDatasetSnapshot;
+  try {
+    const datasetHash = readString(row, "dataset_hash");
+    if (!isSha256Hex(datasetHash)) {
+      datasetCorrupt("malformed dataset hash");
+    }
+
+    snapshot = {
+      datasetVersionId: readUuid(row, "id"),
+      label: readString(row, "label"),
+      kind: readEnum(row, "kind", DATASET_KINDS),
+      scoreVersion: readString(row, "score_version"),
+      strengthReference: readReferenceArray(
+        row.strength_reference,
+        "strength_reference",
+      ),
+      enduranceReference: readReferenceArray(
+        row.endurance_reference,
+        "endurance_reference",
+      ),
+      eligibleSampleSize: readInteger(
+        row,
+        "eligible_sample_size",
+        0,
+        100_000_000,
+      ),
+      datasetHash,
+      confidence: readEnum(row, "confidence", DATASET_CONFIDENCE_TIERS),
+    };
+  } catch (err) {
+    if (err instanceof ScoringError) throw err;
+    datasetCorrupt("malformed dataset row");
+  }
+
+  // Content verification: proves the stored population has not drifted
+  // since it was frozen. Structural checks run in assertDatasetIntegrity.
+  const expected = computeDatasetHash({
+    scoreVersion: snapshot.scoreVersion,
+    datasetKind: snapshot.kind,
+    eligibleSampleSize: snapshot.eligibleSampleSize,
+    strengthReference: snapshot.strengthReference,
+    enduranceReference: snapshot.enduranceReference,
+  });
+
+  if (expected !== snapshot.datasetHash) {
+    throw new ScoringError(
+      "DATASET_CORRUPT",
+      "The scoring dataset failed its integrity check (hash mismatch).",
+      "dataset",
+    );
+  }
+
+  return snapshot;
+}
+
+/**
+ * The leaderboard eligibility filter — the ONLY place it is written as a query.
+ * Mirrors isLeaderboardEligible in lib/leaderboard.ts: approved, public, and
+ * BOTH the dataset version and the score version match. Legacy rows (NULL
+ * dataset version) can never match an equality filter.
+ */
+type Filterable = {
+  eq(column: string, value: unknown): Filterable;
+  not(column: string, operator: string, value: unknown): Filterable;
+};
+
+function scopedToLeaderboard<Q>(query: Q, scope: LeaderboardScope): Q {
+  return (query as unknown as Filterable)
+    .eq("dataset_version_id", scope.datasetVersionId)
+    .eq("score_version", scope.scoreVersion)
+    .eq("status", "approved")
+    .eq("visibility", "public")
+    .not("hq_score", "is", null) as unknown as Q;
+}
+
+/** The only columns the public leaderboard ever reads. */
+const LEADERBOARD_COLUMNS = "id,athlete_name,hq_score,tier,archetype,created_at";
+
+/**
+ * The first `limit` ranked results plus the exact size of the WHOLE eligible
+ * population. Ordered like compareLeaderboardRows so the page boundary is
+ * deterministic. Fails closed on any unreadable row or count.
+ */
+export async function loadLeaderboardPage(
+  supabase: SupabaseClient,
+  scope: LeaderboardScope,
+  limit: number = LEADERBOARD_PAGE_SIZE,
+): Promise<{ total: number; rows: LeaderboardSourceRow[] }> {
+  const { data, error, count } = await scopedToLeaderboard(
+    supabase.from("submissions").select(LEADERBOARD_COLUMNS, { count: "exact" }),
+    scope,
+  )
+    .order("hq_score", { ascending: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new RepositoryError("Failed to load the leaderboard.", error);
+  }
+
+  const list = (data ?? []) as Record<string, unknown>[];
+  if (typeof count !== "number" || !Number.isInteger(count) || count < list.length) {
+    throw new RepositoryError("Leaderboard count was not returned.");
+  }
+  // Fewer rows than both the page size and the population means an API row
+  // limit truncated the page. Fail closed rather than render a short board.
+  if (list.length < Math.min(limit, count)) {
+    throw new RepositoryError("Leaderboard page was truncated.");
+  }
+
+  return {
+    total: count,
+    rows: list.map((row) => ({
+      id: readString(row, "id"),
+      name:
+        typeof row.athlete_name === "string" && row.athlete_name.trim().length >= 2
+          ? row.athlete_name.trim()
+          : "Anonymous Athlete",
+      score: readBoundedNumber(row, "hq_score", 0, 100),
+      tier: readEnum(row, "tier", TIERS),
+      archetype: readEnum(row, "archetype", ARCHETYPES),
+      createdAt: readTimestamp(row, "created_at"),
+    })),
   };
 }
 
@@ -303,9 +539,7 @@ export function createSupabaseScoreRepository(
     async loadActiveDataset(scoreVersion) {
       const { data, error } = await supabase
         .from("scoring_dataset_versions")
-        .select(
-          "id,label,kind,score_version,strength_reference,endurance_reference,eligible_sample_size,dataset_hash,confidence",
-        )
+        .select(DATASET_COLUMNS)
         .eq("score_version", scoreVersion)
         .eq("lifecycle", "active")
         .eq("frozen", true)
@@ -316,64 +550,27 @@ export function createSupabaseScoreRepository(
         throw new RepositoryError("Failed to load active dataset.", error);
       }
       if (!data) return null;
+      return verifiedDataset(data);
+    },
 
-      const row = data as Record<string, unknown>;
+    async loadDatasetVersion(datasetVersionId) {
+      // Not a UUID: it cannot name a dataset, and must not reach the query.
+      if (!UUID_PATTERN.test(datasetVersionId)) return null;
 
-      // Every structural failure below is a corrupt dataset (503), not an
-      // internal error (500) — including a row that simply cannot be read.
-      let snapshot: ScoringDatasetSnapshot;
-      try {
-        const datasetHash = readString(row, "dataset_hash");
-        if (!isSha256Hex(datasetHash)) {
-          datasetCorrupt("malformed dataset hash");
-        }
+      const { data, error } = await supabase
+        .from("scoring_dataset_versions")
+        .select(DATASET_COLUMNS)
+        .eq("id", datasetVersionId)
+        .eq("frozen", true)
+        .in("lifecycle", ["active", "retired"])
+        .limit(1)
+        .maybeSingle();
 
-        snapshot = {
-          datasetVersionId: readUuid(row, "id"),
-          label: readString(row, "label"),
-          kind: readEnum(row, "kind", DATASET_KINDS),
-          scoreVersion: readString(row, "score_version"),
-          strengthReference: readReferenceArray(
-            row.strength_reference,
-            "strength_reference",
-          ),
-          enduranceReference: readReferenceArray(
-            row.endurance_reference,
-            "endurance_reference",
-          ),
-          eligibleSampleSize: readInteger(
-            row,
-            "eligible_sample_size",
-            0,
-            100_000_000,
-          ),
-          datasetHash,
-          confidence: readEnum(row, "confidence", DATASET_CONFIDENCE_TIERS),
-        };
-      } catch (err) {
-        if (err instanceof ScoringError) throw err;
-        datasetCorrupt("malformed dataset row");
+      if (error) {
+        throw new RepositoryError("Failed to load dataset version.", error);
       }
-
-      // Content verification: proves the stored population has not drifted
-      // since it was frozen. Structural checks run in assertDatasetIntegrity.
-      const expected = computeDatasetHash({
-        scoreVersion: snapshot.scoreVersion,
-        datasetKind: snapshot.kind,
-        eligibleSampleSize: snapshot.eligibleSampleSize,
-        strengthReference: snapshot.strengthReference,
-        enduranceReference: snapshot.enduranceReference,
-      });
-
-      if (expected !== snapshot.datasetHash) {
-        throw new ScoringError(
-          "DATASET_CORRUPT",
-          "The active scoring dataset failed its integrity check (hash mismatch).",
-          "dataset",
-        );
-      }
-
-      return snapshot;
+      if (!data) return null;
+      return verifiedDataset(data);
     },
 
     async persistResult(input) {
@@ -410,6 +607,12 @@ export function createSupabaseScoreRepository(
           original_unit_system: input.originalUnitSystem,
           original_run_distance: input.originalRunDistance,
           original_run_seconds: input.originalRunSeconds,
+          // Verbatim, in the athlete's own unit system. Not converted, not
+          // rounded, and never derived from the *_kg fields above.
+          original_bodyweight: input.originalBodyweight,
+          original_bench: input.originalBench,
+          original_squat: input.originalSquat,
+          original_deadlift: input.originalDeadlift,
           canonical_endurance_seconds: input.canonicalEnduranceSeconds,
           endurance_seconds: input.canonicalEnduranceSeconds,
         },
@@ -440,22 +643,30 @@ export function createSupabaseScoreRepository(
       };
     },
 
-    async loadEligibleScores(datasetVersionId) {
-      const { data, error } = await supabase
-        .from("submissions")
-        .select("hq_score")
-        .eq("dataset_version_id", datasetVersionId)
-        .eq("status", "approved")
-        .eq("visibility", "public")
-        .not("hq_score", "is", null);
-
+    async loadPlacement(scope, score) {
+      // One statement, one snapshot: both counts are computed together by
+      // public.leaderboard_placement (migration 20260929_04), whose WHERE
+      // clause is the same eligibility rule as scopedToLeaderboard.
+      const { data, error } = await supabase.rpc("leaderboard_placement", {
+        p_dataset_version_id: scope.datasetVersionId,
+        p_score_version: scope.scoreVersion,
+        p_score: score,
+      });
       if (error) {
-        throw new RepositoryError("Failed to load leaderboard scores.", error);
+        throw new RepositoryError("Failed to load placement.", error);
       }
+      if (typeof data !== "object" || data === null || Array.isArray(data)) {
+        throw new RepositoryError("Placement counts were not returned.");
+      }
+      const counts = data as Record<string, unknown>;
+      const higher = readInteger(counts, "higher", 0, Number.MAX_SAFE_INTEGER);
+      const total = readInteger(counts, "total", 0, Number.MAX_SAFE_INTEGER);
 
-      return ((data ?? []) as { hq_score: unknown }[])
-        .map((r) => Number(r.hq_score))
-        .filter((n) => Number.isFinite(n));
+      // Within one snapshot an eligible result is counted in `total` and not
+      // in `higher`, so total >= higher + 1. Anything less means the saved
+      // result was not eligible in that snapshot: no placement.
+      if (higher + 1 > total) return null;
+      return placementFromCounts(higher, total);
     },
   };
 }

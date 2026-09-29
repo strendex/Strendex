@@ -1,9 +1,19 @@
 // Legacy v1 scoring surface — used by /api/rank, /api/submit, the Athlete
 // Review, and the seed script.
 //
-// DEPRECATED (remove in Group 3): once the calculator is migrated to
-// POST /api/score, this module and its callers should be deleted in favour of
-// "@/lib/scoring/core". Nothing new should import from here.
+// DEPRECATED. The calculator was migrated to POST /api/score in Group 1, so
+// nothing in the product UI reaches this module any more. Two callers remain:
+//
+//   * /api/rank and /api/submit — kept deployed, and now unreferenced by any
+//     client, purely so a deploy rollback has somewhere to land. Delete them
+//     once the canonical path has been verified in production.
+//   * the Athlete Review, which still calls computeScore here — but Group 1
+//     changed WHAT it scores against: it is now handed the frozen reference
+//     arrays from the active scoring_dataset_versions row, not a live query of
+//     `submissions`. So it no longer has a benchmark of its own, even though it
+//     still uses this function to apply it.
+//
+// Nothing new should import from here.
 //
 // The formulas themselves are NOT duplicated: every function below delegates to
 // lib/scoring/core/formulas, so v1 and v2 can never drift. The only behaviour

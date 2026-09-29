@@ -37,10 +37,11 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local", quiet: true });
 
 import { createClient } from "@supabase/supabase-js";
-import { SCORE_VERSION, VALIDATION_BOUNDS } from "../lib/scoring/core";
+import { SCORE_VERSION } from "../lib/scoring/core";
 import {
   DatasetDraftError,
   insertDraft,
+  parseReferenceRow,
   prepareDraft,
   printDraftSummary,
 } from "./lib/datasetDraft";
@@ -73,10 +74,6 @@ function arg(name: string): string | null {
 
 function hasFlag(name: string): boolean {
   return process.argv.includes(`--${name}`);
-}
-
-function isValidIndex(n: unknown): n is number {
-  return typeof n === "number" && Number.isFinite(n) && n > 0 && n <= 100;
 }
 
 async function main() {
@@ -161,24 +158,22 @@ async function main() {
       continue;
     }
 
-    const s = Number(row.strength_index);
-    const e = Number(row.endurance_index);
-    const secs = Number(row.canonical_endurance_seconds);
+    // Shared with the legacy bootstrap so both tools agree on eligibility.
+    // An index of exactly 0 or exactly 100 is valid and is kept.
+    const pair = parseReferenceRow({
+      strengthIndex: row.strength_index,
+      enduranceIndex: row.endurance_index,
+      enduranceSeconds: row.canonical_endurance_seconds,
+    });
 
-    if (
-      !isValidIndex(s) ||
-      !isValidIndex(e) ||
-      !Number.isFinite(secs) ||
-      secs < VALIDATION_BOUNDS.canonicalEnduranceSeconds.min ||
-      secs > VALIDATION_BOUNDS.canonicalEnduranceSeconds.max
-    ) {
+    if (!pair) {
       excluded.corrupt++;
       continue;
     }
 
     sourceCounts[row.provenance] = (sourceCounts[row.provenance] ?? 0) + 1;
-    strengthReference.push(s);
-    enduranceReference.push(e);
+    strengthReference.push(pair.strengthIndex);
+    enduranceReference.push(pair.enduranceIndex);
   }
 
   for (const p of ELIGIBLE_PROVENANCE) {

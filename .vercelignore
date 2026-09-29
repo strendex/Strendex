@@ -1,0 +1,15 @@
+# Never upload local-only files to Vercel. Local file; not a deploy setting.
+# Env files of every kind (secrets for staging and production live here).
+.env
+.env*
+# Archives and review exports.
+*.zip
+*.tgz
+strendex-group*-review*.txt
+# Local agent and editor configuration.
+.claude
+.agents
+.mcp.json
+.DS_Store
+# Build and cache artifacts.
+tsconfig.tsbuildinfo
