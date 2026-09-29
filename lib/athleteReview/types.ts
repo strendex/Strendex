@@ -22,6 +22,16 @@ export type ResultSnapshotV1 = {
     runTimeText: string | null;
     unitSystem: UnitSystem;
   };
+  /**
+   * The frozen benchmark the saved result was scored against. The review
+   * re-scores against THIS dataset version, never whichever is active now.
+   * Null only on a snapshot saved before Group 3; the review then asks the
+   * athlete to recalculate. Carries no submission data.
+   */
+  benchmark: {
+    datasetVersionId: string | null;
+    scoreVersion: string | null;
+  };
   display: {
     hybridScore: number;
     strengthPercentile: number | null;
@@ -182,5 +192,11 @@ export type AthleteReviewResponse = {
   report: AthleteReviewReport;
   scenarios: Scenario[];
   computed: AthleteReviewComputed;
-  meta: { model: string; promptVersion: string };
+  meta: {
+    model: string;
+    promptVersion: string;
+    /** The dataset and score version the review was computed against. */
+    datasetVersionId: string;
+    scoreVersion: string;
+  };
 };

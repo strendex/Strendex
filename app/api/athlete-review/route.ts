@@ -1,14 +1,34 @@
 // POST /api/athlete-review
 // Generates a structured Athlete Review: canonical score + deterministic
-// scenarios from lib/scoring.ts, interpretation from OpenAI (strict JSON
-// schema). No DB writes, no caching, no persistence of personal answers.
+// scenarios from lib/scoring, interpretation from OpenAI (strict JSON schema).
+// No DB writes, no caching, no persistence of personal answers.
+//
+// GROUP 1: this route no longer builds its own reference population. It used to
+// run its own live query of approved `submissions` and derive percentiles from
+// whatever happened to be approved at that moment — a THIRD moving benchmark,
+// independent of both /api/rank and /api/submit. It now reads the same frozen
+// scoring_dataset_versions row that POST /api/score uses, so a review and a
+// score computed from identical inputs compare against identical reference data.
+//
+// Still READ-ONLY with respect to `submissions`: this route performs no INSERT,
+// UPDATE or DELETE on that table, and the dataset load is a SELECT.
 
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
-import { buildScoringDataset, computeScore } from "@/lib/scoring";
+import { computeScore, type ScoringDataset } from "@/lib/scoring";
+import {
+  SCORE_VERSION,
+  ScoringError,
+  assertDatasetUsable,
+} from "@/lib/scoring/core";
+import { createSupabaseScoreRepository } from "@/lib/server/scoreRepository";
 import { getClientIp } from "@/lib/clientIp";
 import { validateAnswers } from "@/lib/athleteReview/questions";
+import {
+  RECALCULATE_MESSAGE,
+  validateBenchmark,
+} from "@/lib/athleteReview/benchmarkValidation";
 import { computeScenarios } from "@/lib/athleteReview/scenarios";
 import { buildAthleteReviewInput } from "@/lib/athleteReview/prompt";
 import {
@@ -17,6 +37,8 @@ import {
   validateReport,
 } from "@/lib/athleteReview/reportSchema";
 import type { AthleteReviewResponse } from "@/lib/athleteReview/types";
+import { logError, logInfo, logWarn } from "@/lib/server/logging";
+import { parseReviewDailyCap, reserveReviewAttempt } from "@/lib/server/reviewCap";
 
 export const runtime = "nodejs";
 
@@ -28,6 +50,13 @@ const OPENAI_TIMEOUT_MS = 60_000;
 // The review is the most expensive endpoint — keep limits tight.
 const MAX_PER_MINUTE = 2;
 const MAX_PER_DAY = 5;
+
+const ROUTE = "/api/athlete-review";
+
+const REVIEWS_PAUSED_MESSAGE =
+  "Athlete Reviews are temporarily unavailable. Please try again later.";
+const DAILY_CAP_MESSAGE =
+  "Athlete Reviews have reached today's limit. Please try again tomorrow.";
 
 const AI_UNAVAILABLE_MESSAGE =
   "The review engine returned an unusable result. Please try again — your answers are still saved.";
@@ -92,8 +121,20 @@ function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
-function logSecurityEvent(event: string, details: Record<string, unknown>) {
-  console.warn(`[security][/api/athlete-review] ${event}`, details);
+// The review cannot be tied to the frozen benchmark its result was scored
+// against (no id, unknown or draft dataset, or another score version). 409, not
+// 400: the input is well formed but belongs to a result that must be rescored.
+function recalculateRequired() {
+  return NextResponse.json(
+    { error: RECALCULATE_MESSAGE, code: "RECALCULATE_REQUIRED" },
+    { status: 409 },
+  );
+}
+
+// Allow-list logger only (lib/server/logging.ts): what happened, never who.
+// No IP address, request content, questionnaire answer or error message.
+function logSecurityEvent(event: string) {
+  logWarn("request rejected", { route: ROUTE, event });
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -107,105 +148,6 @@ function hasOnlyAllowedKeys(
   return Object.keys(obj).every((key) => allowedKeys.includes(key));
 }
 
-type ValidatedBenchmark = {
-  bodyweightKg: number;
-  benchKg: number | null;
-  squatKg: number | null;
-  deadliftKg: number | null;
-  enduranceSeconds: number | null;
-  unitSystem: "lb" | "kg";
-};
-
-// Same validity rules as /api/rank — a review athlete is a legal athlete.
-function validateBenchmark(
-  raw: unknown,
-): { ok: true; benchmark: ValidatedBenchmark } | { ok: false; error: string } {
-  if (!isPlainObject(raw)) {
-    return { ok: false, error: "Benchmark must be an object." };
-  }
-
-  const allowed = [
-    "bodyweight_kg",
-    "endurance_seconds",
-    "bench_kg",
-    "squat_kg",
-    "deadlift_kg",
-    "unit_system",
-  ];
-  if (!hasOnlyAllowedKeys(raw, allowed)) {
-    return { ok: false, error: "Benchmark contains unexpected fields." };
-  }
-
-  const num = (v: unknown): number | null =>
-    v === null || v === undefined ? null : Number(v);
-
-  const bw = Number(raw.bodyweight_kg);
-  if (!Number.isFinite(bw) || bw < 36 || bw > 181) {
-    return { ok: false, error: "Bodyweight must be between 36 and 181 kg." };
-  }
-
-  const bench = num(raw.bench_kg);
-  const squat = num(raw.squat_kg);
-  const deadlift = num(raw.deadlift_kg);
-  const endurance = num(raw.endurance_seconds);
-
-  if (bench !== null && (!Number.isFinite(bench) || bench < 20 || bench > 318)) {
-    return { ok: false, error: "Bench must be between 20 and 318 kg." };
-  }
-  if (squat !== null && (!Number.isFinite(squat) || squat < 20 || squat > 409)) {
-    return { ok: false, error: "Squat must be between 20 and 409 kg." };
-  }
-  if (
-    deadlift !== null &&
-    (!Number.isFinite(deadlift) || deadlift < 20 || deadlift > 454)
-  ) {
-    return { ok: false, error: "Deadlift must be between 20 and 454 kg." };
-  }
-  if (bench === null && squat === null && deadlift === null && endurance === null) {
-    return { ok: false, error: "At least one lift or an endurance time is required." };
-  }
-  if (bench !== null && bench / bw > 3.2) {
-    return { ok: false, error: "Bench-to-bodyweight ratio looks unrealistic." };
-  }
-  if (squat !== null && squat / bw > 4.0) {
-    return { ok: false, error: "Squat-to-bodyweight ratio looks unrealistic." };
-  }
-  if (deadlift !== null && deadlift / bw > 4.5) {
-    return { ok: false, error: "Deadlift-to-bodyweight ratio looks unrealistic." };
-  }
-  if (
-    endurance !== null &&
-    (!Number.isFinite(endurance) || endurance < 4200 || endurance > 28800)
-  ) {
-    return { ok: false, error: "Endurance time looks out of range." };
-  }
-
-  const unitSystem = raw.unit_system === "kg" ? "kg" : "lb";
-
-  return {
-    ok: true,
-    benchmark: {
-      bodyweightKg: bw,
-      benchKg: bench,
-      squatKg: squat,
-      deadliftKg: deadlift,
-      enduranceSeconds: endurance,
-      unitSystem,
-    },
-  };
-}
-
-// Retry policy: exactly one retry, and only for genuinely transient failures
-// (network / timeout / OpenAI 5xx). Refusals, rate limits, and bad input are
-// never retried — that would just double cost.
-function isTransientOpenAIError(err: unknown): boolean {
-  if (err instanceof OpenAI.APIConnectionError) return true;
-  if (err instanceof OpenAI.APIError) {
-    return typeof err.status === "number" && err.status >= 500;
-  }
-  return false;
-}
-
 export async function POST(req: Request) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -213,11 +155,23 @@ export async function POST(req: Request) {
     const openaiApiKey = process.env.OPENAI_API_KEY;
 
     if (!supabaseUrl || !serviceRoleKey || !openaiApiKey) {
-      console.error("[/api/athlete-review] missing required env configuration");
+      logError("server misconfigured", { route: ROUTE, code: "missing_env" });
       return NextResponse.json(
         { error: "Server configuration error." },
         { status: 500 },
       );
+    }
+
+    // Global daily attempt cap (lib/server/reviewCap.ts). A disabled or
+    // invalid setting stops here: no counter, no validation, no OpenAI.
+    const capConfig = parseReviewDailyCap(process.env.ATHLETE_REVIEW_DAILY_CAP);
+    if (!capConfig.enabled) {
+      if (capConfig.reason === "invalid") {
+        logError("server misconfigured", { route: ROUTE, code: "review_cap_invalid" });
+      } else {
+        logInfo("athlete review disabled", { route: ROUTE, code: "review_cap_zero" });
+      }
+      return NextResponse.json({ error: REVIEWS_PAUSED_MESSAGE }, { status: 503 });
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -232,50 +186,96 @@ export async function POST(req: Request) {
 
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.toLowerCase().includes("application/json")) {
-      logSecurityEvent("invalid_content_type", { ip, contentType });
+      logSecurityEvent("invalid_content_type");
       return badRequest("Content-Type must be application/json.");
     }
 
-    const bodyUnknown: unknown = await req.json();
+    let bodyUnknown: unknown;
+    try {
+      bodyUnknown = await req.json();
+    } catch {
+      // The parse error's message can quote the body: never log it.
+      logSecurityEvent("invalid_json");
+      return badRequest("Request body must be valid JSON.");
+    }
     if (!isPlainObject(bodyUnknown)) {
-      logSecurityEvent("invalid_json_shape", { ip });
+      logSecurityEvent("invalid_json_shape");
       return badRequest("Request body must be a JSON object.");
     }
     if (!hasOnlyAllowedKeys(bodyUnknown, ["benchmark", "answers"])) {
-      logSecurityEvent("unexpected_keys", { ip, keys: Object.keys(bodyUnknown) });
+      logSecurityEvent("unexpected_keys");
       return badRequest("Request contains unexpected fields.");
     }
 
     const benchmarkResult = validateBenchmark(bodyUnknown.benchmark);
-    if (!benchmarkResult.ok) return badRequest(benchmarkResult.error);
+    if (!benchmarkResult.ok) {
+      return benchmarkResult.recalculate ? recalculateRequired() : badRequest(benchmarkResult.error);
+    }
     const benchmark = benchmarkResult.benchmark;
 
     const answersResult = validateAnswers(bodyUnknown.answers);
     if (!answersResult.ok) return badRequest(answersResult.error);
     const answers = answersResult.answers;
 
-    // Canonical scoring — same dataset and path as /api/rank. The client's
-    // stored scores are never used.
-    const { data, error } = await supabase
-      .from("submissions")
-      .select("hq_score,strength_index,endurance_index,endurance_seconds,status")
-      .eq("status", "approved");
+    // The FIXED reference population — the one frozen, hash-verified dataset
+    // version that POST /api/score scores against. Not a live query, so adding
+    // or approving a submission cannot move a review's percentiles, and two
+    // reviews of the same athlete a week apart give the same numbers.
+    let dataset: ScoringDataset;
+    let datasetVersionId: string;
+    try {
+      // GROUP 3: the dataset the SAVED result was scored against — active or
+      // retired — never whichever is active now. Nothing falls back: a missing,
+      // unknown or incompatible benchmark is a request to recalculate.
+      if (benchmark.scoreVersion !== SCORE_VERSION) {
+        return recalculateRequired();
+      }
 
-    if (error) {
-      console.error("[/api/athlete-review] dataset fetch failed:", error.message);
+      const snapshot = await createSupabaseScoreRepository(
+        supabase,
+      ).loadDatasetVersion(benchmark.datasetVersionId);
+
+      if (!snapshot || snapshot.scoreVersion !== benchmark.scoreVersion) {
+        logWarn("saved benchmark unavailable", { route: ROUTE, code: "recalculate_required" });
+        return recalculateRequired();
+      }
+      datasetVersionId = snapshot.datasetVersionId;
+
+      // The SAME usability gate the canonical scorer applies before it will
+      // score anything: right score version, structurally intact, and at least
+      // MIN_DATASET_SIZE eligible rows.
+      //
+      // This is not redundant with the repository's hash check. The repository
+      // proves the arrays are the ones that were frozen; it does not prove they
+      // are USABLE. And the adapter below is computeScore — the legacy surface —
+      // whose documented behaviour on an undersized population is to fall back
+      // to the raw endurance index instead of a percentile. Without this call an
+      // Athlete Review would silently produce numbers on a 12-row dataset that
+      // POST /api/score would have refused outright, then spend an OpenAI request
+      // narrating them.
+      //
+      // It runs BEFORE the arrays are adapted and long before any AI call, so an
+      // unusable dataset costs nothing.
+      assertDatasetUsable(snapshot);
+
+      // The frozen reference arrays, used verbatim. percentileMidrank is the
+      // same function the canonical scorer calls, so the percentiles here and
+      // the percentiles on a saved result are produced identically.
+      dataset = {
+        strengthScores: snapshot.strengthReference,
+        enduranceScores: snapshot.enduranceReference,
+      };
+    } catch (datasetError: unknown) {
+      // A corrupt or unusable dataset is server state, not something the athlete
+      // can fix. Never leak the underlying detail.
+      const code =
+        datasetError instanceof ScoringError ? datasetError.code : "INTERNAL";
+      logError("dataset unusable", { route: ROUTE, code });
       return NextResponse.json(
-        { error: "Could not load scoring data. Please try again." },
-        { status: 500 },
+        { error: "Scoring is temporarily unavailable. Please try again later." },
+        { status: 503 },
       );
     }
-
-    const dataset = buildScoringDataset(
-      (data ?? []) as {
-        strength_index: number | null;
-        endurance_index: number | null;
-        endurance_seconds: number | null;
-      }[],
-    );
 
     const scoringInput = {
       bodyweightKg: benchmark.bodyweightKg,
@@ -309,52 +309,65 @@ export async function POST(req: Request) {
       timeout: OPENAI_TIMEOUT_MS,
     });
 
-    let resp: OpenAI.Responses.Response | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        resp = await openai.responses.create({
-          model: MODEL,
-          input: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-          text: {
-            format: {
-              type: "json_schema",
-              name: "athlete_review_report",
-              strict: true,
-              schema: REPORT_JSON_SCHEMA as unknown as Record<string, unknown>,
-            },
-          },
-          max_output_tokens: MAX_OUTPUT_TOKENS,
-          store: false,
-        });
-        break;
-      } catch (err) {
-        if (attempt === 0 && isTransientOpenAIError(err)) {
-          console.warn("[/api/athlete-review] transient OpenAI error, retrying once");
-          continue;
-        }
-        // Never echo OpenAI error details to the client.
-        console.error(
-          "[/api/athlete-review] OpenAI request failed:",
-          err instanceof Error ? err.message : "unknown",
-        );
-        return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
+    // Reserve ONE attempt against the shared daily cap, after every check
+    // above and immediately before the paid call. No reservation, no call.
+    const reservation = await reserveReviewAttempt(supabase, capConfig.cap);
+    if (!reservation.ok) {
+      if (reservation.reason === "cap_reached") {
+        logWarn("athlete review daily cap reached", { route: ROUTE, code: "review_cap_reached" });
+        return NextResponse.json({ error: DAILY_CAP_MESSAGE }, { status: 503 });
       }
+      logError("athlete review cap counter failed", { route: ROUTE, code: "review_cap_counter_failed" });
+      return NextResponse.json({ error: REVIEWS_PAUSED_MESSAGE }, { status: 503 });
     }
 
-    if (!resp || resp.status === "incomplete") {
-      console.error(
-        "[/api/athlete-review] response incomplete:",
-        resp?.incomplete_details?.reason ?? "no response",
-      );
+    // Exactly one OpenAI attempt per accepted request: SDK retries are off
+    // (maxRetries: 0) and nothing here retries — a timeout or error may still
+    // have been billed, and a retry would be a second paid call.
+    let resp: OpenAI.Responses.Response;
+    try {
+      resp = await openai.responses.create({
+        model: MODEL,
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "athlete_review_report",
+            strict: true,
+            schema: REPORT_JSON_SCHEMA as unknown as Record<string, unknown>,
+          },
+        },
+        max_output_tokens: MAX_OUTPUT_TOKENS,
+        store: false,
+      });
+    } catch (err) {
+      // Never log or echo provider error details: status or class name only.
+      logError("openai request failed", {
+        route: ROUTE,
+        code:
+          err instanceof OpenAI.APIError && typeof err.status === "number"
+            ? `openai_${err.status}`
+            : err instanceof Error
+              ? err.name
+              : "unknown",
+      });
+      return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
+    }
+
+    if (resp.status === "incomplete") {
+      logError("openai response incomplete", {
+        route: ROUTE,
+        code: String(resp.incomplete_details?.reason ?? "incomplete"),
+      });
       return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
     }
 
     const text = typeof resp.output_text === "string" ? resp.output_text : "";
     if (!text) {
-      console.error("[/api/athlete-review] empty or refused output");
+      logError("openai output unusable", { route: ROUTE, code: "empty_or_refused" });
       return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
     }
 
@@ -362,16 +375,13 @@ export async function POST(req: Request) {
     try {
       parsed = JSON.parse(text);
     } catch {
-      console.error("[/api/athlete-review] output was not valid JSON");
+      logError("openai output unusable", { route: ROUTE, code: "invalid_json" });
       return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
     }
 
     const reportResult = validateReport(parsed);
     if (!reportResult.ok) {
-      console.error(
-        "[/api/athlete-review] report failed validation:",
-        reportResult.error,
-      );
+      logError("openai output unusable", { route: ROUTE, code: "report_invalid" });
       return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
     }
 
@@ -387,15 +397,20 @@ export async function POST(req: Request) {
         strengthPercentile: computed.strengthPercentile,
         endurancePercentile: computed.endurancePercentile,
       },
-      meta: { model: MODEL, promptVersion: REPORT_PROMPT_VERSION },
+      meta: {
+        model: MODEL,
+        promptVersion: REPORT_PROMPT_VERSION,
+        datasetVersionId,
+        scoreVersion: SCORE_VERSION,
+      },
     };
 
     return NextResponse.json(payload);
   } catch (error: unknown) {
-    console.error(
-      "[/api/athlete-review] unhandled error:",
-      error instanceof Error ? error.message : "unknown",
-    );
+    logError("unhandled review failure", {
+      route: ROUTE,
+      code: error instanceof Error ? error.name : "unknown",
+    });
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },

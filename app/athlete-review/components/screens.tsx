@@ -6,9 +6,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Kicker } from "./primitives";
 
-export function LandingState() {
+export function LandingState({ notice }: { notice?: string } = {}) {
   return (
     <div>
+      {notice ? (
+        <p
+          role="status"
+          className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-relaxed text-white/70"
+        >
+          {notice}
+        </p>
+      ) : null}
       <Kicker>ATHLETE REVIEW</Kicker>
       <h1 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
         Your review starts with an objective baseline

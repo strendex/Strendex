@@ -25,9 +25,10 @@ export default function LeaderboardPreview() {
               See how your result compares.
             </h2>
             <p className="mt-4 max-w-[46ch] text-[16px] leading-[1.65] text-lead">
-              Opt into the public leaderboard to compare your result with other
-              submitted athletes. Entries are self-reported, and joining is
-              optional.
+              Your result is private by default. If you choose to publish it,
+              it joins a public leaderboard of results other people have
+              published. Entries are self-reported, and top scores are reviewed
+              before they appear.
             </p>
             <div className="mt-7">
               <CtaButton href="/rankings" tone="secondary">

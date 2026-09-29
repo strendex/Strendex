@@ -19,23 +19,24 @@
  * breakpoint left the steps stuck at opacity 0.
  */
 
+import Link from "next/link";
 import { Reveal } from "./motion";
 
 const STEPS = [
   {
     n: "01",
     title: "Enter your numbers",
-    body: "Bodyweight, bench, squat, deadlift, and a recent 5K.",
+    body: "Bodyweight, your best bench, squat and deadlift, and a recent run: 3 miles, 5K, 10K, half or full marathon.",
   },
   {
     n: "02",
-    title: "Both sides get scored",
-    body: "Each side becomes a percentile against the same reference dataset. The Hybrid Score is the midpoint of the two.",
+    title: "Each side becomes a percentile",
+    body: "Your lifts relative to bodyweight, and your run adjusted to a common distance, are each placed within the same reference dataset. The 70th percentile means you sit above roughly 70% of it.",
   },
   {
     n: "03",
-    title: "Read your profile",
-    body: "Your score and tier, the gap between your two sides, and which side is holding the profile back.",
+    title: "Get your Hybrid Score",
+    body: "The two percentiles are averaged into one score from 0 to 100. Your tier and athlete type show where that score sits and how your two sides compare.",
   },
 ];
 
@@ -71,6 +72,20 @@ export default function HowItWorks() {
           </Reveal>
         ))}
       </ol>
+
+      <Reveal delay={0.12}>
+        <p className="mt-10 max-w-[60ch] text-[14px] leading-[1.6] text-subtle md:mt-12">
+          Your percentiles compare you with the reference dataset, not with
+          other people who use Strendex. Publishing to the public leaderboard is
+          optional and separate.{" "}
+          <Link
+            href="/methodology"
+            className="text-lead underline underline-offset-4 transition-colors duration-150 hover:text-ink"
+          >
+            Read the methodology
+          </Link>
+        </p>
+      </Reveal>
     </section>
   );
 }

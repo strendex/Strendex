@@ -21,6 +21,25 @@ function numOrNull(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+function strOrNull(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Whether a snapshot names the benchmark its result was scored against. When
+ * it does not, the review must not run: the athlete is asked to recalculate.
+ */
+export function snapshotHasBenchmark(snapshot: ResultSnapshotV1): boolean {
+  return (
+    snapshot.benchmark.datasetVersionId !== null &&
+    UUID_PATTERN.test(snapshot.benchmark.datasetVersionId) &&
+    snapshot.benchmark.scoreVersion !== null
+  );
+}
+
 export function saveSnapshot(
   snapshot: Omit<ResultSnapshotV1, "v" | "savedAt">,
 ): void {
@@ -66,6 +85,14 @@ export function loadSnapshot(): ResultSnapshotV1 | null {
       throw new Error("inputs");
     }
 
+    // Tolerated when absent (pre-Group-3 snapshot): the review page asks for a
+    // recalculation instead of silently using the active dataset.
+    const rawBenchmark = (s as { benchmark?: unknown }).benchmark;
+    const benchmarkRecord =
+      typeof rawBenchmark === "object" && rawBenchmark !== null
+        ? (rawBenchmark as Record<string, unknown>)
+        : {};
+
     const display = s.display;
     if (
       typeof display !== "object" ||
@@ -93,6 +120,10 @@ export function loadSnapshot(): ResultSnapshotV1 | null {
         runTimeText:
           typeof inputs.runTimeText === "string" ? inputs.runTimeText : null,
         unitSystem: inputs.unitSystem,
+      },
+      benchmark: {
+        datasetVersionId: strOrNull(benchmarkRecord.datasetVersionId),
+        scoreVersion: strOrNull(benchmarkRecord.scoreVersion),
       },
       display: {
         hybridScore: display.hybridScore,

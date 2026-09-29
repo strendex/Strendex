@@ -14,8 +14,10 @@ import {
   clearAnswers,
   loadAnswers,
   loadSnapshot,
+  snapshotHasBenchmark,
   saveAnswers,
 } from "@/lib/athleteReview/snapshot";
+import { RECALCULATE_MESSAGE } from "@/lib/athleteReview/benchmarkValidation";
 import type {
   AssessmentAnswers,
   AthleteReviewResponse,
@@ -86,6 +88,7 @@ export default function AthleteReviewPage() {
   const [resumeStep, setResumeStep] = useState<StepN | null>(null);
   const [result, setResult] = useState<AthleteReviewResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [recalculateNotice, setRecalculateNotice] = useState(false);
   const [editingFromReview, setEditingFromReview] = useState(false);
   const stepRef = useRef<StepN>(1);
   stepRef.current = step;
@@ -93,6 +96,14 @@ export default function AthleteReviewPage() {
   useEffect(() => {
     const snap = loadSnapshot();
     if (!snap) {
+      setPhase("landing");
+      trackAthleteReview("athlete_review_landing_viewed");
+      return;
+    }
+    // Saved before results carried their benchmark: the review would have to
+    // guess the dataset, so ask for a recalculation instead.
+    if (!snapshotHasBenchmark(snap)) {
+      setRecalculateNotice(true);
       setPhase("landing");
       trackAthleteReview("athlete_review_landing_viewed");
       return;
@@ -184,7 +195,6 @@ export default function AthleteReviewPage() {
     const startedAt = Date.now();
     trackAthleteReview("athlete_review_generation_started", {
       primary_goal: answers.primaryGoal ?? null,
-      main_constraint: answers.mainConstraint ?? null,
     });
 
     let failType = "network";
@@ -201,6 +211,8 @@ export default function AthleteReviewPage() {
             deadlift_kg: snapshot.inputs.deadliftKg,
             endurance_seconds: snapshot.inputs.enduranceSeconds,
             unit_system: snapshot.inputs.unitSystem,
+            dataset_version_id: snapshot.benchmark.datasetVersionId,
+            score_version: snapshot.benchmark.scoreVersion,
           },
           answers: visibleAnswersOnly(answers),
         }),
@@ -265,7 +277,7 @@ export default function AthleteReviewPage() {
       {phase === "booting" ? (
         <div className="min-h-[40vh]" aria-hidden="true" />
       ) : phase === "landing" ? (
-        <LandingState />
+        <LandingState notice={recalculateNotice ? RECALCULATE_MESSAGE : undefined} />
       ) : phase === "intro" && snapshot ? (
         <IntroScreen
           hybridScore={snapshot.display.hybridScore}

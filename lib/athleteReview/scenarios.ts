@@ -5,16 +5,44 @@
 
 import {
   clamp,
+  computeEnduranceIndex,
   computeScore,
   strengthScoreFromRatio,
   type ScoringDataset,
   type ScoringInput,
   type ScoringResult,
 } from "@/lib/scoring";
+import {
+  ENDURANCE_INDEX_MIN_SEC,
+  SUBMISSION_CANONICAL_ENDURANCE_SECONDS,
+} from "@/lib/scoring/core";
 import type { GoalOption, PriorityLift, Scenario, ScenarioId } from "./types";
 
 const HORIZON_WEEKS = 8;
-const MIN_ENDURANCE_SEC = 4200;
+
+// Floor for a projected run time: the time that already earns the maximum
+// endurance index (a faster one scores nothing more). It sits inside the
+// submission window, so a projected athlete is always one POST /api/score
+// would accept.
+const MIN_ENDURANCE_SEC = Math.max(
+  ENDURANCE_INDEX_MIN_SEC,
+  SUBMISSION_CANONICAL_ENDURANCE_SECONDS.min,
+);
+
+const AT_ENDURANCE_CAP =
+  "Your run time already earns the maximum endurance index, so a faster time would not raise your Hybrid Score.";
+
+/**
+ * The projected faster time, or null when there is no improvement to project:
+ * the endurance index is already at 100 (Group 2 accepts times well below
+ * ENDURANCE_INDEX_MIN_SEC), or the floor leaves nothing to cut. Never returns a
+ * time that is slower than, or equal to, the athlete's own.
+ */
+function fasterEnduranceSeconds(current: number, cut: number): number | null {
+  if (computeEnduranceIndex(current) >= 100) return null;
+  const projected = Math.max(MIN_ENDURANCE_SEC, current - cut);
+  return projected < current ? projected : null;
+}
 
 const LIFT_CAPS = {
   bench: { abs: 318, ratio: 3.2 },
@@ -122,9 +150,17 @@ export function computeScenarios(args: {
     projected: null,
     isPrimary: false,
   };
-  if (input.enduranceSeconds !== null) {
-    const cut = clamp(Math.round(input.enduranceSeconds * 0.04), 120, 480);
-    const newSeconds = Math.max(MIN_ENDURANCE_SEC, input.enduranceSeconds - cut);
+  const pushSeconds =
+    input.enduranceSeconds !== null
+      ? fasterEnduranceSeconds(
+          input.enduranceSeconds,
+          clamp(Math.round(input.enduranceSeconds * 0.04), 120, 480),
+        )
+      : null;
+  if (input.enduranceSeconds !== null && pushSeconds === null) {
+    endurancePush = { ...endurancePush, available: false, description: AT_ENDURANCE_CAP };
+  } else if (input.enduranceSeconds !== null && pushSeconds !== null) {
+    const newSeconds = pushSeconds;
     const actualCut = input.enduranceSeconds - newSeconds;
     endurancePush = project(
       {
@@ -225,9 +261,18 @@ export function computeScenarios(args: {
     projected: null,
     isPrimary: false,
   };
-  if (input.enduranceSeconds !== null && hasLift) {
-    const cut = Math.max(60, Math.round(input.enduranceSeconds * 0.02));
-    const newSeconds = Math.max(MIN_ENDURANCE_SEC, input.enduranceSeconds - cut);
+  const balancedSeconds =
+    input.enduranceSeconds !== null
+      ? fasterEnduranceSeconds(
+          input.enduranceSeconds,
+          Math.max(60, Math.round(input.enduranceSeconds * 0.02)),
+        )
+      : null;
+  if (input.enduranceSeconds !== null && hasLift && balancedSeconds === null) {
+    // No endurance half to balance; the strength push covers the lifts.
+    balanced = { ...balanced, available: false, description: AT_ENDURANCE_CAP };
+  } else if (input.enduranceSeconds !== null && hasLift && balancedSeconds !== null) {
+    const newSeconds = balancedSeconds;
     const actualCut = input.enduranceSeconds - newSeconds;
     balanced = project(
       {

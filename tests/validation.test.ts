@@ -171,9 +171,12 @@ describe("boundary and malformed input", () => {
     expectCode({ ...COMPLETE_KG, runDistance: "1mi" }, "UNSUPPORTED_DISTANCE");
   });
 
-  it("rejects run times outside the canonical endurance window", () => {
-    // 800s over 5K converts to ~3680s equivalent — faster than the 4200s floor.
-    expectCode({ ...COMPLETE_KG, runSeconds: 800 }, "OUT_OF_RANGE");
+  it("rejects run times outside the per-distance window", () => {
+    // Group 2: 13:20 for 5K (~3680 s canonical) is inside the 5K window and is
+    // now accepted; the floor is the window's 11:40. Full boundaries per
+    // distance are in tests/runTimeBounds.test.ts.
+    assert.equal(parseCanonicalBenchmark({ ...COMPLETE_KG, runSeconds: 800 }).runSeconds, 800);
+    expectCode({ ...COMPLETE_KG, runSeconds: 699 }, "OUT_OF_RANGE");
     expectCode({ ...COMPLETE_KG, runSeconds: 9000 }, "OUT_OF_RANGE");
     expectCode({ ...COMPLETE_KG, runSeconds: 1500.5 }, "INVALID_NUMBER");
   });
