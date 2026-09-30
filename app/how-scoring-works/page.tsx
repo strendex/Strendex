@@ -44,8 +44,9 @@ export const metadata = {
     </div>
 
     <p className="mt-4 text-sm text-zinc-400 leading-relaxed">
-      The result is rounded to an integer between 0 and 100.
-      A score of 75 means you outperform 75% of athletes on average across strength and endurance.
+      The result is rounded to a whole number from 0 to 100.
+      It is the average of two percentiles, not a percentile itself: a Hybrid Score of 75
+      does not mean you outperform 75% of athletes.
     </p>
   </div>
 
@@ -54,25 +55,30 @@ export const metadata = {
     <div className="text-sm font-semibold text-white">2) What is a percentile?</div>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      A percentile shows how you compare to other athletes.
-      It does NOT measure raw weight lifted or raw time alone.
-      It measures your position relative to everyone else.
+      Your Strength and Endurance Percentiles are true percentiles.
+      Each shows where that side of your performance sits within the Strendex reference dataset,
+      rather than raw weight lifted or raw time alone.
     </p>
 
     <div className="mt-4 space-y-3 text-sm text-zinc-400">
       <div>
         If your Strength Percentile is <span className="text-zinc-100 font-semibold">80</span>,
-        you are stronger than 80% of athletes in the database.
+        your strength sits above roughly 80% of the reference dataset.
       </div>
       <div>
         If your Endurance Percentile is <span className="text-zinc-100 font-semibold">40</span>,
-        you outperform 40% of athletes in endurance.
+        your endurance sits above roughly 40% of it.
       </div>
     </div>
 
     <div className="mt-4 rounded-2xl bg-black/40 p-4 font-mono text-sm text-emerald-300">
       Example: (80 + 40) ÷ 2 = 60 → Hybrid Score = 60
     </div>
+
+    <p className="mt-4 text-sm text-zinc-400 leading-relaxed">
+      That 60 doesn’t place you above 60% of athletes overall.
+      It is the midpoint of a strong strength side and a lighter endurance side.
+    </p>
   </div>
 
   {/* 3 — Early volatility */}
@@ -80,17 +86,14 @@ export const metadata = {
     <div className="text-sm font-semibold text-white">3) Why scores may change over time</div>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      Percentiles are relative to the dataset.
-      As more athletes join STRENDEX, percentiles naturally adjust.
+      Your score moves when your lifts, bodyweight or run change.
+      It doesn’t drift as other people submit: percentiles are measured against a frozen
+      reference dataset, and new submissions don’t shift it.
     </p>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      Early in the platform’s growth, percentile shifts may be more noticeable.
-      As the dataset grows larger, scores stabilize.
-    </p>
-
-    <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      This ensures long-term fairness and meaningful comparison.
+      That dataset is provisional. When Strendex moves to a newer version built from cleaner
+      athlete data, the same inputs may produce different percentiles.
     </p>
   </div>
 
@@ -104,19 +107,19 @@ export const metadata = {
     </p>
 
     <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-      Percentiles normalize performance across the entire athlete pool.
+      Percentiles put strength and endurance on the same 0–100 footing.
       This makes your score:
     </p>
 
     <ul className="mt-4 space-y-2 text-sm text-zinc-400 list-disc list-inside">
-      <li>Fair across different bodyweights</li>
-      <li>Comparable across all athletes</li>
+      <li>Scaled to bodyweight on the strength side</li>
+      <li>Comparable across supported run distances</li>
       <li>Balanced between strength and endurance</li>
       <li>Resistant to inflated raw totals</li>
     </ul>
 
     <p className="mt-4 text-sm text-zinc-400 leading-relaxed">
-      The Hybrid Score is not just a total — it’s a position in the global athlete distribution.
+      Neither side can carry the Hybrid Score on its own. Each counts for exactly half.
     </p>
   </div>
 
