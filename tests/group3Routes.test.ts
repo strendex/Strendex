@@ -123,15 +123,21 @@ describe("calculator placement uses the shared leaderboard rule", () => {
 
   it("the calculator shows placement only as the server returned it", () => {
     const source = readFileSync(new URL("../app/tool/page.tsx", import.meta.url), "utf8");
-    // Enabled after staging verification (docs/group-3-leaderboard-moderation.md).
-    assert.match(source, /const LEADERBOARD_PLACEMENT_AVAILABLE = true as const;/);
+    // Verified on staging (docs/group-3-leaderboard-moderation.md), then
+    // withheld while rankings are temporarily hidden.
+    assert.match(source, /const LEADERBOARD_PLACEMENT_AVAILABLE = false as const;/);
     // The results line is the tested pure helper, not ad-hoc formatting.
     assert.match(source, /\{placementLine\(result\)\.text\}/);
     // The share card shows a rank only when the server returned one.
     assert.match(source, /LEADERBOARD_PLACEMENT_AVAILABLE && result\?\.leaderboard\s*\?\s*`#\$\{result\.leaderboard\.rank\} \/ \$\{result\.leaderboard\.total\}`\s*:\s*"CAN YOU BEAT THIS\?"/);
-    // The review snapshot gets the server's values or null — never a default.
-    assert.match(source, /rank=\{LEADERBOARD_PLACEMENT_AVAILABLE \? \(saved\.result\.leaderboard\?\.rank \?\? null\) : null\}/);
-    assert.match(source, /totalAthletes=\{LEADERBOARD_PLACEMENT_AVAILABLE \? \(saved\.result\.leaderboard\?\.total \?\? null\) : null\}/);
+    // The review snapshot gets the server's values or null — never a default —
+    // whether or not placement is shown on screen.
+    assert.match(source, /rank=\{saved\.result\.leaderboard\?\.rank \?\? null\}/);
+    assert.match(source, /totalAthletes=\{saved\.result\.leaderboard\?\.total \?\? null\}/);
+    // Every link to /rankings sits behind the same gate.
+    assert.equal(source.match(/href="\/rankings"/g)?.length, 2);
+    assert.match(source, /\{LEADERBOARD_PLACEMENT_AVAILABLE \? \(\s*<Link href="\/rankings" className=\{BTN_SECONDARY\}>\s*View rankings/);
+    assert.match(source, /\{LEADERBOARD_PLACEMENT_AVAILABLE \? \(\s*<Link\s+href="\/rankings"[^>]*>\s*Open rankings/);
     // No placement-derived percentage anywhere on the page.
     assert.match(source, /betterThanPercent=\{null\}/);
     assert.equal(/beatPercent/.test(source), false);

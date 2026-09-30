@@ -164,7 +164,7 @@ describe("opt-in publication: calculator wiring", () => {
   it("the checkbox starts unticked and sends the choice", () => {
     assert.match(source, /useState<boolean>\(false\)/);
     assert.match(source, /const \[publishToLeaderboard, setPublishToLeaderboard\] = useState<boolean>\(false\);/);
-    assert.match(source, /Add my result to the public leaderboard/);
+    assert.match(source, /Include my result when public rankings open/);
     assert.match(source, /checked=\{publishToLeaderboard\}/);
     assert.match(source, /visibility: submissionVisibility\(publishToLeaderboard\)/);
   });
@@ -173,8 +173,11 @@ describe("opt-in publication: calculator wiring", () => {
     assert.match(source, /runTimeText, publishToLeaderboard\],/);
   });
 
-  it("says the choice affects the next calculation only", () => {
-    assert.match(source, /Applies to your next calculation\. Unticking it later won&apos;t remove a result you&apos;ve already published\./);
+  it("says rankings are temporarily hidden and the default stays private", () => {
+    assert.match(source, /Rankings are temporarily hidden while the athlete dataset grows\. Publishing now makes your result eligible to appear when rankings open\. Changing this later won&apos;t remove a result you&apos;ve already published\./);
+    assert.match(source, /Your result will be saved for the public rankings\. Higher scores may be reviewed before appearing\./);
+    assert.match(source, /Your result stays private\. You’ll still receive your full score and performance breakdown\./);
+    assert.equal(/verified entries/i.test(source), false);
   });
 
   it("Reset returns the checkbox to unticked", () => {

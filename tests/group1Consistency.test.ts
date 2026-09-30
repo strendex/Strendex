@@ -342,10 +342,11 @@ describe("the calculator holds no scoring math of its own", () => {
     // Group 1 withheld placement while /rankings and canonical placement
     // disagreed. Group 3 made them one population (lib/leaderboard.ts) and
     // enabled it after staging verification; the rank and total still come
-    // only from the saved result's `leaderboard`, via placementLine.
+    // only from the saved result's `leaderboard`, via placementLine. It is
+    // withheld on screen again while rankings are temporarily hidden.
     assert.ok(
-      /LEADERBOARD_PLACEMENT_AVAILABLE = true/.test(source),
-      "Group 3 enables placement",
+      /LEADERBOARD_PLACEMENT_AVAILABLE = false/.test(source),
+      "placement is withheld while rankings are hidden",
     );
     assert.ok(/placementLine\(result\)/.test(source), "placement is rendered by the tested helper");
     assert.ok(

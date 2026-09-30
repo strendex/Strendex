@@ -3,7 +3,6 @@ import BalanceStory from "@/components/home/BalanceStory";
 import HowItWorks from "@/components/home/HowItWorks";
 import ExampleResult from "@/components/home/ExampleResult";
 import AthleteReviewPreview from "@/components/home/AthleteReviewPreview";
-import LeaderboardPreview from "@/components/home/LeaderboardPreview";
 import FinalCTA from "@/components/home/FinalCTA";
 
 export const metadata = {
@@ -25,10 +24,14 @@ export default function Home() {
       </noscript>
 
       {/*
-        Tonal rhythm rather than rules: base → band → base → deep → base → band
-        → base. Each step is 1–3%, so the page gains depth without reading as
+        Tonal rhythm rather than rules: base → band → base → deep → base →
+        base. Each step is 1–3%, so the page gains depth without reading as
         alternating panels. Sections own their vertical padding so compositions
         can differ instead of stacking uniformly.
+
+        LeaderboardPreview (a band section between AthleteReviewPreview and
+        FinalCTA) is temporarily hidden while rankings are closed. The
+        component is kept; re-import and render it there to restore it.
       */}
       <div className="selection:bg-accent/20">
         <Hero />
@@ -36,7 +39,6 @@ export default function Home() {
         <HowItWorks />
         <ExampleResult />
         <AthleteReviewPreview />
-        <LeaderboardPreview />
         <FinalCTA />
       </div>
     </>

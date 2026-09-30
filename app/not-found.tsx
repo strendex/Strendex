@@ -32,10 +32,10 @@ export default function NotFound() {
             Home
           </Link>
           <Link
-            href="/rankings"
+            href="/about"
             className="rounded px-1 py-2 text-white/70 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
           >
-            Rankings
+            About
           </Link>
         </nav>
       </div>

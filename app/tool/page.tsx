@@ -154,8 +154,21 @@ const STEP_COPY: Record<Step, { title: string; sub: string }> = {
   4: { title: "Review", sub: "Check your numbers, then get your score." },
 };
 
+// Rankings are temporarily hidden while the athlete dataset grows, so the
+// calculator withholds every rankings surface: the placement line, the share
+// card rank, the "Leaderboard placement" preview item and the links to
+// /rankings. Presentation only — the server still returns placement, the
+// Athlete Review snapshot still receives it, and /rankings itself still works.
+// /rankings and calculator placement share one rule (lib/leaderboard.ts:
+// approved, public, active dataset AND current score version, competition
+// ranks), verified against each other on staging — see
+// docs/group-3-leaderboard-moderation.md. When shown, the UI shows only what
+// the server returned: a rank and total when there is one, otherwise the
+// reason there is none (placementLine). Set to true when rankings open.
+const LEADERBOARD_PLACEMENT_AVAILABLE = false as const;
+
 /** What the empty result panel promises — descriptions, never values. */
-const RESULT_PREVIEW: Array<{ term: string; detail: string }> = [
+const RESULT_PREVIEW: Array<{ term: string; detail: string; placement?: true }> = [
   {
     term: "Hybrid Score (0–100)",
     detail: "The average of your strength and endurance percentiles.",
@@ -173,6 +186,7 @@ const RESULT_PREVIEW: Array<{ term: string; detail: string }> = [
   {
     term: "Leaderboard placement",
     detail: "Only if you choose to publish. It's separate from your percentiles.",
+    placement: true,
   },
 ];
 
@@ -289,14 +303,6 @@ export default function ToolPage() {
   // cannot produce two rows. A ref, not state, because changing it must not
   // re-render and it must never be reset by one.
   const sessionRef = useRef(createSubmissionSession());
-
-  // Placement is shown. /rankings and calculator placement share one rule
-  // (lib/leaderboard.ts: approved, public, active dataset AND current score
-  // version, competition ranks), verified against each other on staging — see
-  // docs/group-3-leaderboard-moderation.md. The UI shows only what the server
-  // returned: a rank and total when there is one, otherwise the reason there
-  // is none (placementLine). Set to false to withhold it again.
-  const LEADERBOARD_PLACEMENT_AVAILABLE = true as const;
 
   const [siteLabel, setSiteLabel] = useState<string>("strendex");
   const [arIntent, setArIntent] = useState<boolean>(false);
@@ -1112,10 +1118,10 @@ export default function ToolPage() {
                           />
                           <span>
                             <span className="block text-sm font-semibold text-white">
-                              Add my result to the public leaderboard
+                              Include my result when public rankings open
                             </span>
                             <span className="mt-1 block text-xs text-white/55">
-                              Applies to your next calculation. Unticking it later won&apos;t remove a result you&apos;ve already published.
+                              Rankings are temporarily hidden while the athlete dataset grows. Publishing now makes your result eligible to appear when rankings open. Changing this later won&apos;t remove a result you&apos;ve already published.
                             </span>
                           </span>
                         </label>
@@ -1146,8 +1152,8 @@ export default function ToolPage() {
                         ) : (
                           <div className="text-sm text-white/60">
                             {publishToLeaderboard
-                              ? "Your result will be added to the public leaderboard. Scores of 90 or higher are reviewed first."
-                              : "Your result stays private: you get your full score and percentiles, but it isn't added to the leaderboard."}
+                              ? "Your result will be saved for the public rankings. Higher scores may be reviewed before appearing."
+                              : "Your result stays private. You’ll still receive your full score and performance breakdown."}
                           </div>
                         )}
 
@@ -1322,7 +1328,7 @@ export default function ToolPage() {
                   ) : null}
                 </motion.div>
 
-                <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className={`mt-5 grid grid-cols-1 gap-2 ${LEADERBOARD_PLACEMENT_AVAILABLE ? "sm:grid-cols-2" : ""}`}>
                   <button
                     type="button"
                     id="details-toggle-btn"
@@ -1334,9 +1340,11 @@ export default function ToolPage() {
                     {showDetails ? "Hide full breakdown" : "See full breakdown"}
                     <Chevron open={showDetails} />
                   </button>
-                  <Link href="/rankings" className={BTN_SECONDARY}>
-                    View rankings
-                  </Link>
+                  {LEADERBOARD_PLACEMENT_AVAILABLE ? (
+                    <Link href="/rankings" className={BTN_SECONDARY}>
+                      View rankings
+                    </Link>
+                  ) : null}
                 </div>
 
                 {saved && savedView && !isWorking && (
@@ -1353,8 +1361,8 @@ export default function ToolPage() {
                     archetype={saved.result.archetype}
                     /* Placement only as the server returned it; the review must
                        not imply a standing otherwise. */
-                    rank={LEADERBOARD_PLACEMENT_AVAILABLE ? (saved.result.leaderboard?.rank ?? null) : null}
-                    totalAthletes={LEADERBOARD_PLACEMENT_AVAILABLE ? (saved.result.leaderboard?.total ?? null) : null}
+                    rank={saved.result.leaderboard?.rank ?? null}
+                    totalAthletes={saved.result.leaderboard?.total ?? null}
                     betterThanPercent={null}
                     inputs={{
                       bodyweightKg: savedView.bodyweightKg,
@@ -1612,12 +1620,14 @@ export default function ToolPage() {
                             <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">Tiers</div>
                             <div className="mt-1 text-[16px] font-semibold text-white">Where your score sits</div>
                           </div>
-                          <Link
-                            href="/rankings"
-                            className={`rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-white/[0.06] ${FOCUS_RING}`}
-                          >
-                            Open rankings
-                          </Link>
+                          {LEADERBOARD_PLACEMENT_AVAILABLE ? (
+                            <Link
+                              href="/rankings"
+                              className={`rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-white/[0.06] ${FOCUS_RING}`}
+                            >
+                              Open rankings
+                            </Link>
+                          ) : null}
                         </div>
 
                         <div className="border-t border-white/10">
@@ -1760,7 +1770,7 @@ function ResultPreview() {
         Complete the four steps to see:
       </p>
       <dl className="mt-4 divide-y divide-white/10 border-y border-white/10">
-        {RESULT_PREVIEW.map((item) => (
+        {RESULT_PREVIEW.filter((item) => LEADERBOARD_PLACEMENT_AVAILABLE || !item.placement).map((item) => (
           <div key={item.term} className="py-3.5 sm:grid sm:grid-cols-[13rem_1fr] sm:gap-4">
             <dt className="text-sm font-semibold text-white">{item.term}</dt>
             <dd className="mt-1 text-sm leading-relaxed text-white/60 sm:mt-0">{item.detail}</dd>
