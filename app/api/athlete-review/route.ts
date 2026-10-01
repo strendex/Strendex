@@ -30,6 +30,7 @@ import {
   validateBenchmark,
 } from "@/lib/athleteReview/benchmarkValidation";
 import { computeScenarios } from "@/lib/athleteReview/scenarios";
+import { diagnose } from "@/lib/athleteReview/diagnosis";
 import { buildAthleteReviewInput } from "@/lib/athleteReview/prompt";
 import {
   REPORT_JSON_SCHEMA,
@@ -295,10 +296,22 @@ export async function POST(req: Request) {
       priorityLift: answers.priorityLift,
     });
 
+    // The report's numeric findings, from the canonical score and scenarios
+    // only. Rendered as-is; the model explains them and cannot change them.
+    // Targets are expressed in the run the athlete entered and in their unit.
+    const diagnosis = diagnose(computed, scenarios, {
+      unitSystem: benchmark.unitSystem,
+      benchKg: benchmark.benchKg,
+      squatKg: benchmark.squatKg,
+      deadliftKg: benchmark.deadliftKg,
+      run: benchmark.run,
+    });
+
     const { system, user } = buildAthleteReviewInput({
       computed,
       benchmark: scoringInput,
       scenarios,
+      diagnosis,
       answers,
       unitSystem: benchmark.unitSystem,
     });
@@ -379,7 +392,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
     }
 
-    const reportResult = validateReport(parsed);
+    const reportResult = validateReport(parsed, { daysAvailable: answers.daysAvailable });
     if (!reportResult.ok) {
       logError("openai output unusable", { route: ROUTE, code: "report_invalid" });
       return NextResponse.json({ error: AI_UNAVAILABLE_MESSAGE }, { status: 502 });
@@ -397,6 +410,7 @@ export async function POST(req: Request) {
         strengthPercentile: computed.strengthPercentile,
         endurancePercentile: computed.endurancePercentile,
       },
+      diagnosis,
       meta: {
         model: MODEL,
         promptVersion: REPORT_PROMPT_VERSION,

@@ -14,6 +14,7 @@ import {
   validateBenchmark,
 } from "../lib/athleteReview/benchmarkValidation";
 import { QUESTIONS } from "../lib/athleteReview/questions";
+import { describeTargets } from "../lib/athleteReview/targets";
 import { loadSnapshot, saveSnapshot, snapshotHasBenchmark } from "../lib/athleteReview/snapshot";
 import type { AssessmentAnswers } from "../lib/athleteReview/types";
 import { computeScore } from "../lib/scoring";
@@ -62,6 +63,9 @@ function benchmark(extra: Record<string, unknown> = {}) {
     squat_kg: 150,
     deadlift_kg: 190,
     endurance_seconds: 6900,
+    // The run as entered: a 1:55:00 half converts to exactly 6900 s.
+    run_distance: "half",
+    run_seconds: 6900,
     unit_system: "kg",
     dataset_version_id: DATASET_A,
     score_version: SCORE_VERSION,
@@ -120,7 +124,7 @@ describe("the stored snapshot carries the benchmark", () => {
 
   const inputs = {
     bodyweightKg: 90, benchKg: 110, squatKg: 150, deadliftKg: 190, enduranceSeconds: 6900,
-    runDistance: "5k", runTimeText: "25:00", unitSystem: "kg" as const,
+    runDistance: "5k", runTimeText: "25:00", runSeconds: 1500, unitSystem: "kg" as const,
   };
   const display = {
     hybridScore: 50, strengthPercentile: 50, endurancePercentile: 50, strengthIndex: 66.9,
@@ -215,11 +219,12 @@ const REPORT = {
   profileInterpretation: "Interpretation",
   strengths: [1, 2, 3].map((i) => ({ title: `S${i}`, explanation: "e", evidence: "v" })),
   limiters: [1, 2, 3].map((i) => ({ title: `L${i}`, impact: "medium", explanation: "e", evidence: "v" })),
-  highestLeverageMove: { title: "t", why: "w", whatToDo: "d", whatToMaintain: "m" },
+  highestLeverageMove: { title: "t", why: "w", whatToDo: "d", whatToMaintain: "m", deprioritize: "p" },
   priorities: [1, 2, 3].map((priority) => ({ priority, action: "a", reason: "r" })),
   focusPlan: {
     durationWeeks: 8, strengthFocus: "s", enduranceFocus: "e", recoveryFocus: "r",
-    weeklyStructure: ["d1", "d2", "d3", "d4", "d5"],
+    // validAnswers() picks the minimum of every count: 1 day available.
+    weeklyStructure: ["d1"],
   },
   retest: { recommendedWeeks: 8, metricsToRetest: ["5K"], successSignal: "faster" },
   confidenceNote: "Self-reported inputs.",
@@ -311,6 +316,25 @@ describe("POST /api/athlete-review scores against the saved dataset", () => {
     assert.match(datasetCalls[0].url, new RegExp(`id=eq.${DATASET_A}`));
     assert.doesNotMatch(datasetCalls[0].url, /lifecycle=eq\.active/, "never looks up the active dataset");
     assert.equal(seen.filter((s) => s.url.startsWith("https://api.openai.com/")).length, 1, "one mocked OpenAI call");
+
+    // The report's diagnosis is built on the server from the same score and
+    // scenarios, and the model is handed exactly those findings.
+    assert.equal(body.diagnosis.hybridScore, onA.hq);
+    assert.equal(body.diagnosis.strengthPercentile, onA.strengthPercentile);
+    const primary = body.scenarios.find((s: { isPrimary: boolean }) => s.isPrimary);
+    assert.equal(body.diagnosis.bestFit?.id ?? null, primary?.projected ? primary.id : null);
+    const openaiBody = JSON.parse(seen.find((s) => s.url.startsWith("https://api.openai.com/"))!.body);
+    const userMessage = openaiBody.input.find((m: { role: string }) => m.role === "user").content as string;
+    const data = JSON.parse(userMessage.replace(/^DATA:\n/, ""));
+    // The model gets the best fit's numbers and its targets in the athlete's
+    // own run and units — not the internal change description.
+    for (const k of ["id", "projectedHybridScore", "projectedGain", "projectedTier", "horizonWeeks"]) {
+      assert.deepEqual(data.diagnosis.bestFit[k], body.diagnosis.bestFit[k], k);
+    }
+    assert.deepEqual(data.diagnosis.bestFit.performanceTargets, describeTargets(body.diagnosis.bestFit.targets));
+    assert.equal("description" in data.diagnosis.bestFit, false);
+    assert.deepEqual(data.diagnosis.nextTier, body.diagnosis.nextTier);
+    assert.doesNotMatch(userMessage, /HalfMarathonEquivalent|canonical|enduranceIndex|strengthIndex/i);
   });
 
   for (const [label, bench, datasets] of [

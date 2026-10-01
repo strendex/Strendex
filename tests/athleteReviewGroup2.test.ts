@@ -21,14 +21,18 @@ import {
 
 const { min: SUB_MIN, max: SUB_MAX } = SUBMISSION_CANONICAL_ENDURANCE_SECONDS;
 
-/** What the calculator's review CTA sends: kg values + canonical seconds. */
-function snapshot(enduranceSeconds: number | null) {
+/**
+ * What the review sends: kg values, canonical seconds, and — whenever there is
+ * an endurance time — the run as entered, which must convert to those seconds.
+ */
+function snapshot(enduranceSeconds: number | null, run?: readonly [string, number]) {
   return {
     bodyweight_kg: 90,
     bench_kg: 110,
     squat_kg: 150,
     deadlift_kg: 190,
     endurance_seconds: enduranceSeconds,
+    ...(run ? { run_distance: run[0], run_seconds: run[1] } : {}),
     unit_system: "kg",
     // Group 3: every review names the benchmark its saved result used.
     dataset_version_id: "8bd76e2f-4cfb-47f0-8407-e5b812a6709d",
@@ -39,7 +43,7 @@ function snapshot(enduranceSeconds: number | null) {
 describe("review benchmark validation", () => {
   it("accepts a fast runner the calculator now scores", () => {
     // 5K in 11:40 -> 3220 s canonical, previously a 400 from this route.
-    const r = validateBenchmark(snapshot(toCanonicalEnduranceSeconds(700, "5k")));
+    const r = validateBenchmark(snapshot(toCanonicalEnduranceSeconds(700, "5k"), ["5k", 700]));
     assert.equal(r.ok, true);
     if (r.ok) assert.equal(r.benchmark.enduranceSeconds, 3220);
   });
@@ -47,17 +51,20 @@ describe("review benchmark validation", () => {
   it("accepts both ends of every distance's window, as the calculator converts them", () => {
     for (const d of RUN_DISTANCE_IDS) {
       for (const t of [RUN_DISTANCES[d].minSeconds, RUN_DISTANCES[d].maxSeconds]) {
-        const r = validateBenchmark(snapshot(toCanonicalEnduranceSeconds(t, d)));
+        const r = validateBenchmark(snapshot(toCanonicalEnduranceSeconds(t, d), [d, t]));
         assert.equal(r.ok, true, `${d} ${t}s`);
       }
     }
   });
 
   it("accepts the exact submission bounds and rejects one second outside", () => {
-    assert.equal(validateBenchmark(snapshot(SUB_MIN)).ok, true);
-    assert.equal(validateBenchmark(snapshot(SUB_MAX)).ok, true);
+    // The bounds are exactly the fastest 3 mi and the slowest half.
+    assert.equal(toCanonicalEnduranceSeconds(660, "3mi"), SUB_MIN);
+    assert.equal(toCanonicalEnduranceSeconds(28800, "half"), SUB_MAX);
+    assert.equal(validateBenchmark(snapshot(SUB_MIN, ["3mi", 660])).ok, true);
+    assert.equal(validateBenchmark(snapshot(SUB_MAX, ["half", 28800])).ok, true);
     for (const bad of [SUB_MIN - 1, SUB_MAX + 1, 0, -1, Number.NaN, "fast"]) {
-      const r = validateBenchmark(snapshot(bad as number));
+      const r = validateBenchmark(snapshot(bad as number, ["5k", 1330]));
       assert.equal(r.ok, false, String(bad));
       if (!r.ok) assert.equal(r.error, "Endurance time looks out of range.");
     }

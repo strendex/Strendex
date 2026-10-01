@@ -1373,6 +1373,9 @@ export default function ToolPage() {
                       ),
                       runDistance: saved.inputs.run_distance,
                       runTimeText: savedView.runTimeText,
+                      /* The run as entered, so the review can talk about this
+                         distance and time; the server re-converts it. */
+                      runSeconds: saved.inputs.run_seconds,
                       unitSystem: saved.inputs.unit_system,
                     }}
                     /* The benchmark this saved result was scored against, so the
