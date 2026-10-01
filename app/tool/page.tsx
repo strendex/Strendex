@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import StrendexChart from "./StrendexChart";
 import AthleteReviewCTA from "@/components/AthleteReviewCTA";
+import { createResultViewTracker, scoreBand } from "@/lib/athleteReview/analytics";
 import { EASE, usePrefersReducedMotion } from "@/components/home/motion";
 import { findBannedWord } from "@/lib/nameFilter";
 import { ARCHETYPE_COPY } from "@/lib/archetypeCopy";
@@ -297,6 +298,16 @@ export default function ToolPage() {
   // A result exists only once the server has returned one. A shared link that
   // pre-fills the form is NOT a result.
   const hasResults = saved !== null;
+
+  // Top of the Athlete Review funnel: once per saved result, never per render.
+  const [trackResultViewed] = useState(createResultViewTracker);
+  useEffect(() => {
+    if (!result) return;
+    trackResultViewed(result.resultId, {
+      score_band: scoreBand(result.hybridScore),
+      archetype: result.archetype,
+    });
+  }, [result, trackResultViewed]);
 
   // One submission session for the life of the page: it owns the idempotency
   // key and the in-flight guard, so a retry reuses the key and a double tap
@@ -1328,25 +1339,8 @@ export default function ToolPage() {
                   ) : null}
                 </motion.div>
 
-                <div className={`mt-5 grid grid-cols-1 gap-2 ${LEADERBOARD_PLACEMENT_AVAILABLE ? "sm:grid-cols-2" : ""}`}>
-                  <button
-                    type="button"
-                    id="details-toggle-btn"
-                    aria-expanded={showDetails}
-                    aria-controls="result-details"
-                    onClick={() => setShowDetails((v) => !v)}
-                    className={BTN_SECONDARY}
-                  >
-                    {showDetails ? "Hide full breakdown" : "See full breakdown"}
-                    <Chevron open={showDetails} />
-                  </button>
-                  {LEADERBOARD_PLACEMENT_AVAILABLE ? (
-                    <Link href="/rankings" className={BTN_SECONDARY}>
-                      View rankings
-                    </Link>
-                  ) : null}
-                </div>
-
+                {/* Athlete Review sits under the key result and above the
+                    breakdown: the score stays the first thing the athlete sees. */}
                 {saved && savedView && !isWorking && (
                   <AthleteReviewCTA
                     /* Scores from the SAVED row, inputs from the SAME submission.
@@ -1390,6 +1384,25 @@ export default function ToolPage() {
                     emphasized={arIntent}
                   />
                 )}
+
+                <div className={`mt-5 grid grid-cols-1 gap-2 ${LEADERBOARD_PLACEMENT_AVAILABLE ? "sm:grid-cols-2" : ""}`}>
+                  <button
+                    type="button"
+                    id="details-toggle-btn"
+                    aria-expanded={showDetails}
+                    aria-controls="result-details"
+                    onClick={() => setShowDetails((v) => !v)}
+                    className={BTN_SECONDARY}
+                  >
+                    {showDetails ? "Hide full breakdown" : "See full breakdown"}
+                    <Chevron open={showDetails} />
+                  </button>
+                  {LEADERBOARD_PLACEMENT_AVAILABLE ? (
+                    <Link href="/rankings" className={BTN_SECONDARY}>
+                      View rankings
+                    </Link>
+                  ) : null}
+                </div>
 
                 {/* Full breakdown */}
                 <AnimatePresence initial={false}>

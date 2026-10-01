@@ -1,12 +1,13 @@
 "use client";
 
-// Premium Athlete Review invitation card, shown after the normal results.
+// Athlete Review invitation, shown directly under the key result tiles.
 // Builds the sessionStorage snapshot and routes into /athlete-review.
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { saveSnapshot } from "@/lib/athleteReview/snapshot";
 import { scoreBand, trackAthleteReview } from "@/lib/athleteReview/analytics";
+import { CTA_PREVIEW_ROWS, ctaTension } from "@/lib/athleteReview/entryCopy";
 import type { ResultSnapshotV1 } from "@/lib/athleteReview/types";
 
 export type AthleteReviewCTAProps = {
@@ -26,49 +27,11 @@ export type AthleteReviewCTAProps = {
   emphasized?: boolean;
 };
 
-type Variant = "gap" | "balanced" | "incomplete";
-
-function pickVariant(props: AthleteReviewCTAProps): {
-  variant: Variant;
-  copy: string;
-} {
-  const { strengthPercentile: sp, endurancePercentile: ep, inputs } = props;
-  const missingLifts = [inputs.benchKg, inputs.squatKg, inputs.deadliftKg].filter(
-    (v) => v === null,
-  ).length;
-
-  if (inputs.enduranceSeconds === null || missingLifts >= 2 || sp === null || ep === null) {
-    return {
-      variant: "incomplete",
-      copy: "Your current score only shows part of the picture. Build your review to see what you should test and improve next.",
-    };
-  }
-
-  const gap = Math.round(Math.abs(sp - ep));
-  if (gap >= 20) {
-    return {
-      variant: "gap",
-      copy: `There is a ${gap}-point difference between your strength and endurance profile. See what that means and the fastest realistic way to address it.`,
-    };
-  }
-
-  return {
-    variant: "balanced",
-    copy: "Your profile is balanced. The next step is finding which smaller lever is most likely to move your score.",
-  };
-}
-
-const PREVIEW_ROWS = [
-  { label: "Highest-leverage improvement", teaser: "The one change most likely to move your score" },
-  { label: "What you should maintain", teaser: "The habits already carrying your profile" },
-  { label: "Estimated score scenarios", teaser: "Deterministic 8-week projections" },
-];
-
 export default function AthleteReviewCTA(props: AthleteReviewCTAProps) {
   const router = useRouter();
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLElement | null>(null);
   const viewedRef = useRef(false);
-  const { variant, copy } = pickVariant(props);
+  const { variant, copy } = ctaTension(props);
 
   useEffect(() => {
     if (viewedRef.current) return;
@@ -87,7 +50,8 @@ export default function AthleteReviewCTA(props: AthleteReviewCTAProps) {
     if (!props.emphasized) return;
     // Let the tool page's own results scroll settle first.
     const t = setTimeout(() => {
-      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      cardRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
     }, 1100);
     return () => clearTimeout(t);
   }, [props.emphasized]);
@@ -118,61 +82,61 @@ export default function AthleteReviewCTA(props: AthleteReviewCTAProps) {
   }
 
   return (
-    <div
+    <section
       ref={cardRef}
-      className={`mt-5 rounded-3xl border bg-white/[0.03] p-6 transition ${
-        props.emphasized ? "border-white/30" : "border-white/10"
+      aria-labelledby="athlete-review-cta-heading"
+      className={`mt-5 rounded-2xl border bg-black/20 p-5 sm:p-6 ${
+        props.emphasized ? "border-white/25" : "border-white/10"
       }`}
     >
       <div className="text-[10px] uppercase tracking-[0.25em] text-white/40">
-        New · Athlete Review
+        Athlete Review
       </div>
-      <h3 className="mt-3 text-lg font-semibold leading-snug text-white">
-        Your score shows where you stand. Now uncover what will move it.
+      <h3
+        id="athlete-review-cta-heading"
+        className="mt-3 text-lg font-semibold leading-snug text-white"
+      >
+        Your score shows where you stand. What would move it most?
       </h3>
-      <p className="mt-2 text-sm leading-relaxed text-white/60">{copy}</p>
+      <p className="mt-2 text-sm leading-relaxed text-white/65">{copy}</p>
 
-      <div className="mt-4 space-y-2" aria-label="Included in your review">
-        {PREVIEW_ROWS.map((row) => (
-          <div
-            key={row.label}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
-          >
+      <ol
+        aria-label="What your Athlete Review covers"
+        className="mt-5 divide-y divide-white/[0.08] border-y border-white/[0.08]"
+      >
+        {CTA_PREVIEW_ROWS.map((row, i) => (
+          <li key={row.title} className="flex gap-4 py-3.5">
+            <span
+              aria-hidden="true"
+              className="w-5 shrink-0 pt-px text-[11px] font-medium tabular-nums text-white/35"
+            >
+              {String(i + 1).padStart(2, "0")}
+            </span>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-white/80">{row.label}</div>
-              <div
-                aria-hidden="true"
-                className="mt-0.5 truncate text-xs text-white/45 blur-[3px] select-none"
-              >
-                {row.teaser}
+              <div className="text-sm font-medium text-white">{row.title}</div>
+              <div className="mt-0.5 text-xs leading-relaxed text-white/50">
+                {row.detail}
               </div>
             </div>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-4 w-4 shrink-0 text-white/35"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-            </svg>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
+
+      <p className="mt-4 text-xs leading-relaxed text-white/50">
+        Your lifts, run, score and profile are already loaded. Add your training,
+        goals and recovery.
+      </p>
 
       <button
         type="button"
         onClick={handleClick}
-        className="mt-5 w-full rounded-2xl bg-[#DFFF00] px-4 py-3.5 text-sm font-semibold text-black transition hover:opacity-90"
+        className="mt-4 w-full rounded-2xl bg-[#DFFF00] px-4 py-3.5 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E1014]"
       >
-        Reveal My Fastest Path
+        Build my Athlete Review
       </button>
       <p className="mt-2.5 text-center text-[11px] text-white/40">
-        3–5 minutes · Personalized from your score, training, goals and recovery
-        · Free
+        Free · uses your existing results
       </p>
-    </div>
+    </section>
   );
 }

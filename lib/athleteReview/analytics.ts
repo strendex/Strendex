@@ -16,6 +16,19 @@ export function trackAthleteReview(
   }
 }
 
+/**
+ * Tracks athlete_review_result_viewed — the top of the Athlete Review funnel —
+ * once per saved result. Rerenders and replays of the same result are ignored.
+ */
+export function createResultViewTracker(track = trackAthleteReview) {
+  let lastResultId: string | null = null;
+  return (resultId: string, props: { score_band: string; archetype: string }) => {
+    if (resultId === lastResultId) return;
+    lastResultId = resultId;
+    track("athlete_review_result_viewed", props);
+  };
+}
+
 export function scoreBand(score: number): string {
   const decile = Math.min(90, Math.max(0, Math.floor(score / 10) * 10));
   return `${decile}-${decile + 9}`;
