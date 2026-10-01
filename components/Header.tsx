@@ -42,10 +42,10 @@ export default function Header() {
             />
           </Link>
 
+          {/* Rankings is temporarily hidden from the nav while the athlete
+              dataset grows. /rankings itself still works; restore the link
+              here when rankings open. */}
           <nav className="hidden items-center gap-7 md:flex">
-            <Link href="/rankings" className={NAV_LINK}>
-              Rankings
-            </Link>
             <Link href="/athlete-review" className={`${NAV_LINK} inline-flex items-center gap-2`}>
               Athlete Review
               <span className="rounded border border-white/15 px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.1em] text-white/50">

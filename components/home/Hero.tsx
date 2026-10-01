@@ -56,7 +56,7 @@
  * two shapes. On tall phones any height left once the photo is square is split
  * above and below the copy (`my-auto`) — tens of pixels, not a spacer block.
  * "See how it works" and the privacy line are desktop-only; the privacy
- * explanation is also at calculator consent and in the leaderboard section.
+ * explanation is also at calculator consent.
  */
 
 import Image from "next/image";
@@ -198,8 +198,7 @@ export default function Hero() {
           {...step(0.2)}
           className="mt-5 hidden max-w-[42ch] text-[13px] leading-[1.5] text-subtle lg:block"
         >
-          Your result stays private unless you choose to add it to the public
-          leaderboard.
+          Your result stays private unless you choose to publish it.
         </motion.p>
       </div>
     </section>
