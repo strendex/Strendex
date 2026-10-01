@@ -90,26 +90,39 @@ export function ordinal(n: number): string {
   return ["th", "st", "nd", "rd"][n % 10] ?? "th";
 }
 
-/** Sections an Athlete Review currently produces, described accurately. */
-export const REVIEW_SECTIONS = [
+/**
+ * The Athlete Review homepage example: the SAME fictional athlete, with one
+ * illustrative move in endurance percentile. Only the percentile is assumed —
+ * no run time or lift change is claimed, because the percentile a given time
+ * earns depends on the reference dataset. Pinned by
+ * tests/homepageAthleteReview.test.ts:
+ *   canonicalScoreFromPercentiles(72, 58) = 65
+ *   canonicalScoreFromPercentiles(72, 66) = 69
+ *   computeScenarios picks the balanced build for a 14-point gap.
+ */
+export const REVIEW_EXAMPLE = {
+  endurancePercentile: { from: DEMO.endurancePercentile, to: 66 },
+  hybridScore: { from: DEMO.hybridScore, to: 69 },
+  scoreDelta: 4,
+  primaryScenario: "balanced",
+  limiter: "Endurance is the lower side, 14 points behind strength.",
+  focus:
+    "A balanced build is the better fit here — improve endurance while still moving strength forward.",
+} as const;
+
+/** The rest of the review, in the language of the results-page invitation. */
+export const REVIEW_CONTENTS = [
   {
-    title: "Where you stand",
-    summary: "Your score, your balance, and the percentile context behind both.",
-  },
-  {
-    title: "Your highest-leverage improvement",
-    summary:
-      "The part of your current profile with the most room to move the score.",
-    highlight: true,
+    title: "The change most likely to raise it",
+    detail: "Compare realistic improvements against your current score.",
   },
   {
     title: "What to keep doing",
-    summary: "The parts of your performance already supporting the profile.",
+    detail: "See what’s already carrying your profile.",
   },
   {
-    title: "Estimated score scenarios",
-    summary:
-      "See how changes to your lifts or run would affect your Hybrid Score.",
+    title: "Your next training focus",
+    detail: "Turn the analysis into a practical direction for your next block.",
   },
 ] as const;
 
