@@ -2,6 +2,7 @@
 // sessionStorage only — versioned, validated, and safe against corrupt data.
 // Snapshot scores are display-only; the server always re-derives from raw inputs.
 
+import { isRunDistance } from "@/lib/scoring/core";
 import type { AssessmentAnswers, ResultSnapshotV1 } from "./types";
 
 const SNAPSHOT_KEY = "strendex_ar_snapshot_v1";
@@ -37,6 +38,20 @@ export function snapshotHasBenchmark(snapshot: ResultSnapshotV1): boolean {
     snapshot.benchmark.datasetVersionId !== null &&
     UUID_PATTERN.test(snapshot.benchmark.datasetVersionId) &&
     snapshot.benchmark.scoreVersion !== null
+  );
+}
+
+/**
+ * Whether a snapshot carries the run the athlete entered. A snapshot with an
+ * endurance benchmark but no original run predates the review using it: the
+ * athlete is asked to recalculate rather than shown a guessed distance.
+ */
+export function snapshotHasRunContext(snapshot: ResultSnapshotV1): boolean {
+  if (snapshot.inputs.enduranceSeconds === null) return true;
+  return (
+    isRunDistance(snapshot.inputs.runDistance) &&
+    snapshot.inputs.runSeconds !== null &&
+    Number.isInteger(snapshot.inputs.runSeconds)
   );
 }
 
@@ -119,6 +134,7 @@ export function loadSnapshot(): ResultSnapshotV1 | null {
           typeof inputs.runDistance === "string" ? inputs.runDistance : null,
         runTimeText:
           typeof inputs.runTimeText === "string" ? inputs.runTimeText : null,
+        runSeconds: numOrNull((inputs as { runSeconds?: unknown }).runSeconds),
         unitSystem: inputs.unitSystem,
       },
       benchmark: {

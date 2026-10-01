@@ -5,11 +5,21 @@
 // tested directly. The one Group 2 change: endurance is bounded by the SAME
 // canonical window a submission may convert to, so every athlete
 // POST /api/score accepts can also be reviewed.
+//
+// The review also receives the run the athlete actually entered (distance and
+// whole seconds), so it can talk about their 5K rather than an internal
+// half-marathon equivalent. That run is checked against the scoring domain's
+// per-distance window and converted here with the canonical conversion; the
+// result must equal the canonical seconds the saved score was computed from.
 
 import {
+  RUN_DISTANCES,
   SUBMISSION_CANONICAL_ENDURANCE_SECONDS,
   hasOnlyAllowedKeys,
   isPlainObject,
+  isRunDistance,
+  toCanonicalEnduranceSeconds,
+  type RunDistance,
 } from "@/lib/scoring/core";
 
 export type ValidatedBenchmark = {
@@ -18,6 +28,8 @@ export type ValidatedBenchmark = {
   squatKg: number | null;
   deadliftKg: number | null;
   enduranceSeconds: number | null;
+  /** The run as entered — present exactly when enduranceSeconds is. */
+  run: { distance: RunDistance; seconds: number } | null;
   unitSystem: "lb" | "kg";
   /** The frozen dataset the saved result was scored against. */
   datasetVersionId: string;
@@ -51,6 +63,8 @@ export function validateBenchmark(
     "bench_kg",
     "squat_kg",
     "deadlift_kg",
+    "run_distance",
+    "run_seconds",
     "unit_system",
     "dataset_version_id",
     "score_version",
@@ -109,6 +123,40 @@ export function validateBenchmark(
 
   const unitSystem = raw.unit_system === "kg" ? "kg" : "lb";
 
+  // The run as entered. Absent on a snapshot saved before the review carried
+  // it: that result is recalculated rather than described by a guessed
+  // distance.
+  const runDistance = raw.run_distance ?? null;
+  const runSeconds = raw.run_seconds ?? null;
+  let run: ValidatedBenchmark["run"] = null;
+  if (endurance === null) {
+    if (runDistance !== null || runSeconds !== null) {
+      return { ok: false, error: "Run time given without an endurance benchmark." };
+    }
+  } else {
+    if (runDistance === null || runSeconds === null) {
+      return { ok: false, error: RECALCULATE_MESSAGE, recalculate: true };
+    }
+    if (!isRunDistance(runDistance)) {
+      return { ok: false, error: "Run distance must be one of 3mi, 5k, 10k, half, marathon." };
+    }
+    const window = RUN_DISTANCES[runDistance];
+    if (
+      typeof runSeconds !== "number" ||
+      !Number.isInteger(runSeconds) ||
+      runSeconds < window.minSeconds ||
+      runSeconds > window.maxSeconds
+    ) {
+      return { ok: false, error: "Run time looks out of range." };
+    }
+    // Server-derived, never taken from the client: the entered run must convert
+    // to exactly the canonical seconds this result was scored from.
+    if (toCanonicalEnduranceSeconds(runSeconds, runDistance) !== endurance) {
+      return { ok: false, error: RECALCULATE_MESSAGE, recalculate: true };
+    }
+    run = { distance: runDistance, seconds: runSeconds };
+  }
+
   // The saved result's benchmark. Missing or malformed means the review cannot
   // be tied to the dataset the result was scored against: ask to recalculate.
   const datasetVersionId = raw.dataset_version_id;
@@ -131,6 +179,7 @@ export function validateBenchmark(
       squatKg: squat,
       deadliftKg: deadlift,
       enduranceSeconds: endurance,
+      run,
       unitSystem,
       datasetVersionId: datasetVersionId.toLowerCase(),
       scoreVersion,

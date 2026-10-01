@@ -153,9 +153,9 @@ const REPORT = {
   headline: "Headline", athleteSummary: "Summary", profileInterpretation: "Interpretation",
   strengths: [1, 2, 3].map((i) => ({ title: `S${i}`, explanation: "e", evidence: "v" })),
   limiters: [1, 2, 3].map((i) => ({ title: `L${i}`, impact: "medium", explanation: "e", evidence: "v" })),
-  highestLeverageMove: { title: "t", why: "w", whatToDo: "d", whatToMaintain: "m" },
+  highestLeverageMove: { title: "t", why: "w", whatToDo: "d", whatToMaintain: "m", deprioritize: "p" },
   priorities: [1, 2, 3].map((priority) => ({ priority, action: "a", reason: "r" })),
-  focusPlan: { durationWeeks: 8, strengthFocus: "s", enduranceFocus: "e", recoveryFocus: "r", weeklyStructure: ["1", "2", "3", "4", "5"] },
+  focusPlan: { durationWeeks: 8, strengthFocus: "s", enduranceFocus: "e", recoveryFocus: "r", weeklyStructure: ["1"] },
   retest: { recommendedWeeks: 8, metricsToRetest: ["5K"], successSignal: "faster" },
   confidenceNote: "Self-reported.",
 };
@@ -205,7 +205,7 @@ function fakeBackend(opts: { capStart?: number; capMode?: CapMode; openai?: Open
 }
 
 function benchmark() {
-  return { bodyweight_kg: 90, bench_kg: 110, squat_kg: 150, deadlift_kg: 190, endurance_seconds: 6900,
+  return { bodyweight_kg: 90, bench_kg: 110, squat_kg: 150, deadlift_kg: 190, endurance_seconds: 6900, run_distance: "half", run_seconds: 6900,
     unit_system: "kg", dataset_version_id: DATASET, score_version: SCORE_VERSION };
 }
 

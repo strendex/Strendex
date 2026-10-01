@@ -15,6 +15,7 @@ import {
   loadAnswers,
   loadSnapshot,
   snapshotHasBenchmark,
+  snapshotHasRunContext,
   saveAnswers,
 } from "@/lib/athleteReview/snapshot";
 import { RECALCULATE_MESSAGE } from "@/lib/athleteReview/benchmarkValidation";
@@ -100,9 +101,10 @@ export default function AthleteReviewPage() {
       trackAthleteReview("athlete_review_landing_viewed");
       return;
     }
-    // Saved before results carried their benchmark: the review would have to
-    // guess the dataset, so ask for a recalculation instead.
-    if (!snapshotHasBenchmark(snap)) {
+    // Saved before results carried their benchmark, or the run as entered: the
+    // review would have to guess the dataset or the distance, so ask for a
+    // recalculation instead.
+    if (!snapshotHasBenchmark(snap) || !snapshotHasRunContext(snap)) {
       setRecalculateNotice(true);
       setPhase("landing");
       trackAthleteReview("athlete_review_landing_viewed");
@@ -210,6 +212,10 @@ export default function AthleteReviewPage() {
             squat_kg: snapshot.inputs.squatKg,
             deadlift_kg: snapshot.inputs.deadliftKg,
             endurance_seconds: snapshot.inputs.enduranceSeconds,
+            run_distance:
+              snapshot.inputs.enduranceSeconds === null ? null : snapshot.inputs.runDistance,
+            run_seconds:
+              snapshot.inputs.enduranceSeconds === null ? null : snapshot.inputs.runSeconds,
             unit_system: snapshot.inputs.unitSystem,
             dataset_version_id: snapshot.benchmark.datasetVersionId,
             score_version: snapshot.benchmark.scoreVersion,

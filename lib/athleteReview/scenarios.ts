@@ -118,6 +118,14 @@ function project(
       strengthPercentile: scored.strengthPercentile,
       endurancePercentile: scored.endurancePercentile,
       hqDelta: scored.hq - current.hq,
+      // Exactly what was scored above, caps included — the report's lift and
+      // run targets are read from here, never recomputed.
+      inputs: {
+        benchKg: modified.benchKg,
+        squatKg: modified.squatKg,
+        deadliftKg: modified.deadliftKg,
+        enduranceSeconds: modified.enduranceSeconds,
+      },
     },
   };
 }
@@ -158,7 +166,12 @@ export function computeScenarios(args: {
         )
       : null;
   if (input.enduranceSeconds !== null && pushSeconds === null) {
-    endurancePush = { ...endurancePush, available: false, description: AT_ENDURANCE_CAP };
+    endurancePush = {
+      ...endurancePush,
+      available: false,
+      description: AT_ENDURANCE_CAP,
+      unavailableReason: "endurance_at_cap",
+    };
   } else if (input.enduranceSeconds !== null && pushSeconds !== null) {
     const newSeconds = pushSeconds;
     const actualCut = input.enduranceSeconds - newSeconds;
@@ -270,7 +283,12 @@ export function computeScenarios(args: {
       : null;
   if (input.enduranceSeconds !== null && hasLift && balancedSeconds === null) {
     // No endurance half to balance; the strength push covers the lifts.
-    balanced = { ...balanced, available: false, description: AT_ENDURANCE_CAP };
+    balanced = {
+      ...balanced,
+      available: false,
+      description: AT_ENDURANCE_CAP,
+      unavailableReason: "endurance_at_cap",
+    };
   } else if (input.enduranceSeconds !== null && hasLift && balancedSeconds !== null) {
     const newSeconds = balancedSeconds;
     const actualCut = input.enduranceSeconds - newSeconds;

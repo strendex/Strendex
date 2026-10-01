@@ -5,11 +5,11 @@
 
 import type { AthleteReviewReport, ReportLimiter } from "./types";
 
-export const REPORT_PROMPT_VERSION = "ar-v1";
+export const REPORT_PROMPT_VERSION = "ar-v3";
 
 // Canonical legal copy — always overwrites whatever the model wrote.
 export const CANONICAL_DISCLAIMER =
-  "Strendex Athlete Review provides informational training guidance and is not medical advice. Comparisons use a simulated early-access dataset, so rankings and percentiles can change as it grows.";
+  "Strendex Athlete Review provides informational training guidance and is not medical advice. Performance comparisons use the current Strendex reference baseline; see the methodology for details.";
 
 const str = { type: "string" } as const;
 const int = { type: "integer" } as const;
@@ -64,8 +64,8 @@ export const REPORT_JSON_SCHEMA = {
     highestLeverageMove: {
       type: "object",
       additionalProperties: false,
-      required: ["title", "why", "whatToDo", "whatToMaintain"],
-      properties: { title: str, why: str, whatToDo: str, whatToMaintain: str },
+      required: ["title", "why", "whatToDo", "whatToMaintain", "deprioritize"],
+      properties: { title: str, why: str, whatToDo: str, whatToMaintain: str, deprioritize: str },
     },
     priorities: {
       type: "array",
@@ -93,9 +93,11 @@ export const REPORT_JSON_SCHEMA = {
         strengthFocus: str,
         enduranceFocus: str,
         recoveryFocus: str,
+        // One line per TRAINING day. The upper bound is the athlete's own
+        // daysAvailable, enforced in validateReport.
         weeklyStructure: {
           type: "array",
-          minItems: 5,
+          minItems: 1,
           maxItems: 7,
           items: str,
         },
@@ -128,6 +130,7 @@ const MAX = {
   why: 500,
   whatToDo: 600,
   whatToMaintain: 400,
+  deprioritize: 400,
   action: 260,
   reason: 400,
   focusText: 500,
@@ -154,8 +157,57 @@ function takeInt(v: unknown, min: number, max: number): number | null {
   return n < min || n > max ? null : n;
 }
 
+/**
+ * A weekly-structure line that is only a rest day ("Day 7: Rest", "Sunday —
+ * rest and mobility"). Rest is implied on the days without a line, so these are
+ * dropped rather than counted as training days.
+ */
+export function isRestLine(line: string): boolean {
+  return /^\s*(?:(?:day\s*\d+|mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*[:—–-]\s*)?(?:full\s+|complete\s+|active\s+|total\s+)?(?:rest|off)(?![\w-])/i.test(
+    line,
+  );
+}
+
+/**
+ * Internal scoring vocabulary the athlete never entered and has no use for.
+ * The model is told not to use it; a report that does anyway is unusable.
+ */
+export const INTERNAL_TERMS: readonly RegExp[] = [
+  /half[\s-]*marathon[\s-]+equivalent/i,
+  /canonical[\s-]+endurance/i,
+  /canonical[\s-]+time/i,
+  /endurance[\s-]+index/i,
+  /strength[\s-]+index/i,
+];
+
+/** The first internal term found in any string, at any depth, or null. */
+export function findInternalTerm(value: unknown): string | null {
+  if (typeof value === "string") {
+    for (const term of INTERNAL_TERMS) {
+      const match = value.match(term);
+      if (match) return match[0];
+    }
+    return null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findInternalTerm(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (isRecord(value)) {
+    for (const item of Object.values(value)) {
+      const found = findInternalTerm(item);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 export function validateReport(
   value: unknown,
+  context: { daysAvailable?: number } = {},
 ): { ok: true; report: AthleteReviewReport } | { ok: false; error: string } {
   const fail = (error: string) => ({ ok: false as const, error });
 
@@ -212,8 +264,9 @@ export function validateReport(
       value.highestLeverageMove.whatToMaintain,
       MAX.whatToMaintain,
     ),
+    deprioritize: takeString(value.highestLeverageMove.deprioritize, MAX.deprioritize),
   };
-  if (!hlm.title || !hlm.why || !hlm.whatToDo || !hlm.whatToMaintain) {
+  if (!hlm.title || !hlm.why || !hlm.whatToDo || !hlm.whatToMaintain || !hlm.deprioritize) {
     return fail("invalid highestLeverageMove");
   }
 
@@ -243,7 +296,7 @@ export function validateReport(
     !enduranceFocus ||
     !recoveryFocus ||
     !Array.isArray(weeklyStructureRaw) ||
-    weeklyStructureRaw.length < 5 ||
+    weeklyStructureRaw.length < 1 ||
     weeklyStructureRaw.length > 7
   ) {
     return fail("invalid focusPlan");
@@ -252,7 +305,16 @@ export function validateReport(
   for (const line of weeklyStructureRaw) {
     const s = takeString(line, MAX.weeklyLine);
     if (!s) return fail("invalid focusPlan weeklyStructure");
-    weeklyStructure.push(s);
+    if (!isRestLine(s)) weeklyStructure.push(s);
+  }
+  // The plan never schedules more training days than the athlete has. Fewer
+  // is allowed: available days are a ceiling, not a quota.
+  if (weeklyStructure.length === 0) return fail("invalid focusPlan weeklyStructure");
+  if (
+    context.daysAvailable !== undefined &&
+    weeklyStructure.length > context.daysAvailable
+  ) {
+    return fail("weeklyStructure exceeds days available");
   }
 
   if (!isRecord(value.retest)) return fail("missing retest");
@@ -277,6 +339,22 @@ export function validateReport(
 
   const confidenceNote = takeString(value.confidenceNote, MAX.confidenceNote);
   if (!confidenceNote) return fail("missing confidenceNote");
+
+  const aiWritten = {
+    headline,
+    athleteSummary,
+    profileInterpretation,
+    strengths,
+    limiters,
+    highestLeverageMove: hlm,
+    priorities,
+    focusPlan: { strengthFocus, enduranceFocus, recoveryFocus, weeklyStructure },
+    retest: { metricsToRetest, successSignal },
+    confidenceNote,
+  };
+  // Fail closed: never rewrite the model's words. Only AI-written fields are
+  // scanned — the disclaimer below is Strendex's own copy.
+  if (findInternalTerm(aiWritten)) return fail("internal terminology in report");
 
   return {
     ok: true,
