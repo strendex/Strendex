@@ -271,9 +271,16 @@ export default function AthleteReviewPage() {
   }
 
   const isReport = phase === "report";
+  // The entry screens use a wider two-column layout on laptops; the
+  // questionnaire keeps its narrow column.
+  const isEntry = phase === "landing" || phase === "intro";
 
   return (
-    <div className={`mx-auto w-full ${isReport ? "max-w-2xl" : "max-w-xl"} py-4`}>
+    <div
+      className={`mx-auto w-full ${
+        isReport ? "max-w-2xl" : isEntry ? "max-w-4xl" : "max-w-xl"
+      } py-4`}
+    >
       {phase === "booting" ? (
         <div className="min-h-[40vh]" aria-hidden="true" />
       ) : phase === "landing" ? (
@@ -283,7 +290,9 @@ export default function AthleteReviewPage() {
           hybridScore={snapshot.display.hybridScore}
           tier={snapshot.display.tier}
           archetype={snapshot.display.archetype}
-          resumeStep={resumeStep}
+          strengthPercentile={snapshot.display.strengthPercentile}
+          endurancePercentile={snapshot.display.endurancePercentile}
+          resuming={resumeStep !== null}
           onStart={startAssessment}
           onStartOver={resumeStep ? startOver : null}
         />
