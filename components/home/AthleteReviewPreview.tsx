@@ -13,7 +13,7 @@
  */
 
 import CtaButton from "./CtaButton";
-import { DEMO, REVIEW_SECTIONS } from "./demo-data";
+import { REVIEW_SECTIONS } from "./demo-data";
 import { Reveal } from "./motion";
 
 export default function AthleteReviewPreview() {
@@ -53,9 +53,6 @@ export default function AthleteReviewPreview() {
                 <span className="text-[12px] font-medium uppercase tracking-[0.16em] text-lead">
                   Athlete Review
                 </span>
-                <span className="text-[12px] text-subtle">
-                  {DEMO.name} · Hybrid Score {DEMO.hybridScore}
-                </span>
               </div>
 
               {REVIEW_SECTIONS.map((section) => {
@@ -87,10 +84,6 @@ export default function AthleteReviewPreview() {
                 );
               })}
             </div>
-
-            <p className="mt-6 text-[12px] text-subtle">
-              Excerpt from an example review.
-            </p>
           </div>
         </Reveal>
       </div>

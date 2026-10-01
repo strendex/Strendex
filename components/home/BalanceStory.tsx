@@ -7,11 +7,9 @@
  * compared to each other, then the same two performances expressed as
  * percentiles of one reference population.
  *
- * It used to end on the Hybrid Score and the archetype, which the worked
- * example further down also prints. Showing the result twice made the page
- * feel like it was repeating itself, and it spent the payoff before the
- * section that exists to deliver it. This section now stops at the shared
- * scale; ExampleResult turns it into a score.
+ * It used to end on the Hybrid Score and the archetype, which made the page
+ * repeat itself. This section stops at the shared scale; AssessmentPreview,
+ * above it, covers what the result tells you.
  *
  * Two dots that slid along their rails on scroll have gone with it — they
  * animated the reading of a number, which is the one thing on the page that
@@ -113,7 +111,7 @@ export default function BalanceStory() {
             </div>
 
             <p className="mt-7 text-[12px] text-subtle">
-              Example figures — fictional athlete, simulated reference dataset.
+              Illustrative example.
             </p>
           </div>
         </Reveal>

@@ -1,14 +1,14 @@
 import Hero from "@/components/home/Hero";
+import AssessmentPreview from "@/components/home/AssessmentPreview";
 import BalanceStory from "@/components/home/BalanceStory";
 import HowItWorks from "@/components/home/HowItWorks";
-import ExampleResult from "@/components/home/ExampleResult";
 import AthleteReviewPreview from "@/components/home/AthleteReviewPreview";
 import FinalCTA from "@/components/home/FinalCTA";
 
 export const metadata = {
-  title: "STRENDEX | Hybrid Athlete Benchmarking",
+  title: "STRENDEX | Hybrid Athlete Assessment",
   description:
-    "Benchmark your strength and endurance together. Get a Hybrid Score, see your balance, identify the limiting side of your profile, and compare your result.",
+    "Assess your strength and endurance together. See where you stand, how your profile leans, and what’s limiting your hybrid performance.",
 };
 
 export default function Home() {
@@ -24,10 +24,10 @@ export default function Home() {
       </noscript>
 
       {/*
-        Tonal rhythm rather than rules: base → band → base → deep → base →
-        base. Each step is 1–3%, so the page gains depth without reading as
-        alternating panels. Sections own their vertical padding so compositions
-        can differ instead of stacking uniformly.
+        Tonal rhythm rather than rules: base → deep → band → base → base,
+        closing on a hairline. Each step is 1–3%, so the page gains depth
+        without reading as alternating panels. Sections own their vertical
+        padding so compositions can differ instead of stacking uniformly.
 
         LeaderboardPreview (a band section between AthleteReviewPreview and
         FinalCTA) is temporarily hidden while rankings are closed. The
@@ -35,9 +35,9 @@ export default function Home() {
       */}
       <div className="selection:bg-accent/20">
         <Hero />
+        <AssessmentPreview />
         <BalanceStory />
         <HowItWorks />
-        <ExampleResult />
         <AthleteReviewPreview />
         <FinalCTA />
       </div>

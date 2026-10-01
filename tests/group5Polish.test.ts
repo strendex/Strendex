@@ -11,7 +11,7 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const tool = read("../app/tool/page.tsx");
 
 describe("homepage copy", () => {
-  const home = ["Hero", "BalanceStory", "HowItWorks", "ExampleResult", "LeaderboardPreview", "FinalCTA"]
+  const home = ["Hero", "AssessmentPreview", "BalanceStory", "HowItWorks", "LeaderboardPreview", "FinalCTA"]
     .map((c) => read(`../components/home/${c}.tsx`))
     .join("\n")
     // JSX text wraps across source lines; compare it as rendered.
@@ -19,14 +19,16 @@ describe("homepage copy", () => {
 
   it("no longer implies a 5K is the only run accepted", () => {
     assert.doesNotMatch(home, /lifts and (your )?5K|and 5K time|a recent 5K|your 5K/i);
-    assert.match(home, /5K to marathon/);
+    assert.match(home, /3 miles, 5K, 10K, half or full marathon/);
   });
 
   it("says publishing to the leaderboard is optional", () => {
-    assert.match(home, /private unless you choose/);
+    assert.match(home, /Publishing your result is optional and does not affect your assessment\./);
   });
 
-  it("makes no time-estimate claim, here or in the calculator intro", () => {
+  it("makes only the approved time estimate, and none in the calculator intro", () => {
+    // Group 2 reinstated one estimate on the homepage, by explicit decision.
+    assert.match(home, /About 2 minutes\./);
     assert.doesNotMatch(home, /about a minute/i);
     assert.doesNotMatch(tool, /about a minute/i);
   });

@@ -76,8 +76,8 @@ export default function HowItWorks() {
       <Reveal delay={0.12}>
         <p className="mt-10 max-w-[60ch] text-[14px] leading-[1.6] text-subtle md:mt-12">
           Your percentiles compare you with the reference dataset, not with
-          other people who use Strendex. Publishing to the public leaderboard is
-          optional and separate.{" "}
+          other people who use Strendex. Publishing your result is optional and
+          does not affect your assessment.{" "}
           <Link
             href="/methodology"
             className="text-lead underline underline-offset-4 transition-colors duration-150 hover:text-ink"

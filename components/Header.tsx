@@ -62,7 +62,7 @@ export default function Header() {
           href="/tool"
           className="inline-flex h-8 items-center justify-center rounded-lg bg-accent px-3 text-[12px] font-semibold whitespace-nowrap text-[#0E1014] transition-[filter] duration-150 hover:brightness-[1.06] sm:h-9 sm:px-4 sm:text-[13px]"
         >
-          Get your Hybrid Score
+          Test yourself
         </Link>
       </div>
     </header>
