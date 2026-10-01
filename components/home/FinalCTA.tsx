@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * Section 7 — close. One line, one control.
+ * Section 6 — close. One line, one control, one row.
  *
- * The lime radial that used to sit behind this block is gone. It was a
- * decorative glow spending the accent on a background, which is the one place
- * the brand rules do not allow it, and it read as a haze rather than as depth.
+ * The previous close stacked a 48px headline over its button inside ~100px of
+ * padding on each side, so the page ended on a mostly empty block. This is a
+ * compact closing band instead: a hairline, then the line and the control on
+ * one row from lg, stacked below it. No glow, no gradient — the lime button is
+ * the only accent.
  *
- * The old line, "See where you stand—and what to work on next.", also lost an
- * argument with the hero: the headline above now says KNOW WHERE YOU STAND, so
- * closing on the same phrase made the page end where it began.
+ * There is no supporting line. The footer directly beneath already says
+ * "Strength and endurance, benchmarked together.", and repeating it here
+ * would spend the last word twice.
  */
 
 import CtaButton from "./CtaButton";
@@ -17,13 +19,15 @@ import { Reveal } from "./motion";
 
 export default function FinalCTA() {
   return (
-    <section className="py-[clamp(56px,7vw,104px)]">
+    <section className="border-t border-hairline py-[clamp(40px,5vw,64px)]">
       <Reveal>
-        <div className="flex flex-col items-start gap-8">
-          <h2 className="max-w-[18ch] text-balance text-[clamp(30px,3.6vw,48px)] font-semibold leading-[1.1] tracking-[-0.03em] text-ink">
-            Your lifts and your run, in one score.
+        <div className="flex flex-col items-start gap-7 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
+          <h2 className="max-w-[22ch] text-balance text-[clamp(26px,3vw,40px)] font-semibold leading-[1.12] tracking-[-0.025em] text-ink">
+            See what your training says about you.
           </h2>
-          <CtaButton href="/tool">Get your Hybrid Score</CtaButton>
+          <CtaButton href="/tool" className="w-full shrink-0 sm:w-auto">
+            Test yourself
+          </CtaButton>
         </div>
       </Reveal>
     </section>

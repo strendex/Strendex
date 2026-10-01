@@ -55,8 +55,7 @@
  * runner out of frame. The crop (92% across) keeps both athletes between those
  * two shapes. On tall phones any height left once the photo is square is split
  * above and below the copy (`my-auto`) — tens of pixels, not a spacer block.
- * "See how it works" and the privacy line are desktop-only; the privacy
- * explanation is also at calculator consent.
+ * "See how it works" and the time line are desktop-only.
  */
 
 import Image from "next/image";
@@ -158,17 +157,18 @@ export default function Hero() {
           {...step(0.1)}
           className="mt-5 max-w-[46ch] text-[15px] leading-[1.6] text-lead sm:text-[16px] lg:text-[17px]"
         >
-          {/* Mobile (below lg) keeps the hero to headline → body → photo; the
-              header's "Get your Hybrid Score" button is the action there. */}
+          {/* Mobile (below lg) gets the shorter line, so the photo keeps its
+              share of the first screen. */}
           <span className="lg:hidden">
-            Enter your bodyweight, lifts and run time. Get your Hybrid Score out
-            of 100 and see how your strength and endurance compare.
+            Enter your bodyweight, lifts and a recent run. See where you stand,
+            how your two sides compare, and what’s limiting the rest of your
+            profile.
           </span>
           <span className="hidden lg:inline">
-            Enter your bodyweight, bench, squat, deadlift and a recent run, from
-            5K to marathon. Your Hybrid Score combines strength and endurance
-            into one number from 0 to 100 and shows which side has more room to
-            grow.
+            Enter your bodyweight, bench, squat, deadlift and a recent run. See
+            your hybrid performance in one clear picture: where you stand, how
+            your two sides compare, and what’s limiting the rest of your
+            profile.
           </span>
         </motion.p>
 
@@ -177,7 +177,7 @@ export default function Hero() {
           className="mt-6 flex flex-col items-start gap-3 sm:mt-7 sm:flex-row sm:items-center sm:gap-7 lg:mt-9"
         >
           <CtaButton href="/tool" className="w-full sm:w-auto">
-            Get your Hybrid Score
+            Test yourself
           </CtaButton>
 
           {/* A text link, not a second button. The lime control is the only
@@ -198,7 +198,7 @@ export default function Hero() {
           {...step(0.2)}
           className="mt-5 hidden max-w-[42ch] text-[13px] leading-[1.5] text-subtle lg:block"
         >
-          Your result stays private unless you choose to publish it.
+          About 2 minutes. Built from your actual performance.
         </motion.p>
       </div>
     </section>
